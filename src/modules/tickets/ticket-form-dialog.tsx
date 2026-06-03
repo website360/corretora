@@ -1,0 +1,350 @@
+"use client";
+
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
+import { toast } from "sonner";
+import { ticketSchema, type TicketFormValues } from "@/lib/validations";
+import { ticketsService } from "@/services/tickets.service";
+import { usersService } from "@/services/users.service";
+import { customersService } from "@/services/customers.service";
+import { carriersService } from "@/services/carriers.service";
+import { productsService } from "@/services/products.service";
+import { tagsService } from "@/services/tags.service";
+import { useAsyncData } from "@/hooks/use-async-data";
+import { useSession } from "@/contexts/session-context";
+import { useDirectoryStore } from "@/stores/directory-store";
+import { BoardColumnPicker, defaultBoardId } from "@/modules/tickets/board-column-picker";
+import { resolveSettings } from "@/config/sort";
+import { TICKET_SUBJECT_META, TICKET_PRIORITY_META } from "@/config/domain";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Combobox } from "@/components/ui/combobox";
+import { MultiSelect } from "@/components/ui/multi-select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { Ticket, TicketPriority, TicketSubjectType } from "@/types/domain";
+
+export function TicketFormDialog({
+  open,
+  onOpenChange,
+  ticket,
+  initialSubjectType = "internal",
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  ticket?: Ticket | null;
+  /** Pre-selects the "tipo de tarefa" when creating from the Criar menu. */
+  initialSubjectType?: TicketSubjectType;
+  onSaved?: (created?: Ticket) => void;
+}) {
+  const router = useRouter();
+  const editing = Boolean(ticket);
+  const { data: users } = useAsyncData(() => usersService.list());
+  const { data: customers } = useAsyncData(() => customersService.list());
+  const { data: carriers } = useAsyncData(() => carriersService.list());
+  const { data: products } = useAsyncData(() => productsService.list());
+  const { data: tags } = useAsyncData(() => tagsService.list("tasks"));
+  const { user } = useSession();
+  const taskTimeEnabled = resolveSettings(user.company).taskTimeEnabled;
+  const [dueDate, setDueDate] = React.useState("");
+  const [dueTime, setDueTime] = React.useState("");
+  const [boardId, setBoardId] = React.useState("");
+  const [columnId, setColumnId] = React.useState("");
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<TicketFormValues>({
+    resolver: zodResolver(ticketSchema),
+    defaultValues: { priority: "medium", subject_type: "internal", tags: [], participant_ids: [] },
+  });
+
+  React.useEffect(() => {
+    if (open) {
+      reset({
+        title: ticket?.title ?? "",
+        description: ticket?.description ?? "",
+        priority: ticket?.priority ?? "medium",
+        subject_type: ticket?.subject_type ?? initialSubjectType,
+        customer_id: ticket?.customer_id ?? undefined,
+        carrier_id: ticket?.carrier_id ?? undefined,
+        product_id: ticket?.product_id ?? undefined,
+        // New tasks default the responsável to the current user (changeable).
+        assignee_id: ticket ? (ticket.assignee_id ?? undefined) : user.id,
+        participant_ids: ticket?.participant_ids ?? [],
+        tags: ticket?.tags ?? [],
+        due_at: ticket?.due_at ?? undefined,
+      });
+      if (ticket?.due_at) {
+        const d = new Date(ticket.due_at);
+        setDueDate(format(d, "yyyy-MM-dd"));
+        setDueTime(format(d, "HH:mm"));
+      } else {
+        setDueDate("");
+        setDueTime("");
+      }
+      // Kanban placement: keep the task's board/column, else default board + first column.
+      const { taskBoards, taskColumns } = useDirectoryStore.getState();
+      const bId = ticket?.board_id ?? defaultBoardId(taskBoards) ?? "";
+      setBoardId(bId);
+      const firstCol = taskColumns
+        .filter((c) => c.board_id === bId)
+        .sort((a, b) => a.position - b.position)[0];
+      setColumnId(ticket?.column_id ?? firstCol?.id ?? "");
+    }
+  }, [open, ticket, initialSubjectType, user.id, reset]);
+
+  async function onSubmit(values: TicketFormValues) {
+    const due_at = dueDate
+      ? new Date(`${dueDate}T${dueTime || "09:00"}:00`).toISOString()
+      : null;
+    // Internal tasks carry no entity links; clear any leftover selection.
+    const links =
+      values.subject_type === "internal"
+        ? { customer_id: undefined, carrier_id: undefined, product_id: undefined }
+        : {
+            customer_id: values.customer_id || undefined,
+            carrier_id: values.carrier_id || undefined,
+            product_id: values.product_id || undefined,
+          };
+    if (editing) {
+      await ticketsService.update(ticket!.id, {
+        ...values,
+        ...links,
+        customer_id: links.customer_id ?? null,
+        carrier_id: links.carrier_id ?? null,
+        product_id: links.product_id ?? null,
+        board_id: boardId || null,
+        column_id: columnId || null,
+        due_at,
+        description: values.description ?? null,
+      });
+      toast.success("Tarefa atualizada");
+      onOpenChange(false);
+      onSaved?.();
+      return;
+    }
+    const created = await ticketsService.create({
+      ...values,
+      ...links,
+      board_id: boardId || undefined,
+      column_id: columnId || undefined,
+      due_at,
+      description: values.description ?? null,
+    });
+    toast.success(`Tarefa #${created.number} criada`);
+    reset();
+    onOpenChange(false);
+    onSaved?.(created);
+    router.push(`/tickets/${created.id}`);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{editing ? "Editar tarefa" : "Nova tarefa"}</DialogTitle>
+          <DialogDescription>
+            Abra um atendimento, tarefa ou solicitação interna.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">Título *</Label>
+            <Input id="title" placeholder="Resumo do atendimento" {...register("title")} />
+            {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Descrição</Label>
+            <Textarea id="description" rows={3} {...register("description")} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Prioridade</Label>
+              <Select value={watch("priority")} onValueChange={(v) => setValue("priority", v as TicketPriority)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(TICKET_PRIORITY_META).map(([k, m]) => (
+                    <SelectItem key={k} value={k}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de tarefa</Label>
+              <Select
+                value={watch("subject_type")}
+                onValueChange={(v) => setValue("subject_type", v as TicketSubjectType)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(TICKET_SUBJECT_META).map(([k, m]) => (
+                    <SelectItem key={k} value={k}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Prazo — define a data em que a tarefa aparece no calendário */}
+          <div className="space-y-2">
+            <Label>Prazo (aparece no calendário)</Label>
+            <div className={taskTimeEnabled ? "grid grid-cols-2 gap-2" : ""}>
+              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              {taskTimeEnabled && (
+                <Input
+                  type="time"
+                  value={dueTime}
+                  onChange={(e) => setDueTime(e.target.value)}
+                  disabled={!dueDate}
+                />
+              )}
+            </div>
+          </div>
+
+          <BoardColumnPicker
+            boardId={boardId}
+            columnId={columnId}
+            onBoardChange={setBoardId}
+            onColumnChange={setColumnId}
+          />
+
+          {watch("subject_type") !== "internal" && (
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+              <p className="text-xs text-muted-foreground">
+                Vincule a tarefa às entidades relacionadas (opcional — você pode combinar
+                cliente, seguradora e produto).
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Cliente</Label>
+                  <Combobox
+                    options={(customers ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                    value={watch("customer_id") ?? ""}
+                    onChange={(v) => setValue("customer_id", v || undefined)}
+                    placeholder="Opcional"
+                    searchPlaceholder="Buscar cliente..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Seguradora</Label>
+                  <Combobox
+                    options={(carriers ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                    value={watch("carrier_id") ?? ""}
+                    onChange={(v) => {
+                      setValue("carrier_id", v || undefined);
+                      // Drop a product that no longer belongs to the chosen carrier.
+                      const pid = watch("product_id");
+                      if (pid && v) {
+                        const prod = (products ?? []).find((p) => p.id === pid);
+                        if (prod && prod.carrier_id && prod.carrier_id !== v) {
+                          setValue("product_id", undefined);
+                        }
+                      }
+                    }}
+                    placeholder="Opcional"
+                    searchPlaceholder="Buscar seguradora..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Produto</Label>
+                  <Combobox
+                    options={(products ?? [])
+                      .filter((p) => {
+                        const cid = watch("carrier_id");
+                        return !cid || !p.carrier_id || p.carrier_id === cid;
+                      })
+                      .map((p) => ({ value: p.id, label: p.name }))}
+                    value={watch("product_id") ?? ""}
+                    onChange={(v) => setValue("product_id", v || undefined)}
+                    placeholder="Opcional"
+                    searchPlaceholder="Buscar produto..."
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Responsável</Label>
+            <Combobox
+              options={(users ?? []).map((u) => ({ value: u.id, label: u.name }))}
+              value={watch("assignee_id") ?? ""}
+              onChange={(v) => setValue("assignee_id", v || undefined)}
+              placeholder="Atribuir"
+              searchPlaceholder="Buscar usuário..."
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Envolvidos</Label>
+              <MultiSelect
+                options={(users ?? []).map((u) => ({ value: u.id, label: u.name }))}
+                values={watch("participant_ids") ?? []}
+                onChange={(v) => setValue("participant_ids", v)}
+                placeholder="Nenhum"
+                searchPlaceholder="Buscar usuário..."
+                triggerClassName="w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tags</Label>
+              <MultiSelect
+                options={(tags ?? []).map((t) => ({ value: t.name, label: t.name }))}
+                values={watch("tags") ?? []}
+                onChange={(v) => setValue("tags", v)}
+                placeholder="Nenhuma"
+                searchPlaceholder="Buscar tag..."
+                emptyText="Nenhuma tag. Crie em Configurações → Etiquetas."
+                triggerClassName="w-full"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" loading={isSubmitting}>
+              {editing ? "Salvar alterações" : "Criar tarefa"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
