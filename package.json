@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Plataforma SaaS multi-tenant para corretoras de seguros",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

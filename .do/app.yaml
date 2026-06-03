@@ -1,0 +1,78 @@
+# DigitalOcean App Platform — spec do app "Corretora SaaS".
+#
+# Como usar:
+#   1. No painel da DO: Apps → Create App → "Import from App Spec" (ou
+#      `doctl apps create --spec .do/app.yaml`).
+#   2. Preencha os valores das variáveis abaixo no painel (os marcados
+#      como type: SECRET ficam criptografados).
+#
+# IMPORTANTE: as NEXT_PUBLIC_* são embutidas no bundle DURANTE O BUILD.
+# Sem NEXT_PUBLIC_SUPABASE_URL no build, o app sobe em modo "mock" (sem
+# backend). Por isso o escopo delas é RUN_AND_BUILD_TIME.
+
+name: corretora
+region: nyc # não há região no Brasil; nyc/sfo são as mais próximas
+
+services:
+  - name: web
+    github:
+      repo: website360/corretora
+      branch: main
+      deploy_on_push: true # redeploy automático a cada push na main
+
+    # Next.js standalone via buildpack Node (engines.node no package.json).
+    build_command: npm run build
+    run_command: npm run start
+    http_port: 8080 # `next start` respeita a env PORT que a DO injeta (8080)
+
+    instance_size_slug: apps-s-1vcpu-1gb
+    instance_count: 1
+
+    health_check:
+      http_path: /login
+
+    routes:
+      - path: /
+
+    envs:
+      - key: NODE_ENV
+        scope: RUN_AND_BUILD_TIME
+        value: production
+
+      # Garante backend real (não-mock) em produção.
+      - key: NEXT_PUBLIC_USE_MOCKS
+        scope: RUN_AND_BUILD_TIME
+        value: "false"
+
+      # ── Supabase (públicas — embutidas no build) ──
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        value: https://SEU-PROJETO.supabase.co
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        scope: RUN_AND_BUILD_TIME
+        value: COLE_A_ANON_KEY
+
+      # ── App ──
+      # Após o 1º deploy, troque pela URL real (ou domínio próprio).
+      - key: NEXT_PUBLIC_APP_URL
+        scope: RUN_AND_BUILD_TIME
+        value: https://corretora.SEU-DOMINIO.com
+      - key: NEXT_PUBLIC_APP_NAME
+        scope: RUN_AND_BUILD_TIME
+        value: Corretora SaaS
+
+      # ── Servidor (SECRET — só runtime, nunca no client) ──
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        scope: RUN_TIME
+        type: SECRET
+
+      # Asaas (cobrança) — opcionais; deixe vazios se ainda não usa.
+      - key: ASAAS_BASE_URL
+        scope: RUN_TIME
+        value: https://api.asaas.com/v3
+      - key: ASAAS_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: ASAAS_WEBHOOK_TOKEN
+        scope: RUN_TIME
+        type: SECRET
