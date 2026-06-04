@@ -17,6 +17,22 @@ function isPublic(pathname: string) {
 }
 
 /**
+ * Impede que CDNs (Cloudflare) cacheiem respostas de documento/RSC.
+ *
+ * O Next.js prerenderiza páginas e responde com `Cache-Control: s-maxage`
+ * tanto para o HTML quanto para o payload RSC (`text/x-component`), diferindo
+ * apenas no header `Vary: RSC`. O Cloudflare ignora o `Vary`, então as duas
+ * variantes colidem na mesma chave de cache da borda e o flight cru acaba
+ * sendo servido no lugar da página. Marcar como `private, no-store` força a
+ * borda a sempre buscar da origem. Não afeta `_next/static` (excluído pelo
+ * matcher do middleware), que continua imutável e cacheável.
+ */
+function noSharedCache<T extends NextResponse>(response: T): T {
+  response.headers.set("Cache-Control", "private, no-store");
+  return response;
+}
+
+/**
  * Refreshes the Supabase auth session on every request and guards
  * protected routes. When mocks are enabled it becomes a no-op so the
  * product is fully navigable without a backend.
@@ -52,15 +68,15 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(url);
+    return noSharedCache(NextResponse.redirect(url));
   }
 
   // Authenticated users shouldn't see auth screens.
   if (user && isPublic(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
+    return noSharedCache(NextResponse.redirect(url));
   }
 
-  return response;
+  return noSharedCache(response);
 }
