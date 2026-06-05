@@ -136,6 +136,7 @@ export function ContractsView() {
     {
       id: "customer",
       header: "Cliente",
+      accessorFn: (row) => customerName.get(row.customer_id) ?? "",
       cell: ({ row }) => {
         const c = row.original;
         return (
@@ -386,6 +387,8 @@ export function ContractsView() {
         enableSelection
         getRowId={(c) => c.id}
         bulkActions={bulk.bulkAction}
+        initialSort={[{ id: "customer", desc: false }]}
+        storageKey="contracts"
       />
 
       <ContractFormDialog

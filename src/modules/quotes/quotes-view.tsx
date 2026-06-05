@@ -169,6 +169,7 @@ export function QuotesView() {
     {
       id: "customer",
       header: "Cliente",
+      accessorFn: (row) => customerName.get(row.customer_id) ?? "",
       cell: ({ row }) => (
         <div className="min-w-0">
           <p className="truncate font-medium">{customerName.get(row.original.customer_id) ?? "—"}</p>
@@ -294,6 +295,7 @@ export function QuotesView() {
     {
       id: "customer",
       header: "Cliente",
+      accessorFn: (row) => customerName.get(row.customer_id) ?? "",
       cell: ({ row }) => (
         <div className="min-w-0">
           <p className="truncate font-medium">{customerName.get(row.original.customer_id) ?? "—"}</p>
@@ -420,6 +422,8 @@ export function QuotesView() {
               emptyIcon={Calculator}
               emptyTitle="Nenhum concluído"
               emptyDescription="Orçamentos assinados aparecem aqui, já como contrato."
+              initialSort={[{ id: "customer", desc: false }]}
+              storageKey="quotes-done"
             />
           </div>
         ) : view === "list" ? (
@@ -432,6 +436,8 @@ export function QuotesView() {
               emptyIcon={Calculator}
               emptyTitle="Nenhum orçamento"
               emptyDescription="Crie um orçamento para um cliente."
+              initialSort={[{ id: "customer", desc: false }]}
+              storageKey="quotes"
             />
           </div>
         ) : (

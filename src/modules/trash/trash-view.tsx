@@ -162,6 +162,7 @@ export function TrashView() {
     {
       id: "title",
       header: "Item",
+      accessorFn: (row) => row.title ?? "",
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <span className="truncate font-medium">{row.original.title}</span>
@@ -262,6 +263,8 @@ export function TrashView() {
         emptyIcon={Trash2}
         emptyTitle="Lixeira vazia"
         emptyDescription="Nada foi excluído recentemente."
+        initialSort={[{ id: "title", desc: false }]}
+        storageKey="trash"
         enableSelection
         getRowId={(r) => `${r.type}:${r.id}`}
         bulkActions={(selected, clear) => (

@@ -68,7 +68,7 @@ export default function RegisterPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="company">Corretora</Label>
-            <Input id="company" placeholder="Apex Seguros" {...register("company")} />
+            <Input id="company" placeholder="Fibria Seguros" {...register("company")} />
             {errors.company && <p className="text-xs text-destructive">{errors.company.message}</p>}
           </div>
         </div>

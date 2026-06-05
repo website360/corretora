@@ -175,6 +175,8 @@ export function ProductsView({ embedded = false }: { embedded?: boolean } = {}) 
         enableSelection
         getRowId={(p) => p.id}
         bulkActions={bulk.bulkAction}
+        initialSort={[{ id: "name", desc: false }]}
+        storageKey="products"
       />
 
       <ProductFormDialog

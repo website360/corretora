@@ -203,6 +203,8 @@ export function CarriersView() {
         enableSelection
         getRowId={(c) => c.id}
         bulkActions={bulk.bulkAction}
+        initialSort={[{ id: "name", desc: false }]}
+        storageKey="carriers"
       />
 
       <CarrierFormDialog

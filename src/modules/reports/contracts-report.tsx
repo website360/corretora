@@ -176,6 +176,7 @@ export function ContractsReport() {
     {
       id: "customer",
       header: "Cliente",
+      accessorFn: (row) => customerName.get(row.customer_id) ?? "",
       cell: ({ row }) => (
         <div className="min-w-0">
           <p className="truncate font-medium">{customerName.get(row.original.customer_id) ?? "—"}</p>
@@ -335,6 +336,8 @@ export function ContractsReport() {
         emptyIcon={FileText}
         emptyTitle="Nenhum contrato"
         emptyDescription="Ajuste os filtros ou cadastre contratos."
+        initialSort={[{ id: "customer", desc: false }]}
+        storageKey="contracts-report"
       />
     </div>
   );

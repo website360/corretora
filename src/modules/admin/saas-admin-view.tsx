@@ -211,6 +211,8 @@ export function SaasAdminView() {
             emptyIcon={Building2}
             emptyTitle="Nenhuma empresa"
             emptyDescription="As corretoras cadastradas aparecem aqui."
+            initialSort={[{ id: "name", desc: false }]}
+            storageKey="admin-companies"
           />
         )}
 
@@ -224,6 +226,8 @@ export function SaasAdminView() {
             emptyIcon={Users}
             emptyTitle="Nenhum usuário"
             emptyDescription="Usuários de todas as empresas aparecem aqui."
+            initialSort={[{ id: "name", desc: false }]}
+            storageKey="admin-users"
           />
         )}
 
@@ -247,6 +251,8 @@ export function SaasAdminView() {
               emptyIcon={CreditCard}
               emptyTitle="Sem dados"
               emptyDescription="Nenhuma empresa/assinatura ainda."
+              initialSort={[{ id: "name", desc: false }]}
+              storageKey="admin-payments"
             />
           </>
         )}
@@ -318,6 +324,7 @@ function companyColumns(
     {
       id: "name",
       header: "Empresa",
+      accessorFn: (row) => row.trade_name ?? "",
       cell: ({ row }) => (
         <div className="min-w-0">
           <p className="truncate font-medium">{row.original.trade_name}</p>
@@ -392,6 +399,7 @@ function userColumns(
     {
       id: "name",
       header: "Usuário",
+      accessorFn: (row) => row.name ?? "",
       cell: ({ row }) => (
         <div className="min-w-0">
           <p className="truncate font-medium">{row.original.name}</p>
@@ -478,6 +486,7 @@ function paymentColumns(
     {
       id: "name",
       header: "Empresa",
+      accessorFn: (row) => row.trade_name ?? "",
       cell: ({ row }) => <span className="truncate font-medium">{row.original.trade_name}</span>,
     },
     {

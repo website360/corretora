@@ -139,6 +139,7 @@ export function AtendimentosView() {
     {
       id: "customer",
       header: "Cliente",
+      accessorFn: (row) => customerName.get(row.customer_id) ?? "",
       cell: ({ row }) => (
         <button
           onClick={(e) => {
@@ -310,6 +311,8 @@ export function AtendimentosView() {
         enableSelection
         getRowId={(r) => r.id}
         bulkActions={bulk.bulkAction}
+        initialSort={[{ id: "customer", desc: false }]}
+        storageKey="atendimentos"
       />
 
       <AtendimentoFormDialog

@@ -213,6 +213,8 @@ export function UsersView() {
         emptyIcon={Users}
         emptyTitle="Nenhum usuário"
         emptyDescription="Adicione membros da equipe para colaborar."
+        initialSort={[{ id: "name", desc: false }]}
+        storageKey="users"
       />
 
       <Dialog open={open} onOpenChange={setOpen}>

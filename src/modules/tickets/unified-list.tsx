@@ -455,6 +455,7 @@ export function UnifiedList({
         emptyIcon={ListChecks}
         emptyTitle="Nada por aqui"
         emptyDescription="Crie uma tarefa ou um evento para começar."
+        storageKey="tasks-list"
         enableSelection
         getRowId={(r) => r.id}
         bulkActions={(selected, clear) => (

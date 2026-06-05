@@ -9,6 +9,7 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type ColumnSizingState,
   type RowSelectionState,
   type SortingState,
 } from "@tanstack/react-table";
@@ -57,6 +58,21 @@ interface DataTableProps<TData, TValue> {
   getRowId?: (row: TData) => string;
   /** Renders the bulk-action bar shown while rows are selected. */
   bulkActions?: (selected: TData[], clear: () => void) => React.ReactNode;
+  /** Initial sorting state (e.g. alphabetical by name). */
+  initialSort?: SortingState;
+  /** When set, column widths (drag-to-resize) are persisted to localStorage under this key. */
+  storageKey?: string;
+}
+
+/** Reads the persisted column widths for a table, guarded for SSR. */
+function loadColumnSizing(storageKey?: string): ColumnSizingState {
+  if (!storageKey || typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(`dt-cols:${storageKey}`);
+    return raw ? (JSON.parse(raw) as ColumnSizingState) : {};
+  } catch {
+    return {};
+  }
 }
 
 export function DataTable<TData, TValue>({
@@ -71,9 +87,24 @@ export function DataTable<TData, TValue>({
   enableSelection,
   getRowId,
   bulkActions,
+  initialSort,
+  storageKey,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>(initialSort ?? []);
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>(() =>
+    loadColumnSizing(storageKey),
+  );
+
+  // Persist manually-dragged column widths so they survive reloads.
+  React.useEffect(() => {
+    if (!storageKey || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(`dt-cols:${storageKey}`, JSON.stringify(columnSizing));
+    } catch {
+      /* ignore quota/availability errors */
+    }
+  }, [storageKey, columnSizing]);
 
   const selectionColumn = React.useMemo<ColumnDef<TData, TValue>>(
     () => ({
@@ -101,6 +132,8 @@ export function DataTable<TData, TValue>({
         </div>
       ),
       enableSorting: false,
+      enableResizing: false,
+      size: 44,
       meta: { headClassName: "w-px pl-3 pr-1", cellClassName: "w-px pl-3 pr-1" },
     }),
     [],
@@ -114,10 +147,13 @@ export function DataTable<TData, TValue>({
   const table = useReactTable({
     data,
     columns: tableColumns,
-    state: { sorting, rowSelection },
+    state: { sorting, rowSelection, columnSizing },
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
+    onColumnSizingChange: setColumnSizing,
     enableRowSelection: enableSelection,
+    enableColumnResizing: true,
+    columnResizeMode: "onChange",
     getRowId: getRowId ? (row) => getRowId(row) : undefined,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -179,9 +215,14 @@ export function DataTable<TData, TValue>({
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map((header) => {
                   const canSort = header.column.getCanSort();
+                  const canResize = header.column.getCanResize();
                   const meta = header.column.columnDef.meta as ColumnMeta | undefined;
                   return (
-                    <TableHead key={header.id} className={meta?.headClassName}>
+                    <TableHead
+                      key={header.id}
+                      className={cn("relative", meta?.headClassName)}
+                      style={{ width: header.getSize() }}
+                    >
                       {header.isPlaceholder ? null : canSort ? (
                         <button
                           className="inline-flex items-center gap-1.5 uppercase transition-colors hover:text-foreground"
@@ -192,6 +233,21 @@ export function DataTable<TData, TValue>({
                         </button>
                       ) : (
                         flexRender(header.column.columnDef.header, header.getContext())
+                      )}
+                      {canResize && (
+                        <span
+                          onMouseDown={header.getResizeHandler()}
+                          onTouchStart={header.getResizeHandler()}
+                          onClick={(e) => e.stopPropagation()}
+                          role="separator"
+                          aria-orientation="vertical"
+                          className={cn(
+                            "absolute right-0 top-0 z-10 h-full w-1.5 cursor-col-resize touch-none select-none",
+                            "after:absolute after:right-0 after:top-1/2 after:h-1/2 after:w-px after:-translate-y-1/2 after:bg-border",
+                            "hover:after:w-0.5 hover:after:bg-primary",
+                            header.column.getIsResizing() && "after:w-0.5 after:bg-primary",
+                          )}
+                        />
                       )}
                     </TableHead>
                   );
@@ -209,7 +265,11 @@ export function DataTable<TData, TValue>({
                 {row.getVisibleCells().map((cell) => {
                   const meta = cell.column.columnDef.meta as ColumnMeta | undefined;
                   return (
-                    <TableCell key={cell.id} className={meta?.cellClassName}>
+                    <TableCell
+                      key={cell.id}
+                      className={meta?.cellClassName}
+                      style={{ width: cell.column.getSize() }}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   );
