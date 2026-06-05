@@ -27,17 +27,44 @@ export function NotificationsMenu() {
   const [open, setOpen] = React.useState(false);
   const unread = items.filter((n) => !n.read).length;
 
-  React.useEffect(() => {
+  const refresh = React.useCallback(() => {
     notificationsService.list().then(setItems);
   }, []);
+
+  // Carrega ao montar e revalida periodicamente (novas notificações aparecem
+  // sem precisar recarregar a página).
+  React.useEffect(() => {
+    refresh();
+    const id = setInterval(refresh, 60_000);
+    const onFocus = () => refresh();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [refresh]);
 
   async function markAll() {
     await notificationsService.markAllAsRead();
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
   }
 
+  function handleItemClick(n: AppNotification) {
+    setOpen(false);
+    if (!n.read) {
+      setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+      void notificationsService.markAsRead(n.id);
+    }
+  }
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) refresh();
+      }}
+    >
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative" aria-label="Notificações">
           <Bell className="size-[18px]" />
@@ -72,7 +99,7 @@ export function NotificationsMenu() {
                   <li key={n.id}>
                     <Link
                       href={n.href ?? "#"}
-                      onClick={() => setOpen(false)}
+                      onClick={() => handleItemClick(n)}
                       className={cn(
                         "flex gap-3 px-4 py-3 transition-colors hover:bg-muted/50",
                         !n.read && "bg-accent/40",
