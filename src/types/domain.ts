@@ -407,6 +407,15 @@ export interface Tag {
   created_at: ISODateString;
 }
 
+/** A named group of users — referenced in tasks/events to add many at once. */
+export interface UserGroup {
+  id: UUID;
+  company_id: UUID;
+  name: string;
+  member_ids: UUID[];
+  created_at: ISODateString;
+}
+
 export interface Ticket {
   id: UUID;
   company_id: UUID;

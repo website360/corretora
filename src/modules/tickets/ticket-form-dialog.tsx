@@ -14,6 +14,7 @@ import { carriersService } from "@/services/carriers.service";
 import { productsService } from "@/services/products.service";
 import { contractsService } from "@/services/contracts.service";
 import { quotesService } from "@/services/quotes.service";
+import { userGroupsService } from "@/services/user-groups.service";
 import { tagsService } from "@/services/tags.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useSession } from "@/contexts/session-context";
@@ -66,6 +67,7 @@ export function TicketFormDialog({
   const { data: products } = useAsyncData(() => productsService.list());
   const { data: contracts } = useAsyncData(() => contractsService.list());
   const { data: quotes } = useAsyncData(() => quotesService.list());
+  const { data: groups } = useAsyncData(() => userGroupsService.list());
   const { data: tags } = useAsyncData(() => tagsService.list("tasks"));
   const { user } = useSession();
   const taskTimeEnabled = resolveSettings(user.company).taskTimeEnabled;
@@ -328,6 +330,30 @@ export function TicketFormDialog({
               searchPlaceholder="Buscar usuário..."
             />
           </div>
+
+          {(groups ?? []).length > 0 && (
+            <div className="space-y-2">
+              <Label>Adicionar grupo aos envolvidos</Label>
+              <Combobox
+                options={(groups ?? []).map((g) => ({
+                  value: g.id,
+                  label: `${g.name} (${g.member_ids.length})`,
+                }))}
+                value=""
+                onChange={(gid) => {
+                  const g = (groups ?? []).find((x) => x.id === gid);
+                  if (!g) return;
+                  const current = watch("participant_ids") ?? [];
+                  setValue(
+                    "participant_ids",
+                    Array.from(new Set([...current, ...g.member_ids])),
+                  );
+                }}
+                placeholder="Selecione um grupo"
+                searchPlaceholder="Buscar grupo..."
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">

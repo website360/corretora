@@ -209,7 +209,7 @@ export function DataTable<TData, TValue>({
       )}
 
       <div className="overflow-hidden rounded-xl border bg-card">
-        <Table>
+        <Table style={{ width: table.getTotalSize(), minWidth: "100%" }}>
           <TableHeader className="bg-muted/30">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">

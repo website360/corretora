@@ -15,6 +15,7 @@ import {
   Sun,
   Tag as TagIcon,
   UserCircle,
+  UsersRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/contexts/session-context";
@@ -22,6 +23,7 @@ import { usersService } from "@/services/users.service";
 import { companiesService } from "@/services/companies.service";
 import { uploadAvatar } from "@/services/storage.service";
 import { TagsManager } from "@/modules/settings/tags-manager";
+import { GroupsManager } from "@/modules/settings/groups-manager";
 import { PreferencesPanel } from "@/modules/settings/preferences-panel";
 import { IntegrationsPanel } from "@/modules/settings/integrations-panel";
 import { BrandingPanel } from "@/modules/settings/branding-panel";
@@ -154,6 +156,9 @@ export function SettingsView() {
           </TabsTrigger>
           <TabsTrigger value="tags">
             <TagIcon className="size-4" /> Etiquetas
+          </TabsTrigger>
+          <TabsTrigger value="groups">
+            <UsersRound className="size-4" /> Grupos
           </TabsTrigger>
           <TabsTrigger value="products">
             <Package className="size-4" /> Produtos
@@ -330,6 +335,11 @@ export function SettingsView() {
         {/* Tags */}
         <TabsContent value="tags">
           <TagsManager />
+        </TabsContent>
+
+        {/* Grupos */}
+        <TabsContent value="groups">
+          <GroupsManager />
         </TabsContent>
 
         {/* Produtos */}
