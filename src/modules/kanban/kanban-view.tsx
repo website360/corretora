@@ -4,7 +4,9 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
+  CalendarDays,
   KanbanSquare,
+  List,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -45,6 +47,10 @@ import {
 } from "@/components/ui/select";
 import { CustomerFormDialog } from "@/modules/customers/customer-form-dialog";
 import { BoardDialog, ColumnDialog } from "@/modules/kanban/kanban-dialogs";
+import { LeadsList } from "@/modules/kanban/leads-list";
+import { LeadsCalendar } from "@/modules/kanban/leads-calendar";
+
+type LeadView = "board" | "list" | "calendar";
 
 export function KanbanView() {
   const router = useRouter();
@@ -64,6 +70,7 @@ export function KanbanView() {
 
   const [activeBoardId, setActiveBoardId] = React.useState<string>("");
   const [columns, setColumns] = React.useState<KanbanColumn[]>([]);
+  const [view, setView] = React.useState<LeadView>("board");
 
   // Dialog state
   const [boardDialog, setBoardDialog] = React.useState<"new" | "edit" | null>(null);
@@ -111,6 +118,8 @@ export function KanbanView() {
 
   const activeBoard = (boards ?? []).find((b) => b.id === activeBoardId);
   const leads = (customers ?? []).filter((c) => c.kind === "lead" && c.board_id === activeBoardId);
+  // List and calendar lenses span every funnel, not just the active board.
+  const allLeads = (customers ?? []).filter((c) => c.kind === "lead");
 
   function cardsFor(column: KanbanColumn, index: number) {
     const columnIds = new Set(columns.map((c) => c.id));
@@ -183,7 +192,12 @@ export function KanbanView() {
         description="Funis de leads — arraste os cartões entre os blocos."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {boards && boards.length > 0 && (
+            <div className="inline-flex items-center rounded-lg border bg-muted/40 p-0.5">
+              <ViewButton active={view === "board"} onClick={() => setView("board")} icon={KanbanSquare} label="Kanban" />
+              <ViewButton active={view === "list"} onClick={() => setView("list")} icon={List} label="Lista" />
+              <ViewButton active={view === "calendar"} onClick={() => setView("calendar")} icon={CalendarDays} label="Calendário" />
+            </div>
+            {view === "board" && boards && boards.length > 0 && (
               <Select value={activeBoardId} onValueChange={setActiveBoardId}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Selecione um kanban" />
@@ -197,7 +211,7 @@ export function KanbanView() {
                 </SelectContent>
               </Select>
             )}
-            {activeBoard && (
+            {view === "board" && activeBoard && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon" title="Opções do kanban">
@@ -221,10 +235,12 @@ export function KanbanView() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            <Button variant="outline" onClick={() => setBoardDialog("new")}>
-              <Plus /> Novo kanban
-            </Button>
-            {activeBoard && columns.length > 0 && (
+            {view === "board" && (
+              <Button variant="outline" onClick={() => setBoardDialog("new")}>
+                <Plus /> Novo kanban
+              </Button>
+            )}
+            {view === "board" && activeBoard && columns.length > 0 && (
               <Button onClick={() => setLeadDialog({ columnId: columns[0]!.id })}>
                 <Plus /> Novo lead
               </Button>
@@ -233,7 +249,15 @@ export function KanbanView() {
         }
       />
 
-      {!boards || boards.length === 0 ? (
+      {view === "list" ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <LeadsList leads={allLeads} loading={!customers} tagColor={tagColor} />
+        </div>
+      ) : view === "calendar" ? (
+        <div className="min-h-0 flex-1">
+          <LeadsCalendar leads={allLeads} />
+        </div>
+      ) : !boards || boards.length === 0 ? (
         <EmptyState
           icon={KanbanSquare}
           title="Nenhum kanban ainda"
@@ -387,6 +411,34 @@ export function KanbanView() {
         onConfirm={confirmDeleteColumn}
       />
     </div>
+  );
+}
+
+function ViewButton({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
+        active
+          ? "bg-background text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <Icon className="size-4" />
+      <span className="hidden sm:inline">{label}</span>
+    </button>
   );
 }
 

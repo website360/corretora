@@ -22,6 +22,7 @@ export const customerSchema = z.object({
   tags: z.array(z.string()).default([]),
   owner_id: z.string().optional(),
   status: z.enum(["active", "inactive"]).default("active"),
+  next_contact_at: z.string().optional(),
 });
 export type CustomerFormValues = z.infer<typeof customerSchema>;
 

@@ -60,6 +60,13 @@ const emptyAddress: Address = {
   zip: "",
 };
 
+/** ISO (UTC) → valor de um <input type="datetime-local"> no fuso local. */
+function isoToLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function CustomerFormDialog({
   open,
   onOpenChange,
@@ -105,6 +112,9 @@ export function CustomerFormDialog({
         tags: customer?.tags ?? [],
         owner_id: customer?.owner_id ?? undefined,
         status: customer?.status ?? "active",
+        next_contact_at: customer?.next_contact_at
+          ? isoToLocalInput(customer.next_contact_at)
+          : "",
       });
       setAddress(customer?.address ?? emptyAddress);
       setBoardId(customer?.board_id ?? defaultBoardId ?? "");
@@ -186,6 +196,10 @@ export function CustomerFormDialog({
       owner_id: values.owner_id ?? null,
       board_id: isLead ? finalBoard || null : null,
       column_id: isLead ? finalColumn || null : null,
+      next_contact_at:
+        isLead && values.next_contact_at
+          ? new Date(values.next_contact_at).toISOString()
+          : null,
     };
     const saved = editing
       ? await customersService.update(customer!.id, payload)
@@ -261,6 +275,17 @@ export function CustomerFormDialog({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="next_contact_at">Próximo contato</Label>
+                <Input
+                  id="next_contact_at"
+                  type="datetime-local"
+                  {...register("next_contact_at")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Aparece no calendário de leads no dia agendado.
+                </p>
               </div>
             </div>
           )}

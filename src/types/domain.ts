@@ -175,6 +175,7 @@ export interface Customer {
   status: EntityStatus;
   board_id: UUID | null; // kanban board (leads)
   column_id: UUID | null; // kanban column (leads)
+  next_contact_at?: ISODateString | null; // próximo follow-up (calendário de leads)
   created_at: ISODateString;
 }
 
