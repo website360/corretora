@@ -4,6 +4,7 @@ import { Topbar } from "@/layouts/topbar";
 import { CommandPalette } from "@/layouts/command-palette";
 import { PlanGate } from "@/layouts/plan-gate";
 import { BrandProvider } from "@/layouts/brand-provider";
+import { VersionWatcher } from "@/layouts/version-watcher";
 import { env } from "@/config/env";
 import { getSessionUser } from "@/services/lookup";
 import { getServerSessionUser, getServerTicketBadge } from "@/services/session.server";
@@ -37,6 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
         <CommandPalette />
         <PlanGate />
+        <VersionWatcher />
       </div>
     </SessionProvider>
   );

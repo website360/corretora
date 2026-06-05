@@ -14,7 +14,7 @@ import { carriersService } from "@/services/carriers.service";
 import { productsService } from "@/services/products.service";
 import { contractsService } from "@/services/contracts.service";
 import { quotesService } from "@/services/quotes.service";
-import { userGroupsService } from "@/services/user-groups.service";
+import { userGroupsService, expandGroups } from "@/services/user-groups.service";
 import { tagsService } from "@/services/tags.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useSession } from "@/contexts/session-context";
@@ -377,39 +377,21 @@ export function TicketFormDialog({
             />
           </div>
 
-          {(groups ?? []).length > 0 && (
-            <div className="space-y-2">
-              <Label>Adicionar grupo aos envolvidos</Label>
-              <Combobox
-                options={(groups ?? []).map((g) => ({
-                  value: g.id,
-                  label: `${g.name} (${g.member_ids.length})`,
-                }))}
-                value=""
-                onChange={(gid) => {
-                  const g = (groups ?? []).find((x) => x.id === gid);
-                  if (!g) return;
-                  const current = watch("participant_ids") ?? [];
-                  setValue(
-                    "participant_ids",
-                    Array.from(new Set([...current, ...g.member_ids])),
-                  );
-                }}
-                placeholder="Selecione um grupo"
-                searchPlaceholder="Buscar grupo..."
-              />
-            </div>
-          )}
-
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Envolvidos</Label>
               <MultiSelect
-                options={(users ?? []).map((u) => ({ value: u.id, label: u.name }))}
+                options={[
+                  ...(groups ?? []).map((g) => ({
+                    value: `group:${g.id}`,
+                    label: `Grupo: ${g.name} (${g.member_ids.length})`,
+                  })),
+                  ...(users ?? []).map((u) => ({ value: u.id, label: u.name })),
+                ]}
                 values={watch("participant_ids") ?? []}
-                onChange={(v) => setValue("participant_ids", v)}
+                onChange={(v) => setValue("participant_ids", expandGroups(v, groups ?? []))}
                 placeholder="Nenhum"
-                searchPlaceholder="Buscar usuário..."
+                searchPlaceholder="Buscar usuário ou grupo..."
                 triggerClassName="w-full"
               />
             </div>

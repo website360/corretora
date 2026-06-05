@@ -7,6 +7,24 @@ import type { UserGroup } from "@/types/domain";
 // Grupos vivem só na memória no modo mock (sem backend).
 const mockGroups: UserGroup[] = [];
 
+/**
+ * Expande seleções de "Envolvidos": valores `group:<id>` viram os membros do
+ * grupo; valores normais (ids de usuário) passam direto. Sempre sem duplicar.
+ * Permite, no mesmo seletor, escolher um GRUPO ou pessoas individuais.
+ */
+export function expandGroups(values: string[], groups: UserGroup[]): string[] {
+  const set = new Set<string>();
+  for (const v of values) {
+    if (v.startsWith("group:")) {
+      const g = groups.find((x) => x.id === v.slice("group:".length));
+      g?.member_ids.forEach((m) => set.add(m));
+    } else {
+      set.add(v);
+    }
+  }
+  return Array.from(set);
+}
+
 export const userGroupsService = {
   async list(): Promise<UserGroup[]> {
     if (env.useMocks) {

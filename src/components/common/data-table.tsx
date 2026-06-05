@@ -37,6 +37,50 @@ import { cn } from "@/lib/utils";
 
 const PAGE_SIZE_OPTIONS = [100, 200, 500, 1000];
 
+/**
+ * Larguras-padrão (px) por id de coluna, para a tabela já abrir organizada
+ * (título/cliente mais largos; id/ações estreitos). Só se aplica quando a
+ * coluna não define `size` e o usuário ainda não a redimensionou.
+ */
+const COLUMN_DEFAULT_SIZE: Record<string, number> = {
+  __select: 44,
+  type: 60,
+  id: 90,
+  actions: 96,
+  title: 300,
+  name: 240,
+  customer: 240,
+  company: 220,
+  notes: 280,
+  contact: 210,
+  link: 210,
+  owner: 180,
+  author: 180,
+  channel: 150,
+  product: 210,
+  status: 130,
+  priority: 140,
+  role: 140,
+  when: 165,
+  date: 165,
+  created: 150,
+  signed: 150,
+  validity: 175,
+  deletedAt: 160,
+  daysLeft: 120,
+  premium: 140,
+  value: 140,
+  tags: 180,
+  stage: 165,
+  plan: 140,
+  sub: 150,
+  trial: 140,
+  card: 150,
+  phone: 150,
+  job_title: 170,
+  last_seen_at: 160,
+};
+
 /** Optional per-column classNames, read from `columnDef.meta`. */
 export interface ColumnMeta {
   headClassName?: string;
@@ -139,10 +183,16 @@ export function DataTable<TData, TValue>({
     [],
   );
 
-  const tableColumns = React.useMemo(
-    () => (enableSelection ? [selectionColumn, ...columns] : columns),
-    [enableSelection, selectionColumn, columns],
-  );
+  const tableColumns = React.useMemo(() => {
+    // Aplica larguras-padrão sensatas (sem sobrescrever um `size` já definido).
+    const sized = columns.map((c) => {
+      const id = (c.id ?? (c as { accessorKey?: string }).accessorKey) as string | undefined;
+      if ((c as { size?: number }).size != null || !id) return c;
+      const s = COLUMN_DEFAULT_SIZE[id];
+      return s != null ? { ...c, size: s } : c;
+    });
+    return enableSelection ? [selectionColumn, ...sized] : sized;
+  }, [enableSelection, selectionColumn, columns]);
 
   const table = useReactTable({
     data,

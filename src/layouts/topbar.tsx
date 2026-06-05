@@ -5,6 +5,7 @@ import { NotificationsMenu } from "@/layouts/notifications-menu";
 import { ThemeToggle } from "@/layouts/theme-toggle";
 import { UserMenu } from "@/layouts/user-menu";
 import { MobileNav } from "@/layouts/mobile-nav";
+import { UpdateButton } from "@/layouts/version-watcher";
 import { Separator } from "@/components/ui/separator";
 
 export function Topbar({ ticketBadge }: { ticketBadge?: number }) {
@@ -15,6 +16,7 @@ export function Topbar({ ticketBadge }: { ticketBadge?: number }) {
         <CommandTrigger />
       </div>
       <div className="flex items-center gap-1.5">
+        <UpdateButton />
         <NotificationsMenu />
         <ThemeToggle />
         <Separator orientation="vertical" className="mx-1 h-6" />
