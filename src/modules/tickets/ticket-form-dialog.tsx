@@ -111,8 +111,9 @@ export function TicketFormDialog({
         setDueDate(format(d, "yyyy-MM-dd"));
         setDueTime(format(d, "HH:mm"));
       } else {
+        // Nova tarefa: hora atual como padrão (a data fica em branco até escolher).
         setDueDate("");
-        setDueTime("");
+        setDueTime(format(new Date(), "HH:mm"));
       }
       // Kanban placement: keep the task's board/column, else default board + first column.
       const { taskBoards, taskColumns } = useDirectoryStore.getState();

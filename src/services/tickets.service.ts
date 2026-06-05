@@ -214,10 +214,25 @@ export const ticketsService = {
         ticket.priority = priority;
         ticket.updated_at = new Date().toISOString();
       }
+      ticketLogs.push({
+        id: uid("tl"),
+        ticket_id: ticketId,
+        actor_id: getCurrentUserId(),
+        event: "priority_changed",
+        meta: { to: priority },
+        created_at: new Date().toISOString(),
+      });
       return;
     }
     const sb = getSupabaseBrowserClient();
     await sb.from("tickets").update({ priority }).eq("id", ticketId);
+    await sb.from("ticket_logs").insert({
+      ticket_id: ticketId,
+      company_id: getCurrentCompanyId(),
+      actor_id: getCurrentUserId(),
+      event: "priority_changed",
+      meta: { to: priority },
+    });
   },
 
   async assign(ticketId: string, assigneeId: string): Promise<void> {
@@ -228,10 +243,25 @@ export const ticketsService = {
         ticket.assignee_id = assigneeId;
         ticket.updated_at = new Date().toISOString();
       }
+      ticketLogs.push({
+        id: uid("tl"),
+        ticket_id: ticketId,
+        actor_id: getCurrentUserId(),
+        event: "assigned",
+        meta: { to: assigneeId },
+        created_at: new Date().toISOString(),
+      });
       return;
     }
     const sb = getSupabaseBrowserClient();
     await sb.from("tickets").update({ assignee_id: assigneeId }).eq("id", ticketId);
+    await sb.from("ticket_logs").insert({
+      ticket_id: ticketId,
+      company_id: getCurrentCompanyId(),
+      actor_id: getCurrentUserId(),
+      event: "assigned",
+      meta: { to: assigneeId },
+    });
   },
 
   async create(

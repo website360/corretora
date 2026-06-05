@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { rankByLabel } from "@/lib/search";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -32,8 +33,9 @@ interface ComboboxProps {
 }
 
 /**
- * Searchable select: type to filter options; with an empty query the full
- * list is shown for browsing. Built on Popover + cmdk.
+ * Searchable select: type to filter (best matches first, ignoring accents),
+ * pick an option, or clear the current selection. Built on Popover + cmdk
+ * with our own ranking (cmdk's default fuzzy filter is disabled).
  */
 export function Combobox({
   options,
@@ -46,10 +48,19 @@ export function Combobox({
   disabled,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
   const selected = options.find((o) => o.value === value);
 
+  const ranked = React.useMemo(() => rankByLabel(options, search), [options, search]);
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setSearch("");
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -68,15 +79,30 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+        <Command shouldFilter={false}>
+          <CommandInput placeholder={searchPlaceholder} value={search} onValueChange={setSearch} />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
+            {selected && (
+              <CommandGroup>
+                <CommandItem
+                  value="__clear__"
+                  onSelect={() => {
+                    onChange("");
+                    setOpen(false);
+                  }}
+                  className="text-muted-foreground"
+                >
+                  <X className="size-4" />
+                  Limpar seleção
+                </CommandItem>
+              </CommandGroup>
+            )}
             <CommandGroup>
-              {options.map((o) => (
+              {ranked.map((o) => (
                 <CommandItem
                   key={o.value}
-                  value={`${o.label} ${o.value}`}
+                  value={o.value}
                   onSelect={() => {
                     onChange(o.value === value ? "" : o.value);
                     setOpen(false);

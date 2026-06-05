@@ -5,11 +5,17 @@ import {
   ArrowLeft,
   CalendarClock,
   CheckCircle2,
+  CircleDot,
   FileText,
+  Flag,
+  History,
+  MessageSquare,
   Paperclip,
   Pencil,
+  Plus,
   Tag,
   UserCircle,
+  UserRound,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -26,13 +32,21 @@ import { taskBoardsService } from "@/services/task-boards.service";
 import {
   TICKET_SUBJECT_META,
   TICKET_PRIORITY_META,
+  TICKET_STATUS_META,
   TONE_BADGE_CLASS,
   TONE_DOT_CLASS,
 } from "@/config/domain";
 import { tagsService } from "@/services/tags.service";
 import { formatShortDate, formatSmartDate, taskCode } from "@/utils/format";
 import { cn, initials } from "@/lib/utils";
-import type { TaskColumn, Ticket, TicketMessage, TicketPriority } from "@/types/domain";
+import type {
+  TaskColumn,
+  Ticket,
+  TicketLog,
+  TicketMessage,
+  TicketPriority,
+  TicketStatus,
+} from "@/types/domain";
 import { TicketFormDialog } from "@/modules/tickets/ticket-form-dialog";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -60,7 +74,9 @@ export function TicketConversation({ id }: { id: string }) {
   const taskColumns = useDirectoryStore((s) => s.taskColumns);
   const [messages, setMessages] = React.useState<TicketMessage[]>([]);
   const [editOpen, setEditOpen] = React.useState(false);
+  const [tab, setTab] = React.useState<"chat" | "activity">("chat");
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const { data: logs } = useAsyncData(() => ticketsService.logs(id), [id]);
 
   React.useEffect(() => {
     ticketsService.messages(id).then(setMessages);
@@ -109,18 +125,36 @@ export function TicketConversation({ id }: { id: string }) {
           onChange={refetch}
           onEdit={() => setEditOpen(true)}
         />
-        <div ref={scrollRef} className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl space-y-5 p-4 lg:p-6">
-            {messages.map((m) => (
-              <MessageBubble key={m.id} message={m} currentUserId={user.id} />
-            ))}
+        {/* Conversa / Atividade */}
+        <div className="flex items-center gap-1 border-b bg-card/40 px-4 py-2 lg:px-6">
+          <div className="inline-flex items-center rounded-lg border bg-muted/40 p-0.5">
+            <TabButton active={tab === "chat"} onClick={() => setTab("chat")} icon={MessageSquare} label="Conversa" />
+            <TabButton active={tab === "activity"} onClick={() => setTab("activity")} icon={History} label="Atividade" />
           </div>
         </div>
-        <div className="border-t bg-muted/20 p-3 lg:p-4">
-          <div className="mx-auto max-w-3xl">
-            <TicketComposer onSend={handleSend} />
+
+        {tab === "chat" ? (
+          <>
+            <div ref={scrollRef} className="flex-1 overflow-y-auto">
+              <div className="mx-auto max-w-3xl space-y-5 p-4 lg:p-6">
+                {messages.map((m) => (
+                  <MessageBubble key={m.id} message={m} currentUserId={user.id} />
+                ))}
+              </div>
+            </div>
+            <div className="border-t bg-muted/20 p-3 lg:p-4">
+              <div className="mx-auto max-w-3xl">
+                <TicketComposer onSend={handleSend} />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-3xl p-4 lg:p-6">
+              <ActivityFeed logs={logs ?? []} messages={messages} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Details sidebar */}
@@ -133,6 +167,167 @@ export function TicketConversation({ id }: { id: string }) {
         onSaved={refetch}
       />
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium transition-colors",
+        active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <Icon className="size-4" /> {label}
+    </button>
+  );
+}
+
+type FeedItem =
+  | { kind: "comment"; id: string; actorId: string | null; at: string; body: string; internal: boolean }
+  | {
+      kind: "event";
+      id: string;
+      actorId: string | null;
+      at: string;
+      event: TicketLog["event"];
+      meta: Record<string, unknown>;
+    };
+
+function feedActorName(id: string | null): string {
+  return (id && findUser(id)?.name) || "Sistema";
+}
+
+function feedDescribe(it: FeedItem): string {
+  if (it.kind === "comment") return it.internal ? "adicionou uma nota interna" : "comentou";
+  const statusLabel = (s: unknown) =>
+    TICKET_STATUS_META[s as TicketStatus]?.label ?? String(s);
+  switch (it.event) {
+    case "created":
+      return "criou a tarefa";
+    case "status_changed": {
+      const to = it.meta?.to ? statusLabel(it.meta.to) : null;
+      const from = it.meta?.from ? statusLabel(it.meta.from) : null;
+      if (from && to) return `mudou o status de ${from} para ${to}`;
+      if (to) return `mudou o status para ${to}`;
+      return "mudou o status";
+    }
+    case "priority_changed": {
+      const to = it.meta?.to
+        ? (TICKET_PRIORITY_META[it.meta.to as TicketPriority]?.label ?? String(it.meta.to))
+        : null;
+      return to ? `alterou a prioridade para ${to}` : "alterou a prioridade";
+    }
+    case "assigned": {
+      const to = it.meta?.to ? feedActorName(String(it.meta.to)) : null;
+      return to ? `atribuiu para ${to}` : "alterou o responsável";
+    }
+    case "participant_added":
+      return "adicionou um envolvido";
+    case "tag_added":
+      return "adicionou uma etiqueta";
+    default:
+      return "atualizou a tarefa";
+  }
+}
+
+function FeedIcon({ item }: { item: FeedItem }) {
+  const cls = "size-3.5 text-muted-foreground";
+  if (item.kind === "comment") return <MessageSquare className={cls} />;
+  switch (item.event) {
+    case "created":
+      return <Plus className={cls} />;
+    case "status_changed":
+      return <CircleDot className={cls} />;
+    case "priority_changed":
+      return <Flag className={cls} />;
+    case "assigned":
+      return <UserRound className={cls} />;
+    case "participant_added":
+      return <Users className={cls} />;
+    case "tag_added":
+      return <Tag className={cls} />;
+    default:
+      return <History className={cls} />;
+  }
+}
+
+/** Full activity log of a task: comments (messages) + change events, newest first. */
+function ActivityFeed({ logs, messages }: { logs: TicketLog[]; messages: TicketMessage[] }) {
+  const items = React.useMemo<FeedItem[]>(() => {
+    const fromMsgs: FeedItem[] = messages.map((m) => ({
+      kind: "comment",
+      id: m.id,
+      actorId: m.author_id,
+      at: m.created_at,
+      body: m.body,
+      internal: m.kind === "internal_note",
+    }));
+    const fromLogs: FeedItem[] = logs
+      .filter((l) => l.event !== "comment") // comments already come from messages
+      .map((l) => ({
+        kind: "event",
+        id: l.id,
+        actorId: l.actor_id,
+        at: l.created_at,
+        event: l.event,
+        meta: l.meta ?? {},
+      }));
+    return [...fromMsgs, ...fromLogs].sort((a, b) => +new Date(b.at) - +new Date(a.at));
+  }, [logs, messages]);
+
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        icon={History}
+        title="Sem atividade ainda"
+        description="Comentários e alterações desta tarefa aparecerão aqui."
+      />
+    );
+  }
+
+  return (
+    <ol className="relative ml-3 space-y-4 border-l border-border/70 pl-6">
+      {items.map((it) => (
+        <li key={`${it.kind}-${it.id}`} className="relative">
+          <span className="absolute -left-[37px] flex size-6 items-center justify-center rounded-full border bg-card">
+            <FeedIcon item={it} />
+          </span>
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="text-sm font-medium">{feedActorName(it.actorId)}</span>
+            <span className="text-sm text-muted-foreground">{feedDescribe(it)}</span>
+            <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">
+              {formatSmartDate(it.at)}
+            </span>
+          </div>
+          {it.kind === "comment" && (
+            <p
+              className={cn(
+                "mt-1.5 whitespace-pre-wrap rounded-lg border bg-muted/30 px-3 py-2 text-sm",
+                it.internal && "border-warning/30 bg-warning/10",
+              )}
+            >
+              {it.internal && (
+                <span className="mr-1 text-xs font-semibold text-warning">[Nota interna]</span>
+              )}
+              {it.body}
+            </p>
+          )}
+        </li>
+      ))}
+    </ol>
   );
 }
 

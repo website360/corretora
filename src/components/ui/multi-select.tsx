@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { rankByLabel } from "@/lib/search";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -51,6 +52,8 @@ export function MultiSelect({
   allMode = "clear",
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const ranked = React.useMemo(() => rankByLabel(options, search), [options, search]);
 
   const toggle = (value: string) =>
     onChange(values.includes(value) ? values.filter((v) => v !== value) : [...values, value]);
@@ -71,7 +74,13 @@ export function MultiSelect({
           : `${values.length} selecionados`;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setSearch("");
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -87,12 +96,12 @@ export function MultiSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent className={cn("w-60 p-0", className)} align="start">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+        <Command shouldFilter={false}>
+          <CommandInput placeholder={searchPlaceholder} value={search} onValueChange={setSearch} />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
-              {allLabel && (
+              {allLabel && !search.trim() && (
                 <CommandItem value={`__all ${allLabel}`} onSelect={onAll}>
                   <span
                     className={cn(
@@ -107,10 +116,10 @@ export function MultiSelect({
                   <span className="font-medium">{allLabel}</span>
                 </CommandItem>
               )}
-              {options.map((o) => {
+              {ranked.map((o) => {
                 const checked = values.includes(o.value);
                 return (
-                  <CommandItem key={o.value} value={`${o.label} ${o.value}`} onSelect={() => toggle(o.value)}>
+                  <CommandItem key={o.value} value={o.value} onSelect={() => toggle(o.value)}>
                     <span
                       className={cn(
                         "flex size-4 items-center justify-center rounded border",
