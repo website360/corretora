@@ -33,10 +33,13 @@ export function OnboardingForm() {
   const [uploadingAvatar, setUploadingAvatar] = React.useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
+  // Na criação da empresa (signup), o CNPJ recebe um placeholder
+  // "pendente-xxxxxxxx". Só pré-preenche se já houver um CNPJ real (14 díg.).
+  const realCnpj = (user.company.cnpj ?? "").replace(/\D/g, "").length === 14;
   const [company, setCompany] = React.useState({
     legal_name: user.company.legal_name ?? "",
     trade_name: user.company.trade_name ?? "",
-    cnpj: user.company.cnpj ? formatCNPJ(user.company.cnpj) : "",
+    cnpj: realCnpj ? formatCNPJ(user.company.cnpj) : "",
     email: user.company.email ?? "",
     phone: user.company.phone ? formatPhone(user.company.phone) : "",
   });
