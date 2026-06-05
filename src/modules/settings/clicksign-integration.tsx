@@ -73,6 +73,21 @@ export function ClickSignIntegration({ onBack }: { onBack: () => void }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-foreground/80">
+            <p className="mb-1 font-semibold text-warning">Pré-requisitos no painel do ClickSign</p>
+            <ul className="list-disc space-y-1 pl-4">
+              <li>
+                No ClickSign, em <strong>Configurações → API</strong>, preencha o{" "}
+                <strong>e-mail do usuário da API</strong>. Sem isso, o envio falha com
+                &quot;E-mail do usuário da API não configurado&quot;.
+              </li>
+              <li>
+                O <strong>Ambiente</strong> abaixo (Sandbox/Produção) precisa ser o mesmo do token
+                que você gerou — token de sandbox só funciona em Sandbox, e vice-versa.
+              </li>
+            </ul>
+          </div>
+
           <fieldset disabled={!isAdmin} className="space-y-4 disabled:opacity-70">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">

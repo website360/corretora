@@ -19,6 +19,8 @@ export interface ComboboxOption {
   value: string;
   label: string;
   description?: string;
+  /** Optional 3rd line (e.g. policy number), shown on its own line. */
+  hint?: string;
 }
 
 interface ComboboxProps {
@@ -115,6 +117,9 @@ export function Combobox({
                     <p className="truncate">{o.label}</p>
                     {o.description && (
                       <p className="truncate text-xs text-muted-foreground">{o.description}</p>
+                    )}
+                    {o.hint && (
+                      <p className="truncate text-xs text-muted-foreground">{o.hint}</p>
                     )}
                   </div>
                 </CommandItem>
