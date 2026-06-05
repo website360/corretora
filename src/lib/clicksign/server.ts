@@ -43,7 +43,7 @@ async function csFetch<T>(cfg: ClickSignConfig, path: string, init: RequestInit)
         : typeof json?.message === "string"
           ? json.message
           : `erro ${res.status}`;
-    throw new Error(`ClickSign: ${clean}`);
+    throw new Error(`ClickSign (HTTP ${res.status}): ${clean}`);
   }
   return json as T;
 }

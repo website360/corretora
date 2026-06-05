@@ -15,6 +15,25 @@ export const usersService = {
         .sort((a, b) => a.name.localeCompare(b.name));
     }
     const sb = getSupabaseBrowserClient();
+    // Escopa SEMPRE à empresa atual — inclusive para super_admin (cuja RLS
+    // veria todas as empresas), evitando atribuir tarefas/eventos a usuários
+    // de outra empresa.
+    const { data, error } = await sb
+      .from("users")
+      .select("*")
+      .eq("company_id", getCurrentCompanyId())
+      .order("name");
+    if (error) throw error;
+    return (data as User[]) ?? [];
+  },
+
+  /** TODOS os usuários (todas as empresas) — só para o painel super-admin. */
+  async listAll(): Promise<User[]> {
+    if (env.useMocks) {
+      await sleep(240);
+      return [...users].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    const sb = getSupabaseBrowserClient();
     const { data, error } = await sb.from("users").select("*").order("name");
     if (error) throw error;
     return (data as User[]) ?? [];

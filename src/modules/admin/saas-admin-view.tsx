@@ -72,7 +72,7 @@ export function SaasAdminView() {
   const { data: companies, loading, refetch: refetchCompanies } = useAsyncData(() =>
     companiesService.list(),
   );
-  const { data: users, refetch: refetchUsers } = useAsyncData(() => usersService.list());
+  const { data: users, refetch: refetchUsers } = useAsyncData(() => usersService.listAll());
   const { data: plans, refetch: refetchPlans } = useAsyncData(() => plansService.listAll());
 
   const [delCompany, setDelCompany] = React.useState<Company | null>(null);
