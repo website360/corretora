@@ -20,7 +20,7 @@ import { useSession } from "@/contexts/session-context";
 import { useDirectoryStore } from "@/stores/directory-store";
 import { BoardColumnPicker, defaultBoardId } from "@/modules/tickets/board-column-picker";
 import { resolveSettings } from "@/config/sort";
-import { TICKET_SUBJECT_META, TICKET_PRIORITY_META } from "@/config/domain";
+import { TICKET_PRIORITY_META } from "@/config/domain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -127,27 +127,20 @@ export function TicketFormDialog({
     const due_at = dueDate
       ? new Date(`${dueDate}T${dueTime || "09:00"}:00`).toISOString()
       : null;
-    // Internal tasks carry no entity links; clear any leftover selection.
-    const links =
-      values.subject_type === "internal"
-        ? {
-            customer_id: undefined,
-            carrier_id: undefined,
-            product_id: undefined,
-            contract_id: undefined,
-            quote_id: undefined,
-          }
-        : {
-            customer_id: values.customer_id || undefined,
-            carrier_id: values.carrier_id || undefined,
-            product_id: values.product_id || undefined,
-            contract_id: values.contract_id || undefined,
-            quote_id: values.quote_id || undefined,
-          };
+    // A tarefa é sempre interna; os itens (cliente, seguradora, produto,
+    // contrato, orçamento) são apenas menções opcionais, mantidas como vierem.
+    const links = {
+      customer_id: values.customer_id || undefined,
+      carrier_id: values.carrier_id || undefined,
+      product_id: values.product_id || undefined,
+      contract_id: values.contract_id || undefined,
+      quote_id: values.quote_id || undefined,
+    };
     if (editing) {
       await ticketsService.update(ticket!.id, {
         ...values,
         ...links,
+        subject_type: "internal",
         customer_id: links.customer_id ?? null,
         carrier_id: links.carrier_id ?? null,
         product_id: links.product_id ?? null,
@@ -166,6 +159,7 @@ export function TicketFormDialog({
     const created = await ticketsService.create({
       ...values,
       ...links,
+      subject_type: "internal",
       board_id: boardId || undefined,
       column_id: columnId || undefined,
       due_at,
@@ -199,40 +193,20 @@ export function TicketFormDialog({
             <Textarea id="description" rows={3} {...register("description")} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Prioridade</Label>
-              <Select value={watch("priority")} onValueChange={(v) => setValue("priority", v as TicketPriority)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(TICKET_PRIORITY_META).map(([k, m]) => (
-                    <SelectItem key={k} value={k}>
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Tipo de tarefa</Label>
-              <Select
-                value={watch("subject_type")}
-                onValueChange={(v) => setValue("subject_type", v as TicketSubjectType)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(TICKET_SUBJECT_META).map(([k, m]) => (
-                    <SelectItem key={k} value={k}>
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label>Prioridade</Label>
+            <Select value={watch("priority")} onValueChange={(v) => setValue("priority", v as TicketPriority)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(TICKET_PRIORITY_META).map(([k, m]) => (
+                  <SelectItem key={k} value={k}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Prazo — define a data em que a tarefa aparece no calendário */}
@@ -258,11 +232,11 @@ export function TicketFormDialog({
             onColumnChange={setColumnId}
           />
 
-          {watch("subject_type") !== "internal" && (
+          {(
             <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
               <p className="text-xs text-muted-foreground">
-                Vincule a tarefa às entidades relacionadas (opcional — você pode combinar
-                cliente, seguradora e produto).
+                Mencione os itens relacionados (opcional — combine cliente, seguradora,
+                produto, contrato e orçamento).
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">

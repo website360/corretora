@@ -517,6 +517,10 @@ export interface CalendarEvent {
   carrier_id?: UUID | null;
   /** Linked insurance product (produto), optional. */
   product_id?: UUID | null;
+  /** Linked contract/policy (contrato), optional. */
+  contract_id?: UUID | null;
+  /** Linked quote (orçamento), optional. */
+  quote_id?: UUID | null;
   /** Responsável pelo evento. */
   owner_id: UUID;
   /** Quem criou. */

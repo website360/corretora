@@ -8,12 +8,14 @@ import { usersService } from "@/services/users.service";
 import { customersService } from "@/services/customers.service";
 import { carriersService } from "@/services/carriers.service";
 import { productsService } from "@/services/products.service";
+import { contractsService } from "@/services/contracts.service";
+import { quotesService } from "@/services/quotes.service";
 import { tagsService } from "@/services/tags.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useSession } from "@/contexts/session-context";
 import { useDirectoryStore } from "@/stores/directory-store";
 import { BoardColumnPicker, defaultBoardId } from "@/modules/tickets/board-column-picker";
-import { EVENT_MODALITY_META, TICKET_SUBJECT_META } from "@/config/domain";
+import { EVENT_MODALITY_META } from "@/config/domain";
 import type { CalendarEvent, EventModality, TicketSubjectType } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +44,6 @@ export function NewEventDialog({
   onOpenChange,
   defaultDate,
   event,
-  initialSubjectType = "internal",
   onSaved,
 }: {
   open: boolean;
@@ -59,6 +60,8 @@ export function NewEventDialog({
   const { data: customers } = useAsyncData(() => customersService.list());
   const { data: carriers } = useAsyncData(() => carriersService.list());
   const { data: products } = useAsyncData(() => productsService.list());
+  const { data: contracts } = useAsyncData(() => contractsService.list());
+  const { data: quotes } = useAsyncData(() => quotesService.list());
   const { data: tags } = useAsyncData(() => tagsService.list("events"));
 
   const [title, setTitle] = React.useState("");
@@ -68,12 +71,13 @@ export function NewEventDialog({
   const [endTime, setEndTime] = React.useState("10:00");
   const [location, setLocation] = React.useState("");
   const [modality, setModality] = React.useState<EventModality>("in_person");
-  const [subjectType, setSubjectType] = React.useState<TicketSubjectType>("internal");
   const [boardId, setBoardId] = React.useState("");
   const [columnId, setColumnId] = React.useState("");
   const [customerId, setCustomerId] = React.useState("");
   const [carrierId, setCarrierId] = React.useState("");
   const [productId, setProductId] = React.useState("");
+  const [contractId, setContractId] = React.useState("");
+  const [quoteId, setQuoteId] = React.useState("");
   const [ownerId, setOwnerId] = React.useState(user.id);
   const [participantIds, setParticipantIds] = React.useState<string[]>([]);
   const [tagSel, setTagSel] = React.useState<string[]>([]);
@@ -92,10 +96,11 @@ export function NewEventDialog({
       setEndTime(format(e, "HH:mm"));
       setLocation(event.location ?? "");
       setModality(event.modality ?? "in_person");
-      setSubjectType(event.subject_type ?? "internal");
       setCustomerId(event.customer_id ?? "");
       setCarrierId(event.carrier_id ?? "");
       setProductId(event.product_id ?? "");
+      setContractId(event.contract_id ?? "");
+      setQuoteId(event.quote_id ?? "");
       setOwnerId(event.owner_id);
       setParticipantIds(event.participant_ids ?? []);
       setTagSel(event.tags ?? []);
@@ -109,10 +114,11 @@ export function NewEventDialog({
       setEndTime("10:00");
       setLocation("");
       setModality("in_person");
-      setSubjectType(initialSubjectType);
       setCustomerId("");
       setCarrierId("");
       setProductId("");
+      setContractId("");
+      setQuoteId("");
       setOwnerId(user.id);
       setParticipantIds([]);
       setTagSel([]);
@@ -126,7 +132,7 @@ export function NewEventDialog({
       .filter((c) => c.board_id === bId)
       .sort((a, b) => a.position - b.position)[0];
     setColumnId(event?.column_id ?? firstCol?.id ?? "");
-  }, [open, defaultDate, user.id, event, initialSubjectType]);
+  }, [open, defaultDate, user.id, event]);
 
   async function save() {
     if (!title.trim()) return;
@@ -137,18 +143,20 @@ export function NewEventDialog({
       return;
     }
     setSaving(true);
-    // Internal events carry no entity links; clear any leftover selection.
-    const internal = subjectType === "internal";
+    // O evento é sempre interno; os itens (cliente, seguradora, produto,
+    // contrato, orçamento) são apenas menções opcionais.
     const payload = {
       title,
       description: description || null,
       modality,
-      subject_type: subjectType,
+      subject_type: "internal" as const,
       board_id: boardId || null,
       column_id: columnId || null,
-      customer_id: internal ? null : customerId || null,
-      carrier_id: internal ? null : carrierId || null,
-      product_id: internal ? null : productId || null,
+      customer_id: customerId || null,
+      carrier_id: carrierId || null,
+      product_id: productId || null,
+      contract_id: contractId || null,
+      quote_id: quoteId || null,
       starts_at: starts.toISOString(),
       ends_at: ends.toISOString(),
       owner_id: ownerId || user.id,
@@ -232,23 +240,6 @@ export function NewEventDialog({
             </div>
           </div>
 
-          {/* Tipo de evento — define os vínculos */}
-          <div className="space-y-2">
-            <Label>Tipo de evento</Label>
-            <Select value={subjectType} onValueChange={(v) => setSubjectType(v as TicketSubjectType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(TICKET_SUBJECT_META).map(([k, m]) => (
-                  <SelectItem key={k} value={k}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <BoardColumnPicker
             boardId={boardId}
             columnId={columnId}
@@ -256,11 +247,11 @@ export function NewEventDialog({
             onColumnChange={setColumnId}
           />
 
-          {subjectType !== "internal" && (
+          {(
             <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
               <p className="text-xs text-muted-foreground">
-                Vincule o evento às entidades relacionadas (opcional — você pode combinar cliente,
-                seguradora e produto).
+                Mencione os itens relacionados (opcional — combine cliente, seguradora,
+                produto, contrato e orçamento).
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
@@ -299,6 +290,36 @@ export function NewEventDialog({
                     onChange={(v) => setProductId(v)}
                     placeholder="Opcional"
                     searchPlaceholder="Buscar produto..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Contrato</Label>
+                  <Combobox
+                    options={(contracts ?? []).map((c) => {
+                      const who = (customers ?? []).find((cu) => cu.id === c.customer_id)?.name;
+                      const label = [who, c.policy_number ? `Apólice ${c.policy_number}` : null]
+                        .filter(Boolean)
+                        .join(" · ");
+                      return { value: c.id, label: label || "Contrato" };
+                    })}
+                    value={contractId}
+                    onChange={(v) => setContractId(v)}
+                    placeholder="Opcional"
+                    searchPlaceholder="Buscar contrato..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Orçamento</Label>
+                  <Combobox
+                    options={(quotes ?? []).map((q) => {
+                      const who = (customers ?? []).find((cu) => cu.id === q.customer_id)?.name;
+                      const label = [`#${q.number}`, q.title || who].filter(Boolean).join(" · ");
+                      return { value: q.id, label };
+                    })}
+                    value={quoteId}
+                    onChange={(v) => setQuoteId(v)}
+                    placeholder="Opcional"
+                    searchPlaceholder="Buscar orçamento..."
                   />
                 </div>
               </div>

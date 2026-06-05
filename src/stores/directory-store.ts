@@ -101,8 +101,8 @@ export function useDirectory() {
 
     const sb = getSupabaseBrowserClient();
     (async () => {
-      const [users, customers, companies, stages, carriers, products, boards, columns] =
-        await Promise.all([
+      try {
+        const results = await Promise.all([
           sb.from("users").select("*"),
           sb.from("customers").select("*"),
           sb.from("companies").select("*"),
@@ -112,17 +112,28 @@ export function useDirectory() {
           sb.from("task_boards").select("*").order("position"),
           sb.from("task_columns").select("*").order("position"),
         ]);
-      useDirectoryStore.getState().setData({
-        users: (users.data as User[] | null) ?? [],
-        customers: (customers.data as Customer[] | null) ?? [],
-        companies: (companies.data as Company[] | null) ?? [],
-        stages: (stages.data as TaskStage[] | null) ?? [],
-        carriers: (carriers.data as Carrier[] | null) ?? [],
-        products: (products.data as Product[] | null) ?? [],
-        taskBoards: (boards.data as TaskBoard[] | null) ?? [],
-        taskColumns: (columns.data as TaskColumn[] | null) ?? [],
-      });
-      useDirectoryStore.getState().finishLoad();
+        // If ANY query errored, don't cache a half-empty directory (which made
+        // etapas/seguradoras "disappear"). Reset so the next mount retries.
+        if (results.some((r) => r.error)) {
+          useDirectoryStore.setState({ loading: false, loaded: false });
+          return;
+        }
+        const [users, customers, companies, stages, carriers, products, boards, columns] = results;
+        useDirectoryStore.getState().setData({
+          users: (users.data as User[] | null) ?? [],
+          customers: (customers.data as Customer[] | null) ?? [],
+          companies: (companies.data as Company[] | null) ?? [],
+          stages: (stages.data as TaskStage[] | null) ?? [],
+          carriers: (carriers.data as Carrier[] | null) ?? [],
+          products: (products.data as Product[] | null) ?? [],
+          taskBoards: (boards.data as TaskBoard[] | null) ?? [],
+          taskColumns: (columns.data as TaskColumn[] | null) ?? [],
+        });
+        useDirectoryStore.getState().finishLoad();
+      } catch {
+        // Network/transient failure — allow a retry instead of staying stuck.
+        useDirectoryStore.setState({ loading: false, loaded: false });
+      }
     })();
   }, []);
 
