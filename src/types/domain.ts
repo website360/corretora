@@ -416,6 +416,25 @@ export interface UserGroup {
   created_at: ISODateString;
 }
 
+/** System-wide default carrier — new companies are seeded from these. */
+export interface DefaultCarrier {
+  id: UUID;
+  name: string;
+  website: string | null;
+  logo_url: string | null;
+  position: number;
+  created_at: ISODateString;
+}
+
+/** System-wide default product — new companies are seeded from these. */
+export interface DefaultProduct {
+  id: UUID;
+  name: string;
+  category: string;
+  position: number;
+  created_at: ISODateString;
+}
+
 export interface Ticket {
   id: UUID;
   company_id: UUID;
