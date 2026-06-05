@@ -1,10 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Building2, Package, Pencil, Plus, Trash2 } from "lucide-react";
+import { Building2, Package, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { defaultCatalogService } from "@/services/default-catalog.service";
+import { uploadAvatar } from "@/services/storage.service";
+import { cropToSquare } from "@/lib/image";
 import { useAsyncData } from "@/hooks/use-async-data";
+import { CarrierLogo } from "@/components/common/carrier-logo";
 import type { DefaultCarrier, DefaultProduct } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +48,28 @@ function CarriersCard() {
   const [website, setWebsite] = React.useState("");
   const [logoUrl, setLogoUrl] = React.useState("");
   const [saving, setSaving] = React.useState(false);
+  const [uploading, setUploading] = React.useState(false);
+  const fileRef = React.useRef<HTMLInputElement>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (fileRef.current) fileRef.current.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione um arquivo de imagem.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const square = await cropToSquare(file);
+      const url = await uploadAvatar(square, "carriers");
+      setLogoUrl(url);
+    } catch (err) {
+      toast.error((err as Error).message ?? "Falha no upload da imagem.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function openNew() {
     setEditing(null);
@@ -115,9 +140,7 @@ function CarriersCard() {
           <div className="space-y-2">
             {(data ?? []).map((c) => (
               <div key={c.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
-                <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Building2 className="size-4" />
-                </span>
+                <CarrierLogo src={c.logo_url} className="size-9" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{c.name}</p>
                   {c.website && (
@@ -158,8 +181,37 @@ function CarriersCard() {
               <Input id="dc_site" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://..." />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dc_logo">URL do logo</Label>
-              <Input id="dc_logo" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://logo.clearbit.com/..." />
+              <Label>Logo</Label>
+              <div className="flex items-center gap-3">
+                <CarrierLogo src={logoUrl || null} className="size-14" />
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFile}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileRef.current?.click()}
+                  loading={uploading}
+                >
+                  <Upload className="size-3.5" /> Enviar imagem
+                </Button>
+                {logoUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                    onClick={() => setLogoUrl("")}
+                  >
+                    <X className="size-3.5" /> Remover
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
           <DialogFooter>
