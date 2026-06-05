@@ -31,8 +31,19 @@ async function csFetch<T>(cfg: ClickSignConfig, path: string, init: RequestInit)
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) {
     const errors = (json?.errors as unknown[] | undefined) ?? [];
-    const msg = Array.isArray(errors) && errors.length ? JSON.stringify(errors) : `ClickSign error ${res.status}`;
-    throw new Error(msg);
+    // ClickSign returns errors as an array of strings or {message}. Surface a
+    // clean, human-readable message (e.g. the "e-mail do usuário da API" hint).
+    const clean =
+      Array.isArray(errors) && errors.length
+        ? errors
+            .map((e) =>
+              typeof e === "string" ? e : ((e as { message?: string })?.message ?? JSON.stringify(e)),
+            )
+            .join(" · ")
+        : typeof json?.message === "string"
+          ? json.message
+          : `erro ${res.status}`;
+    throw new Error(`ClickSign: ${clean}`);
   }
   return json as T;
 }
