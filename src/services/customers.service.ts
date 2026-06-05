@@ -12,14 +12,14 @@ export const customersService = {
       const companyId = getCurrentCompanyId();
       return customers
         .filter((c) => c.company_id === companyId)
-        .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
     }
     const sb = getSupabaseBrowserClient();
     const { data, error } = await sb
       .from("customers")
       .select("*")
       .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+      .order("name", { ascending: true });
     if (error) throw error;
     return (data as Customer[]) ?? [];
   },

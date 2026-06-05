@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { quotesService } from "@/services/quotes.service";
 import { customersService } from "@/services/customers.service";
 import { usersService } from "@/services/users.service";
+import { companySettingsService } from "@/services/company-settings.service";
 import { contractsService } from "@/services/contracts.service";
 import { contractAttachmentsService } from "@/services/contract-attachments.service";
 import { useAsyncData } from "@/hooks/use-async-data";
@@ -70,7 +71,14 @@ const STATUS_INLINE: InlineOption[] = QUOTE_ACTIVE_STATUSES.map((s) => ({
 export function QuotesView() {
   const router = useRouter();
   const { user } = useSession();
-  const clicksignOn = !!user.company.settings?.integrations?.clicksign?.apiToken;
+  // Read the integration config LIVE — the session copy is stale right after
+  // the token is saved in Settings, which hid the "Enviar para assinatura" item.
+  const { data: liveSettings } = useAsyncData(
+    () => companySettingsService.get(user.company.id),
+    [user.company.id],
+  );
+  const clicksignOn = !!(liveSettings ?? user.company.settings)?.integrations?.clicksign
+    ?.apiToken;
   const { data, loading, refetch } = useAsyncData(() => quotesService.list());
   const { data: customers } = useAsyncData(() => customersService.list());
   const { data: users } = useAsyncData(() => usersService.list());
