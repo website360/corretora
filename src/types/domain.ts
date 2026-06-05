@@ -39,6 +39,7 @@ export interface Company {
   asaas_subscription_id: string | null;
   card_last4: string | null;
   card_brand: string | null;
+  onboarding_completed?: boolean; // finalizou o cadastro inicial após escolher o plano
   settings: CompanySettings;
   created_at: ISODateString;
 }
