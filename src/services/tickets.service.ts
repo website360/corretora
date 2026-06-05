@@ -5,6 +5,7 @@ import { getCurrentCompanyId, getCurrentUserId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
 import type {
   Ticket,
+  TicketEventType,
   TicketLog,
   TicketMessage,
   TicketPriority,
@@ -261,6 +262,34 @@ export const ticketsService = {
       actor_id: getCurrentUserId(),
       event: "assigned",
       meta: { to: assigneeId },
+    });
+  },
+
+  /** Records an arbitrary activity-log entry for a ticket (additions/removals). */
+  async logEvent(
+    ticketId: string,
+    event: TicketEventType,
+    meta: Record<string, unknown> = {},
+  ): Promise<void> {
+    if (env.useMocks) {
+      await sleep(50);
+      ticketLogs.push({
+        id: uid("tl"),
+        ticket_id: ticketId,
+        actor_id: getCurrentUserId(),
+        event,
+        meta,
+        created_at: new Date().toISOString(),
+      });
+      return;
+    }
+    const sb = getSupabaseBrowserClient();
+    await sb.from("ticket_logs").insert({
+      ticket_id: ticketId,
+      company_id: getCurrentCompanyId(),
+      actor_id: getCurrentUserId(),
+      event,
+      meta,
     });
   },
 

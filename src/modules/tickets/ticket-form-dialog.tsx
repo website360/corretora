@@ -154,6 +154,42 @@ export function TicketFormDialog({
         due_at,
         description: values.description ?? null,
       });
+      // Registra no histórico o que mudou (incluindo remoções).
+      const old = ticket!;
+      const logs: Promise<void>[] = [];
+      const oldTags = old.tags ?? [];
+      const newTags = values.tags ?? [];
+      newTags
+        .filter((t) => !oldTags.includes(t))
+        .forEach((t) => logs.push(ticketsService.logEvent(old.id, "tag_added", { tag: t })));
+      oldTags
+        .filter((t) => !newTags.includes(t))
+        .forEach((t) => logs.push(ticketsService.logEvent(old.id, "tag_removed", { tag: t })));
+      const oldParts = old.participant_ids ?? [];
+      const newParts = values.participant_ids ?? [];
+      newParts
+        .filter((p) => !oldParts.includes(p))
+        .forEach((p) => logs.push(ticketsService.logEvent(old.id, "participant_added", { to: p })));
+      oldParts
+        .filter((p) => !newParts.includes(p))
+        .forEach((p) =>
+          logs.push(ticketsService.logEvent(old.id, "participant_removed", { to: p })),
+        );
+      if ((values.assignee_id || null) !== (old.assignee_id || null)) {
+        logs.push(ticketsService.logEvent(old.id, "assigned", { to: values.assignee_id ?? null }));
+      }
+      if (values.priority !== old.priority) {
+        logs.push(ticketsService.logEvent(old.id, "priority_changed", { to: values.priority }));
+      }
+      if (old.due_at && !due_at) {
+        logs.push(ticketsService.logEvent(old.id, "due_removed"));
+      } else if ((due_at || null) !== (old.due_at || null)) {
+        logs.push(ticketsService.logEvent(old.id, "due_changed", { to: due_at }));
+      }
+      if (values.title !== old.title) {
+        logs.push(ticketsService.logEvent(old.id, "edited", { field: "título" }));
+      }
+      await Promise.all(logs);
       toast.success("Tarefa atualizada");
       onOpenChange(false);
       onSaved?.();

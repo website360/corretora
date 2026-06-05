@@ -232,12 +232,26 @@ function feedDescribe(it: FeedItem): string {
     }
     case "assigned": {
       const to = it.meta?.to ? feedActorName(String(it.meta.to)) : null;
-      return to ? `atribuiu para ${to}` : "alterou o responsável";
+      return to ? `atribuiu para ${to}` : "removeu o responsável";
     }
-    case "participant_added":
-      return "adicionou um envolvido";
+    case "participant_added": {
+      const who = it.meta?.to ? feedActorName(String(it.meta.to)) : null;
+      return who ? `adicionou ${who} aos envolvidos` : "adicionou um envolvido";
+    }
+    case "participant_removed": {
+      const who = it.meta?.to ? feedActorName(String(it.meta.to)) : null;
+      return who ? `removeu ${who} dos envolvidos` : "removeu um envolvido";
+    }
     case "tag_added":
-      return "adicionou uma etiqueta";
+      return it.meta?.tag ? `adicionou a etiqueta "${String(it.meta.tag)}"` : "adicionou uma etiqueta";
+    case "tag_removed":
+      return it.meta?.tag ? `removeu a etiqueta "${String(it.meta.tag)}"` : "removeu uma etiqueta";
+    case "due_changed":
+      return "alterou o prazo";
+    case "due_removed":
+      return "removeu o prazo";
+    case "edited":
+      return "editou a tarefa";
     default:
       return "atualizou a tarefa";
   }
@@ -256,9 +270,16 @@ function FeedIcon({ item }: { item: FeedItem }) {
     case "assigned":
       return <UserRound className={cls} />;
     case "participant_added":
+    case "participant_removed":
       return <Users className={cls} />;
     case "tag_added":
+    case "tag_removed":
       return <Tag className={cls} />;
+    case "due_changed":
+    case "due_removed":
+      return <CalendarClock className={cls} />;
+    case "edited":
+      return <Pencil className={cls} />;
     default:
       return <History className={cls} />;
   }

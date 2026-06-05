@@ -22,7 +22,6 @@ import { InlineDate } from "@/components/common/inline-date";
 import {
   EVENT_MODALITY_META,
   TICKET_PRIORITY_META,
-  TICKET_SUBJECT_META,
   TONE_BADGE_CLASS,
   TONE_DOT_CLASS,
 } from "@/config/domain";
@@ -119,11 +118,6 @@ export function UnifiedList({
     value,
     label: m.label,
     leading: <span className={cn("size-2 rounded-full", TONE_DOT_CLASS[m.tone])} />,
-  }));
-  const subjectOptions: InlineOption[] = Object.entries(TICKET_SUBJECT_META).map(([value, m]) => ({
-    value,
-    label: m.label,
-    leading: <m.icon className="size-3.5 text-muted-foreground" />,
   }));
   const modalityOptions: InlineOption[] = Object.entries(EVENT_MODALITY_META).map(([value, m]) => ({
     value,
@@ -324,41 +318,26 @@ export function UnifiedList({
     },
     link: {
       id: "link",
-      header: "Vínculo",
+      header: "Menções",
       cell: ({ row }) => {
         const r = row.original;
-        const subject = r.kind === "task" ? r.task.subject_type : r.event.subject_type;
-        const customerId = r.kind === "task" ? r.task.customer_id : r.event.customer_id;
-        const carrierId = r.kind === "task" ? r.task.carrier_id : r.event.carrier_id;
-        const productId = r.kind === "task" ? r.task.product_id : r.event.product_id;
-        const meta = TICKET_SUBJECT_META[subject ?? "internal"];
-        const names = [
-          findCustomer(customerId)?.name,
-          findCarrier(carrierId)?.name,
-          findProduct(productId)?.name,
-        ].filter(Boolean);
+        const t = r.kind === "task" ? r.task : null;
+        const e = r.kind === "event" ? r.event : null;
+        const chips = [
+          findCustomer(t?.customer_id ?? e?.customer_id)?.name,
+          findCarrier(t?.carrier_id ?? e?.carrier_id)?.name,
+          findProduct(t?.product_id ?? e?.product_id)?.name,
+          (t?.contract_id ?? e?.contract_id) ? "Contrato" : null,
+          (t?.quote_id ?? e?.quote_id) ? "Orçamento" : null,
+        ].filter(Boolean) as string[];
+        if (chips.length === 0) return <span className="text-sm text-muted-foreground">—</span>;
         return (
-          <div className="flex flex-col items-start gap-0.5">
-            <InlineSelect
-              value={subject ?? "internal"}
-              options={subjectOptions}
-              title="Trocar tipo"
-              onChange={async (v) => {
-                if (r.kind === "task") {
-                  await ticketsService.update(r.task.id, { subject_type: v as Ticket["subject_type"] });
-                } else {
-                  await calendarService.update(r.event.id, {
-                    subject_type: v as CalendarEvent["subject_type"],
-                  });
-                }
-                onChanged?.();
-              }}
-            >
-              <StatusBadge meta={meta} />
-            </InlineSelect>
-            {names.length > 0 && (
-              <span className="truncate text-xs text-muted-foreground">{names.join(" · ")}</span>
-            )}
+          <div className="flex flex-wrap gap-1">
+            {chips.map((c, i) => (
+              <Badge key={i} variant="outline" className="font-normal">
+                {c}
+              </Badge>
+            ))}
           </div>
         );
       },

@@ -501,7 +501,12 @@ export type TicketEventType =
   | "priority_changed"
   | "assigned"
   | "participant_added"
+  | "participant_removed"
   | "tag_added"
+  | "tag_removed"
+  | "due_changed"
+  | "due_removed"
+  | "edited"
   | "comment";
 
 export interface TicketLog {
