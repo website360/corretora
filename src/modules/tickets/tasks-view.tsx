@@ -402,14 +402,16 @@ export function TasksView() {
                   <Plus /> Nova tarefa
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  {(Object.keys(TICKET_SUBJECT_META) as TicketSubjectType[]).map((type) => {
-                    const { label, icon: Icon } = TICKET_SUBJECT_META[type];
-                    return (
-                      <DropdownMenuItem key={type} onClick={() => openNewTask(type)}>
-                        <Icon /> {label}
-                      </DropdownMenuItem>
-                    );
-                  })}
+                  {(Object.keys(TICKET_SUBJECT_META) as TicketSubjectType[])
+                    .filter((type) => type !== "carrier" && type !== "product")
+                    .map((type) => {
+                      const { label, icon: Icon } = TICKET_SUBJECT_META[type];
+                      return (
+                        <DropdownMenuItem key={type} onClick={() => openNewTask(type)}>
+                          <Icon /> {label}
+                        </DropdownMenuItem>
+                      );
+                    })}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
               <DropdownMenuSub>
@@ -417,14 +419,16 @@ export function TasksView() {
                   <CalendarPlus /> Novo evento
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  {(Object.keys(TICKET_SUBJECT_META) as TicketSubjectType[]).map((type) => {
-                    const { label, icon: Icon } = TICKET_SUBJECT_META[type];
-                    return (
-                      <DropdownMenuItem key={type} onClick={() => openNewEvent(type)}>
-                        <Icon /> {label}
-                      </DropdownMenuItem>
-                    );
-                  })}
+                  {(Object.keys(TICKET_SUBJECT_META) as TicketSubjectType[])
+                    .filter((type) => type !== "carrier" && type !== "product")
+                    .map((type) => {
+                      const { label, icon: Icon } = TICKET_SUBJECT_META[type];
+                      return (
+                        <DropdownMenuItem key={type} onClick={() => openNewEvent(type)}>
+                          <Icon /> {label}
+                        </DropdownMenuItem>
+                      );
+                    })}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
             </DropdownMenuContent>
