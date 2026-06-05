@@ -7,7 +7,7 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 const PUBLIC_ROUTES = ["/login", "/cadastro", "/recuperar-senha", "/convite", "/auth"];
 
 // Server-to-server endpoints with their own auth (no user session).
-const PUBLIC_API_ROUTES = ["/api/billing/webhook", "/api/version"];
+const PUBLIC_API_ROUTES = ["/api/billing/webhook"];
 
 function isPublic(pathname: string) {
   return (
