@@ -148,4 +148,15 @@ export const defaultCatalogService = {
     const { error } = await sb.from("default_products").delete().eq("id", id);
     if (error) throw error;
   },
+
+  /** Applies the default catalog to EVERY existing company (adds what's missing). */
+  async syncToAllCompanies(): Promise<void> {
+    if (env.useMocks) {
+      await sleep(200);
+      return;
+    }
+    const sb = getSupabaseBrowserClient();
+    const { error } = await sb.rpc("sync_default_catalog");
+    if (error) throw error;
+  },
 };

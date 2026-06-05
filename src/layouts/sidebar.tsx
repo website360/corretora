@@ -103,7 +103,7 @@ export function Sidebar({ ticketBadge = 0 }: SidebarProps) {
         ) : (
           <Link
             href="/escolher-plano"
-            className="block rounded-xl border border-primary/20 bg-gradient-to-br from-accent to-transparent p-3.5 transition-colors hover:border-primary/40"
+            className="block rounded-xl border border-primary/20 bg-primary/5 p-3.5 transition-colors hover:border-primary/40 hover:bg-primary/10"
           >
             <div className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-primary">
               <Sparkles className="size-4" /> Seu plano
@@ -126,7 +126,7 @@ function TrialCard({ days }: { days: number }) {
         "block rounded-xl border p-3.5 transition-colors",
         urgent
           ? "border-warning/40 bg-warning/10 hover:border-warning/60"
-          : "border-primary/20 bg-gradient-to-br from-accent to-transparent hover:border-primary/40",
+          : "border-primary/20 bg-primary/5 hover:border-primary/40 hover:bg-primary/10",
       )}
     >
       <div

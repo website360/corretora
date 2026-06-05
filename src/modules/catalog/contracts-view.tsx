@@ -219,8 +219,9 @@ export function ContractsView() {
             }}
           >
             {name ? (
-              <span className="inline-flex items-center gap-1.5 text-sm">
-                <User className="size-3.5 text-muted-foreground" /> {name}
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm">
+                <User className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate">{name}</span>
               </span>
             ) : (
               <span className="text-sm text-muted-foreground">Atribuir</span>

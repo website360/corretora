@@ -186,6 +186,7 @@ export function TasksView() {
       }
       toast.success("Movido para a lixeira");
       setDeleteRow(null);
+      router.refresh();
     } catch {
       toast.error("Não foi possível excluir");
     } finally {
@@ -219,6 +220,7 @@ export function TasksView() {
     setBulkDelete(null);
     if (touchedTask) refetch();
     if (touchedEvent) refetchEvents();
+    router.refresh();
   }
 
   async function confirmFinalize() {
@@ -234,6 +236,7 @@ export function TasksView() {
       }
       toast.success("Finalizado com sucesso");
       setFinalizeRow(null);
+      router.refresh();
     } catch {
       toast.error("Não foi possível finalizar");
     } finally {

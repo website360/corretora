@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Building2, Package, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
+import { Building2, Package, Pencil, Plus, RefreshCw, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { defaultCatalogService } from "@/services/default-catalog.service";
 import { uploadAvatar } from "@/services/storage.service";
@@ -27,12 +27,32 @@ import {
 } from "@/components/ui/dialog";
 
 export function DefaultCatalogPanel() {
+  const [syncing, setSyncing] = React.useState(false);
+
+  async function syncAll() {
+    setSyncing(true);
+    try {
+      await defaultCatalogService.syncToAllCompanies();
+      toast.success("Catálogo padrão aplicado a todas as empresas.");
+    } catch {
+      toast.error("Não foi possível aplicar a todas as empresas.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Este é o catálogo padrão do sistema. Toda empresa nova já nasce com estas seguradoras e
-        produtos. Alterações aqui valem para as próximas empresas criadas (não mexem nas existentes).
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Catálogo padrão do sistema. Toda empresa nova já nasce com estas seguradoras e produtos.
+          Ao adicionar um item novo, ele é aplicado também às empresas já existentes (sem duplicar);
+          use o botão ao lado para reaplicar quando quiser.
+        </p>
+        <Button variant="outline" onClick={syncAll} loading={syncing}>
+          <RefreshCw /> Aplicar a todas as empresas
+        </Button>
+      </div>
       <CarriersCard />
       <ProductsCard />
     </div>
@@ -93,9 +113,14 @@ function CarriersCard() {
     setSaving(true);
     try {
       const payload = { name: name.trim(), website: website || null, logo_url: logoUrl || null };
-      if (editing) await defaultCatalogService.updateCarrier(editing.id, payload);
-      else await defaultCatalogService.createCarrier(payload);
-      toast.success("Seguradora padrão salva");
+      if (editing) {
+        await defaultCatalogService.updateCarrier(editing.id, payload);
+        toast.success("Seguradora padrão atualizada");
+      } else {
+        await defaultCatalogService.createCarrier(payload);
+        await defaultCatalogService.syncToAllCompanies();
+        toast.success("Seguradora adicionada ao padrão e a todas as empresas");
+      }
       setDialog(false);
       refetch();
     } catch {
@@ -272,9 +297,14 @@ function ProductsCard() {
     setSaving(true);
     try {
       const payload = { name: name.trim(), category: category.trim() || "outros" };
-      if (editing) await defaultCatalogService.updateProduct(editing.id, payload);
-      else await defaultCatalogService.createProduct(payload);
-      toast.success("Produto padrão salvo");
+      if (editing) {
+        await defaultCatalogService.updateProduct(editing.id, payload);
+        toast.success("Produto padrão atualizado");
+      } else {
+        await defaultCatalogService.createProduct(payload);
+        await defaultCatalogService.syncToAllCompanies();
+        toast.success("Produto adicionado ao padrão e a todas as empresas");
+      }
       setDialog(false);
       refetch();
     } catch {

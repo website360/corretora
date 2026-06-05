@@ -299,7 +299,14 @@ export function NewEventDialog({
                   <Combobox
                     options={(contracts ?? []).map((c) => {
                       const who = (customers ?? []).find((cu) => cu.id === c.customer_id)?.name;
-                      const label = [who, c.policy_number ? `Apólice ${c.policy_number}` : null]
+                      const carrier = (carriers ?? []).find((x) => x.id === c.carrier_id)?.name;
+                      const prod = (products ?? []).find((x) => x.id === c.product_id)?.name;
+                      const label = [
+                        who,
+                        carrier,
+                        prod,
+                        c.policy_number ? `Apólice ${c.policy_number}` : null,
+                      ]
                         .filter(Boolean)
                         .join(" · ");
                       return { value: c.id, label: label || "Contrato" };

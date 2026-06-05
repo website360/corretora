@@ -209,7 +209,9 @@ export function DataTable<TData, TValue>({
       )}
 
       <div className="overflow-hidden rounded-xl border bg-card">
-        <Table style={{ width: table.getTotalSize(), minWidth: "100%" }}>
+        {/* table-layout fixed → cada coluna tem EXATAMENTE a largura definida
+            (resize individual, sem redistribuir entre as outras). */}
+        <Table style={{ width: table.getTotalSize(), tableLayout: "fixed" }}>
           <TableHeader className="bg-muted/30">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
@@ -220,7 +222,7 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableHead
                       key={header.id}
-                      className={cn("relative", meta?.headClassName)}
+                      className={cn("relative overflow-hidden", meta?.headClassName)}
                       style={{ width: header.getSize() }}
                     >
                       {header.isPlaceholder ? null : canSort ? (
@@ -267,7 +269,7 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableCell
                       key={cell.id}
-                      className={meta?.cellClassName}
+                      className={cn("overflow-hidden", meta?.cellClassName)}
                       style={{ width: cell.column.getSize() }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
