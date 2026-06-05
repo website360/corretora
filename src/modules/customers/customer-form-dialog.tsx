@@ -48,6 +48,8 @@ interface CustomerFormDialogProps {
   defaultKind?: "lead" | "client";
   defaultBoardId?: string | null;
   defaultColumnId?: string | null;
+  /** Hides the Lead/Cliente toggle and forces the kind (e.g. "Novo lead"). */
+  lockKind?: boolean;
 }
 
 const emptyAddress: Address = {
@@ -75,6 +77,7 @@ export function CustomerFormDialog({
   defaultKind,
   defaultBoardId,
   defaultColumnId,
+  lockKind,
 }: CustomerFormDialogProps) {
   const editing = Boolean(customer);
   const { data: users } = useAsyncData(() => usersService.list());
@@ -215,34 +218,40 @@ export function CustomerFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[88vh] max-w-xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editing ? "Editar contato" : "Novo contato"}</DialogTitle>
-          <DialogDescription>Preencha os dados do contato.</DialogDescription>
+          <DialogTitle>
+            {editing ? `Editar ${lockKind ? "lead" : "contato"}` : `Novo ${lockKind ? "lead" : "contato"}`}
+          </DialogTitle>
+          <DialogDescription>
+            Preencha os dados do {lockKind ? "lead" : "contato"}.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Classificação</Label>
-            <div className="inline-flex w-full rounded-lg border bg-muted/40 p-0.5">
-              {([
-                { value: "lead", label: "Lead" },
-                { value: "client", label: "Cliente" },
-              ] as const).map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setValue("kind", opt.value)}
-                  className={
-                    "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors " +
-                    (watch("kind") === opt.value
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground")
-                  }
-                >
-                  {opt.label}
-                </button>
-              ))}
+          {!lockKind && (
+            <div className="space-y-2">
+              <Label>Classificação</Label>
+              <div className="inline-flex w-full rounded-lg border bg-muted/40 p-0.5">
+                {([
+                  { value: "lead", label: "Lead" },
+                  { value: "client", label: "Cliente" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setValue("kind", opt.value)}
+                    className={
+                      "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors " +
+                      (watch("kind") === opt.value
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground")
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {watch("kind") === "lead" && (
             <div className="grid grid-cols-2 gap-3 rounded-lg border border-dashed bg-muted/20 p-3">
@@ -461,7 +470,7 @@ export function CustomerFormDialog({
               Cancelar
             </Button>
             <Button type="submit" loading={isSubmitting}>
-              {editing ? "Salvar alterações" : "Criar contato"}
+              {editing ? "Salvar alterações" : `Criar ${lockKind ? "lead" : "contato"}`}
             </Button>
           </DialogFooter>
         </form>

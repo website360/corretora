@@ -12,6 +12,7 @@ import { usersService } from "@/services/users.service";
 import { ticketsService } from "@/services/tickets.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useSession } from "@/contexts/session-context";
+import { formatMoneyInput, moneyToCents } from "@/utils/format";
 import type { Contract, ContractStatus } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -109,7 +110,7 @@ export function ContractFormDialog({
       setPolicy(contract.policy_number ?? "");
       setStartsAt(contract.starts_at ?? "");
       setEndsAt(contract.ends_at ?? "");
-      setPremium(contract.premium_cents ? (contract.premium_cents / 100).toString() : "");
+      setPremium(contract.premium_cents ? formatMoneyInput(String(contract.premium_cents)) : "");
       setCommission(contract.commission_percent?.toString() ?? "");
       setStatus(contract.status);
       setNotes(contract.notes ?? "");
@@ -146,7 +147,7 @@ export function ContractFormDialog({
       policy_number: policy || null,
       starts_at: startsAt || null,
       ends_at: endsAt || null,
-      premium_cents: premium ? Math.round(parseFloat(premium.replace(",", ".")) * 100) : 0,
+      premium_cents: moneyToCents(premium),
       commission_percent: commission ? parseFloat(commission.replace(",", ".")) : null,
       status,
       notes: notes || null,
@@ -294,10 +295,10 @@ export function ContractFormDialog({
             <div className="space-y-2">
               <Label>Prêmio (R$)</Label>
               <Input
-                inputMode="decimal"
+                inputMode="numeric"
                 placeholder="0,00"
                 value={premium}
-                onChange={(e) => setPremium(e.target.value)}
+                onChange={(e) => setPremium(formatMoneyInput(e.target.value))}
               />
             </div>
             <div className="space-y-2">

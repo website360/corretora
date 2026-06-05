@@ -12,6 +12,8 @@ import { usersService } from "@/services/users.service";
 import { customersService } from "@/services/customers.service";
 import { carriersService } from "@/services/carriers.service";
 import { productsService } from "@/services/products.service";
+import { contractsService } from "@/services/contracts.service";
+import { quotesService } from "@/services/quotes.service";
 import { tagsService } from "@/services/tags.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useSession } from "@/contexts/session-context";
@@ -62,6 +64,8 @@ export function TicketFormDialog({
   const { data: customers } = useAsyncData(() => customersService.list());
   const { data: carriers } = useAsyncData(() => carriersService.list());
   const { data: products } = useAsyncData(() => productsService.list());
+  const { data: contracts } = useAsyncData(() => contractsService.list());
+  const { data: quotes } = useAsyncData(() => quotesService.list());
   const { data: tags } = useAsyncData(() => tagsService.list("tasks"));
   const { user } = useSession();
   const taskTimeEnabled = resolveSettings(user.company).taskTimeEnabled;
@@ -92,6 +96,8 @@ export function TicketFormDialog({
         customer_id: ticket?.customer_id ?? undefined,
         carrier_id: ticket?.carrier_id ?? undefined,
         product_id: ticket?.product_id ?? undefined,
+        contract_id: ticket?.contract_id ?? undefined,
+        quote_id: ticket?.quote_id ?? undefined,
         // New tasks default the responsável to the current user (changeable).
         assignee_id: ticket ? (ticket.assignee_id ?? undefined) : user.id,
         participant_ids: ticket?.participant_ids ?? [],
@@ -124,11 +130,19 @@ export function TicketFormDialog({
     // Internal tasks carry no entity links; clear any leftover selection.
     const links =
       values.subject_type === "internal"
-        ? { customer_id: undefined, carrier_id: undefined, product_id: undefined }
+        ? {
+            customer_id: undefined,
+            carrier_id: undefined,
+            product_id: undefined,
+            contract_id: undefined,
+            quote_id: undefined,
+          }
         : {
             customer_id: values.customer_id || undefined,
             carrier_id: values.carrier_id || undefined,
             product_id: values.product_id || undefined,
+            contract_id: values.contract_id || undefined,
+            quote_id: values.quote_id || undefined,
           };
     if (editing) {
       await ticketsService.update(ticket!.id, {
@@ -137,6 +151,8 @@ export function TicketFormDialog({
         customer_id: links.customer_id ?? null,
         carrier_id: links.carrier_id ?? null,
         product_id: links.product_id ?? null,
+        contract_id: links.contract_id ?? null,
+        quote_id: links.quote_id ?? null,
         board_id: boardId || null,
         column_id: columnId || null,
         due_at,
@@ -292,6 +308,36 @@ export function TicketFormDialog({
                     onChange={(v) => setValue("product_id", v || undefined)}
                     placeholder="Opcional"
                     searchPlaceholder="Buscar produto..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Contrato</Label>
+                  <Combobox
+                    options={(contracts ?? []).map((c) => {
+                      const who = (customers ?? []).find((cu) => cu.id === c.customer_id)?.name;
+                      const label = [who, c.policy_number ? `Apólice ${c.policy_number}` : null]
+                        .filter(Boolean)
+                        .join(" · ");
+                      return { value: c.id, label: label || "Contrato" };
+                    })}
+                    value={watch("contract_id") ?? ""}
+                    onChange={(v) => setValue("contract_id", v || undefined)}
+                    placeholder="Opcional"
+                    searchPlaceholder="Buscar contrato..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Orçamento</Label>
+                  <Combobox
+                    options={(quotes ?? []).map((q) => {
+                      const who = (customers ?? []).find((cu) => cu.id === q.customer_id)?.name;
+                      const label = [`#${q.number}`, q.title || who].filter(Boolean).join(" · ");
+                      return { value: q.id, label };
+                    })}
+                    value={watch("quote_id") ?? ""}
+                    onChange={(v) => setValue("quote_id", v || undefined)}
+                    placeholder="Opcional"
+                    searchPlaceholder="Buscar orçamento..."
                   />
                 </div>
               </div>

@@ -20,6 +20,8 @@ import {
   User,
   Building2,
   Package,
+  FileText,
+  Calculator,
   type LucideIcon,
 } from "lucide-react";
 import type {
@@ -86,6 +88,8 @@ export const TICKET_SUBJECT_META: Record<TicketSubjectType, DisplayMeta> = {
   customer: { label: "Cliente", tone: "primary", icon: User },
   carrier: { label: "Seguradora", tone: "warning", icon: Building2 },
   product: { label: "Produto", tone: "success", icon: Package },
+  contract: { label: "Contrato", tone: "primary", icon: FileText },
+  quote: { label: "Orçamento", tone: "warning", icon: Calculator },
 };
 
 export const CALENDAR_EVENT_META: Record<

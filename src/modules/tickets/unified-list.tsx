@@ -8,13 +8,15 @@ import {
   Eye,
   ListChecks,
   MoreHorizontal,
+  RotateCcw,
   SquareArrowOutUpRight,
   Trash2,
 } from "lucide-react";
-import { findCarrier, findCustomer, findProduct, findTaskColumn, findUser } from "@/services/lookup";
+import { findCarrier, findCustomer, findProduct, findTaskColumn } from "@/services/lookup";
 import { ticketsService } from "@/services/tickets.service";
 import { calendarService } from "@/services/calendar.service";
 import { taskBoardsService } from "@/services/task-boards.service";
+import { reopenEvent, reopenTask } from "@/services/finalize.service";
 import { InlineSelect, type InlineOption } from "@/components/common/inline-select";
 import { InlineDate } from "@/components/common/inline-date";
 import {
@@ -176,7 +178,22 @@ export function UnifiedList({
       cell: ({ row }) => {
         const r = row.original;
         const title = r.kind === "task" ? r.task.title : r.event.title;
-        return <span className="truncate font-medium">{title}</span>;
+        const finalized = r.kind === "task" ? r.task.status === "closed" : Boolean(r.event.finished);
+        return (
+          <span className="flex items-center gap-2">
+            <span className={cn("truncate font-medium", finalized && "text-muted-foreground line-through")}>
+              {title}
+            </span>
+            {finalized && (
+              <Badge
+                variant="outline"
+                className="shrink-0 border-success/30 bg-success/10 text-success"
+              >
+                Finalizada
+              </Badge>
+            )}
+          </span>
+        );
       },
     },
     when: {
@@ -231,7 +248,10 @@ export function UnifiedList({
         const r = row.original;
         const principal = r.kind === "task" ? r.task.assignee_id : r.event.owner_id;
         const others = (r.kind === "task" ? r.task.participant_ids : r.event.participant_ids) ?? [];
-        const ids = [principal, ...others].filter((id, i, arr) => id && arr.indexOf(id) === i);
+        // Count distinct envolvidos that aren't the responsável (for the "+N").
+        const extra = others.filter((id, i, arr) => id && id !== principal && arr.indexOf(id) === i)
+          .length;
+        const principalOpt = userOptions.find((o) => o.value === principal);
         return (
           <InlineSelect
             value={principal ?? ""}
@@ -243,8 +263,19 @@ export function UnifiedList({
               onChanged?.();
             }}
           >
-            {ids.length > 0 ? (
-              <AvatarStack ids={ids as string[]} />
+            {principalOpt ? (
+              <span className="flex items-center gap-1.5">
+                {principalOpt.leading}
+                <span className="truncate text-sm">{principalOpt.label}</span>
+                {extra > 0 && (
+                  <span
+                    className="rounded-full bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground"
+                    title={`+${extra} envolvido(s)`}
+                  >
+                    +{extra}
+                  </span>
+                )}
+              </span>
             ) : (
               <span className="text-sm text-muted-foreground">Atribuir</span>
             )}
@@ -397,8 +428,9 @@ export function UnifiedList({
     meta: { headClassName: "text-right pr-2", cellClassName: "pr-2" },
     cell: ({ row }) => {
       const r = row.original;
+      // Finalização vem do STATUS, não da etapa/coluna.
       const finalized =
-        r.kind === "task" ? findTaskColumn(r.task.column_id)?.is_terminal : r.event.finished;
+        r.kind === "task" ? r.task.status === "closed" : Boolean(r.event.finished);
       return (
         <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
           <DropdownMenu>
@@ -416,9 +448,19 @@ export function UnifiedList({
               <DropdownMenuItem onClick={() => onView(r)}>
                 <Eye /> Visualização rápida
               </DropdownMenuItem>
-              {!finalized && (
+              {!finalized ? (
                 <DropdownMenuItem onClick={() => onFinalize(r)}>
                   <CheckCircle2 /> Finalizar
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onClick={async () => {
+                    if (r.kind === "task") await reopenTask(r.task);
+                    else await reopenEvent(r.event);
+                    onChanged?.();
+                  }}
+                >
+                  <RotateCcw /> Reabrir
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
@@ -497,30 +539,5 @@ function StageBadge({ stage }: { stage: { name: string; color: StageColor } }) {
       <span className={cn("size-1.5 rounded-full", TONE_DOT_CLASS[stage.color])} />
       {stage.name}
     </span>
-  );
-}
-
-/** Overlapping avatars of the people involved (max 3 + "+N"). */
-function AvatarStack({ ids }: { ids: string[] }) {
-  const users = ids.map((id) => findUser(id)).filter(Boolean);
-  if (users.length === 0) return <span className="text-sm text-muted-foreground">—</span>;
-  const shown = users.slice(0, 3);
-  const extra = users.length - shown.length;
-  return (
-    <div className="flex -space-x-2">
-      {shown.map((u) => (
-        <UserAvatar
-          key={u!.id}
-          name={u!.name}
-          src={u!.avatar_url}
-          className="size-7 ring-2 ring-card"
-        />
-      ))}
-      {extra > 0 && (
-        <span className="flex size-7 items-center justify-center rounded-full bg-muted text-[11px] font-medium text-muted-foreground ring-2 ring-card">
-          +{extra}
-        </span>
-      )}
-    </div>
   );
 }

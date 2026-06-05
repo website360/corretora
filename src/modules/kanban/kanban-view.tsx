@@ -376,6 +376,7 @@ export function KanbanView() {
         open={leadDialog !== null}
         onOpenChange={(o) => !o && setLeadDialog(null)}
         defaultKind="lead"
+        lockKind
         defaultBoardId={activeBoardId}
         defaultColumnId={leadDialog?.columnId ?? null}
         onSaved={() => refetchCustomers()}

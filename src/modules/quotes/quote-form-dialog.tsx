@@ -11,6 +11,7 @@ import { productsService } from "@/services/products.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useSession } from "@/contexts/session-context";
 import { cn } from "@/lib/utils";
+import { formatMoneyInput, moneyToCents } from "@/utils/format";
 import type { Quote } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +36,7 @@ interface OptionRow {
 }
 
 const emptyRow = (): OptionRow => ({ carrier_id: "", product_id: "", premium: "", commission: "" });
-const toCents = (v: string) => (v ? Math.round(parseFloat(v.replace(",", ".")) * 100) : 0);
+const toCents = (v: string) => moneyToCents(v);
 
 export function QuoteFormDialog({
   open,
@@ -83,7 +84,7 @@ export function QuoteFormDialog({
             id: o.id,
             carrier_id: o.carrier_id ?? "",
             product_id: o.product_id ?? "",
-            premium: o.premium_cents ? (o.premium_cents / 100).toString() : "",
+            premium: o.premium_cents ? formatMoneyInput(String(o.premium_cents)) : "",
             commission: o.commission_percent?.toString() ?? "",
           })),
         );
@@ -248,10 +249,10 @@ export function QuoteFormDialog({
                       searchPlaceholder="Buscar produto..."
                     />
                     <Input
-                      inputMode="decimal"
+                      inputMode="numeric"
                       placeholder="Prêmio (R$)"
                       value={r.premium}
-                      onChange={(e) => setRow(i, { premium: e.target.value })}
+                      onChange={(e) => setRow(i, { premium: formatMoneyInput(e.target.value) })}
                     />
                     <Input
                       inputMode="decimal"

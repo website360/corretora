@@ -14,6 +14,27 @@ export function formatCompact(value: number) {
   return new Intl.NumberFormat("pt-BR", { notation: "compact" }).format(value);
 }
 
+/**
+ * Máscara de moeda para inputs: trata os dígitos digitados como CENTAVOS e
+ * devolve "1.234,56". Robusta para valores grandes — os separadores de milhar
+ * são gerados, nunca interpretados (evita o bug de parseFloat("1.234.56")).
+ */
+export function formatMoneyInput(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  const cents = parseInt(digits, 10);
+  return (cents / 100).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/** Converte o texto de um campo de moeda em centavos inteiros. */
+export function moneyToCents(value: string): number {
+  const digits = value.replace(/\D/g, "");
+  return digits ? parseInt(digits, 10) : 0;
+}
+
 export function formatPercent(value: number, fractionDigits = 1) {
   return `${value.toFixed(fractionDigits)}%`;
 }

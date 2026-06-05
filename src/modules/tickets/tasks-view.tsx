@@ -121,7 +121,6 @@ export function TasksView() {
   const router = useRouter();
   useDirectory();
   const taskBoards = useDirectoryStore((s) => s.taskBoards);
-  const taskColumns = useDirectoryStore((s) => s.taskColumns);
   const { taskView, setTaskView } = useUIStore();
   const isCalendar = taskView === "calendar";
 
@@ -299,12 +298,9 @@ export function TasksView() {
     boardFilter.length === 0 || (!!boardId && boardFilter.includes(boardId));
   const subjectOk = (subject?: string | null) =>
     subjectFilter.length === 0 || (!!subject && subjectFilter.includes(subject));
-  const terminalColumnIds = React.useMemo(
-    () => new Set(taskColumns.filter((c) => c.is_terminal).map((c) => c.id)),
-    [taskColumns],
-  );
-  const closedOk = (columnId?: string | null) =>
-    !hideClosed || !columnId || !terminalColumnIds.has(columnId);
+  // Finalização vem do status (tarefa) / finished (evento) — nunca da etapa.
+  const taskOpenOk = (t: Ticket) => !hideClosed || t.status !== "closed";
+  const eventOpenOk = (e: CalendarEvent) => !hideClosed || !e.finished;
 
   // The active time window. `null` while a custom range is incomplete (= no filter).
   const periodWindow = React.useMemo<{ from: Date; to: Date } | null>(() => {
@@ -348,7 +344,7 @@ export function TasksView() {
         : format(cursor, "MMMM yyyy", { locale: ptBR });
 
   const tickets = (showTasks ? localTickets : []).filter(
-    (t) => boardOk(t.board_id) && subjectOk(t.subject_type) && closedOk(t.column_id) && taskInWindow(t),
+    (t) => boardOk(t.board_id) && subjectOk(t.subject_type) && taskOpenOk(t) && taskInWindow(t),
   );
 
   // Apply the same people/attribution/tags/search filters to events.
@@ -376,12 +372,12 @@ export function TasksView() {
       if (tagFilter.length && !(e.tags ?? []).some((t) => tagFilter.includes(t))) return false;
       if (subjectFilter.length && !subjectFilter.includes(e.subject_type)) return false;
       if (!boardOk(e.board_id)) return false;
-      if (!closedOk(e.column_id)) return false;
+      if (!eventOpenOk(e)) return false;
       if (periodWindow && !inWindow(e.starts_at)) return false;
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localEvents, search, relations, personIds, tagFilter, subjectFilter, boardFilter, hideClosed, terminalColumnIds, periodWindow, inWindow]);
+  }, [localEvents, search, relations, personIds, tagFilter, subjectFilter, boardFilter, hideClosed, periodWindow, inWindow]);
 
   const events = showEvents ? filteredEvents : [];
 

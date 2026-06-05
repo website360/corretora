@@ -355,7 +355,9 @@ export type TicketSubjectType =
   | "internal" // interna (sem vínculo)
   | "customer" // cliente
   | "carrier" // seguradora
-  | "product"; // produto
+  | "product" // produto
+  | "contract" // contrato/apólice
+  | "quote"; // orçamento
 
 /** Customizable Kanban funnel stage (per company). */
 export type StageColor = "neutral" | "primary" | "success" | "warning" | "destructive";
@@ -427,6 +429,10 @@ export interface Ticket {
   carrier_id?: UUID | null;
   /** Linked insurance product (produto), optional. */
   product_id?: UUID | null;
+  /** Linked contract/policy (contrato), optional. */
+  contract_id?: UUID | null;
+  /** Linked quote (orçamento), optional. */
+  quote_id?: UUID | null;
   assignee_id: UUID | null;
   /** Who opened the task. */
   created_by?: UUID | null;

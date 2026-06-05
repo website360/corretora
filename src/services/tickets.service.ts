@@ -243,6 +243,8 @@ export const ticketsService = {
           | "customer_id"
           | "carrier_id"
           | "product_id"
+          | "contract_id"
+          | "quote_id"
           | "assignee_id"
           | "tags"
           | "due_at"
@@ -274,6 +276,8 @@ export const ticketsService = {
         customer_id: input.customer_id ?? null,
         carrier_id: input.carrier_id ?? null,
         product_id: input.product_id ?? null,
+        contract_id: input.contract_id ?? null,
+        quote_id: input.quote_id ?? null,
         assignee_id: input.assignee_id ?? null,
         created_by: me,
         participant_ids: input.participant_ids ?? [],
@@ -337,6 +341,8 @@ export const ticketsService = {
         customer_id: input.customer_id ?? null,
         carrier_id: input.carrier_id ?? null,
         product_id: input.product_id ?? null,
+        contract_id: input.contract_id ?? null,
+        quote_id: input.quote_id ?? null,
         board_id: boardId,
         column_id: columnId,
         assignee_id: input.assignee_id ?? null,
@@ -372,6 +378,8 @@ export const ticketsService = {
         | "customer_id"
         | "carrier_id"
         | "product_id"
+        | "contract_id"
+        | "quote_id"
         | "assignee_id"
         | "tags"
         | "due_at"
