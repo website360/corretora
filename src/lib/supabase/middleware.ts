@@ -6,11 +6,20 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 const PUBLIC_ROUTES = ["/login", "/cadastro", "/recuperar-senha", "/convite", "/auth"];
 
+// Páginas de marketing: públicas e visíveis para qualquer um (logado ou não),
+// sem redirecionar.
+const MARKETING_ROUTES = ["/lp"];
+
 // Server-to-server / token-auth endpoints (no user session).
 const PUBLIC_API_ROUTES = ["/api/billing/webhook", "/api/calendar/feed"];
 
+function isMarketing(pathname: string) {
+  return MARKETING_ROUTES.some((route) => pathname.startsWith(route));
+}
+
 function isPublic(pathname: string) {
   return (
+    isMarketing(pathname) ||
     PUBLIC_ROUTES.some((route) => pathname.startsWith(route)) ||
     PUBLIC_API_ROUTES.some((route) => pathname.startsWith(route))
   );
@@ -71,8 +80,8 @@ export async function updateSession(request: NextRequest) {
     return noSharedCache(NextResponse.redirect(url));
   }
 
-  // Authenticated users shouldn't see auth screens.
-  if (user && isPublic(pathname)) {
+  // Authenticated users shouldn't see auth screens (mas podem ver o marketing).
+  if (user && isPublic(pathname) && !isMarketing(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return noSharedCache(NextResponse.redirect(url));
