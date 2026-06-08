@@ -179,6 +179,12 @@ export interface Customer {
   board_id: UUID | null; // kanban board (leads)
   column_id: UUID | null; // kanban column (leads)
   next_contact_at?: ISODateString | null; // próximo follow-up (calendário de leads)
+  /** Portal do cliente: acesso logado habilitado? */
+  portal_enabled?: boolean;
+  /** auth.users vinculado (quando o portal está habilitado). */
+  auth_user_id?: UUID | null;
+  /** Exigir troca de senha no primeiro acesso ao portal. */
+  portal_must_change_password?: boolean;
   created_at: ISODateString;
 }
 

@@ -40,6 +40,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { EmptyState } from "@/components/common/empty-state";
 import { CustomerFormDialog } from "@/modules/customers/customer-form-dialog";
+import { CustomerPortalCard } from "@/modules/customers/customer-portal-card";
 
 const INTERACTION_ICON = {
   note: StickyNote,
@@ -234,6 +235,8 @@ export function CustomerProfile({ id }: { id: string }) {
               <div className="px-5 py-4 text-sm text-muted-foreground">{customer.notes}</div>
             </SectionCard>
           )}
+
+          <CustomerPortalCard customer={customer} onChange={refetch} />
         </TabsContent>
 
         <TabsContent value="contratos">

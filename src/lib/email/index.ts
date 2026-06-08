@@ -3,6 +3,7 @@ import { sendEmail, type SendEmailResult } from "./client";
 import { TeamInviteEmail } from "./templates/team-invite";
 import { BillingWelcomeEmail } from "./templates/billing-welcome";
 import { PaymentFailedEmail } from "./templates/payment-failed";
+import { PortalInviteEmail } from "./templates/portal-invite";
 
 /** Convite de equipe: novo membro define a própria senha e entra. */
 export function sendTeamInviteEmail(args: {
@@ -40,6 +41,26 @@ export function sendBillingWelcomeEmail(args: {
       name: args.name,
       planName: args.planName,
       manageUrl: args.manageUrl,
+    }),
+  });
+}
+
+/** Convite de acesso ao portal do cliente. */
+export function sendPortalInviteEmail(args: {
+  to: string;
+  name: string;
+  setPasswordUrl: string;
+  loginUrl: string;
+  companyName?: string;
+}): Promise<SendEmailResult> {
+  return sendEmail({
+    to: args.to,
+    subject: `Seu acesso ao portal${args.companyName ? ` da ${args.companyName}` : ""}`,
+    react: PortalInviteEmail({
+      name: args.name,
+      companyName: args.companyName,
+      setPasswordUrl: args.setPasswordUrl,
+      loginUrl: args.loginUrl,
     }),
   });
 }

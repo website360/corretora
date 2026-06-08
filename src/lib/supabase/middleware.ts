@@ -91,7 +91,31 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const isCustomer = user?.app_metadata?.user_type === "customer";
+  const inPortal = pathname === "/portal" || pathname.startsWith("/portal/");
+  const isPortalLogin = pathname.startsWith("/portal/login");
+  const redirectTo = (path: string) => {
+    const url = request.nextUrl.clone();
+    url.pathname = path;
+    url.search = "";
+    return noSharedCache(NextResponse.redirect(url));
+  };
 
+  // ── Realm do PORTAL DO CLIENTE (/portal) ──
+  if (inPortal) {
+    if (!user) return isPortalLogin ? noSharedCache(response) : redirectTo("/portal/login");
+    if (!isCustomer) return redirectTo("/dashboard"); // corretor não usa o portal
+    if (isPortalLogin) return redirectTo("/portal"); // cliente logado fora do login
+    return noSharedCache(response);
+  }
+
+  // Cliente autenticado só transita no /portal (+ marketing e callback de auth).
+  if (user && isCustomer) {
+    if (isMarketing(pathname) || pathname.startsWith("/auth")) return noSharedCache(response);
+    return redirectTo("/portal");
+  }
+
+  // ── Realm do CORRETOR (app) ──
   // Unauthenticated → push to login (preserving intended destination).
   if (!user && !isPublic(pathname)) {
     const url = request.nextUrl.clone();
@@ -102,9 +126,7 @@ export async function updateSession(request: NextRequest) {
 
   // Authenticated users shouldn't see auth screens (mas podem ver o marketing).
   if (user && isPublic(pathname) && !isMarketing(pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return noSharedCache(NextResponse.redirect(url));
+    return redirectTo("/dashboard");
   }
 
   return noSharedCache(response);
