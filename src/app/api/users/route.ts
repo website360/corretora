@@ -39,6 +39,13 @@ export async function POST(req: NextRequest) {
   if (!name || !email || !password) {
     return NextResponse.json({ error: "Dados incompletos." }, { status: 400 });
   }
+  // Só um super_admin pode criar outro super_admin.
+  if (role === "super_admin" && (profile as { role: string }).role !== "super_admin") {
+    return NextResponse.json(
+      { error: "Apenas um super admin pode criar outro super admin." },
+      { status: 403 },
+    );
+  }
 
   let admin;
   try {

@@ -90,6 +90,20 @@ export const usersService = {
     }
   },
 
+  async remove(id: string): Promise<void> {
+    if (env.useMocks) {
+      await sleep(300);
+      const idx = users.findIndex((u) => u.id === id);
+      if (idx !== -1) users.splice(idx, 1);
+      return;
+    }
+    const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error ?? "Falha ao remover usuário.");
+    }
+  },
+
   async update(id: string, patch: Partial<User>): Promise<User> {
     if (env.useMocks) {
       await sleep(320);

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Mail, ShieldCheck, UserPlus, Users } from "lucide-react";
+import { Mail, ShieldCheck, Trash2, UserPlus, Users } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,11 +16,8 @@ import { formatPhone, formatRelative } from "@/utils/format";
 import { InlineSelect } from "@/components/common/inline-select";
 import { ROLE_LABELS, type Role, type User } from "@/types/domain";
 
-const ROLE_OPTIONS = (["admin", "broker", "assistant"] as Role[]).map((r) => ({
-  value: r,
-  label: ROLE_LABELS[r],
-}));
 import { PageHeader } from "@/components/common/page-header";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { DataTable } from "@/components/common/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,7 +51,7 @@ const ROLE_VARIANT: Record<Role, "default" | "secondary" | "success" | "warning"
 const createSchema = z.object({
   name: z.string().min(3, "Informe o nome"),
   email: z.string().email("E-mail inválido"),
-  role: z.enum(["admin", "broker", "assistant"]),
+  role: z.enum(["super_admin", "admin", "broker", "assistant"]),
   password: z.string().min(6, "Mínimo de 6 caracteres"),
 });
 type CreateValues = z.infer<typeof createSchema>;
@@ -64,10 +61,37 @@ function generatePassword() {
 }
 
 export function UsersView() {
-  const { user } = useSession();
+  const { user, can } = useSession();
   const { data, loading, refetch } = useAsyncData(() => usersService.list());
   const { data: plans } = useAsyncData(() => plansService.list());
   const [open, setOpen] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<User | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
+
+  const isSuper = user.role === "super_admin";
+  const canManage = can(["admin", "super_admin"]);
+  const roleOptions = React.useMemo(
+    () =>
+      ((isSuper ? ["super_admin", "admin", "broker", "assistant"] : ["admin", "broker", "assistant"]) as Role[]).map(
+        (r) => ({ value: r, label: ROLE_LABELS[r] }),
+      ),
+    [isSuper],
+  );
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await usersService.remove(deleteTarget.id);
+      toast.success(`${deleteTarget.name} foi removido`);
+      setDeleteTarget(null);
+      refetch();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const userLimit = plans ? effectiveLimits(user.company, plans).maxUsers : null;
   const usersUsed = (data ?? []).length;
@@ -148,7 +172,7 @@ export function UsersView() {
       cell: ({ row }) => (
         <InlineSelect
           value={row.original.role}
-          options={ROLE_OPTIONS}
+          options={roleOptions}
           title="Trocar função"
           onChange={async (v) => {
             await usersService.update(row.original.id, { role: v as Role });
@@ -192,6 +216,32 @@ export function UsersView() {
         </InlineSelect>
       ),
     },
+    ...(canManage
+      ? [
+          {
+            id: "actions",
+            header: "",
+            meta: { headClassName: "w-px", cellClassName: "w-px pr-2" },
+            cell: ({ row }: { row: { original: User } }) => {
+              const u = row.original;
+              if (u.id === user.id || u.is_owner) return null;
+              return (
+                <div className="flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-destructive hover:text-destructive"
+                    title="Remover usuário"
+                    onClick={() => setDeleteTarget(u)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              );
+            },
+          } as ColumnDef<User>,
+        ]
+      : []),
   ];
 
   return (
@@ -250,6 +300,7 @@ export function UsersView() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    {isSuper && <SelectItem value="super_admin">Super Admin</SelectItem>}
                     <SelectItem value="admin">Admin da Empresa</SelectItem>
                     <SelectItem value="broker">Corretor</SelectItem>
                     <SelectItem value="assistant">Assistente</SelectItem>
@@ -275,6 +326,17 @@ export function UsersView() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title="Remover usuário"
+        description={`${deleteTarget?.name ?? "O usuário"} perderá o acesso ao sistema. Esta ação não pode ser desfeita.`}
+        confirmLabel="Remover"
+        variant="destructive"
+        loading={deleting}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
