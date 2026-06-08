@@ -1,5 +1,5 @@
 import "server-only";
-import type { CalendarEvent } from "@/types/domain";
+import type { CalendarEvent, Ticket } from "@/types/domain";
 
 /** Escapa texto conforme RFC 5545 (vírgula, ponto-e-vírgula, barra, quebra). */
 function esc(value: string): string {
@@ -59,8 +59,30 @@ function eventLines(e: CalendarEvent): string[] {
   return lines;
 }
 
+/** Tarefa com vencimento vira um compromisso de 30 min no calendário. */
+function taskLines(t: Ticket): string[] {
+  if (!t.due_at) return [];
+  const start = new Date(t.due_at);
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const lines = [
+    "BEGIN:VEVENT",
+    `UID:task-${t.id}@corretora`,
+    `DTSTAMP:${utcStamp(t.created_at)}`,
+    `DTSTART:${utcStamp(start.toISOString())}`,
+    `DTEND:${utcStamp(end.toISOString())}`,
+    `SUMMARY:${esc(`[Tarefa] ${t.title}`)}`,
+  ];
+  if (t.description) lines.push(`DESCRIPTION:${esc(t.description)}`);
+  lines.push("STATUS:CONFIRMED");
+  lines.push("END:VEVENT");
+  return lines;
+}
+
 /** Monta um documento iCalendar (VCALENDAR) assinável. */
-export function buildCalendar(events: CalendarEvent[], calName: string): string {
+export function buildCalendar(
+  data: { events: CalendarEvent[]; tasks: Ticket[] },
+  calName: string,
+): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -71,7 +93,8 @@ export function buildCalendar(events: CalendarEvent[], calName: string): string 
     `NAME:${esc(calName)}`,
     "X-PUBLISHED-TTL:PT1H",
     "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
-    ...events.flatMap(eventLines),
+    ...data.events.flatMap(eventLines),
+    ...data.tasks.flatMap(taskLines),
     "END:VCALENDAR",
   ];
   return lines.map(fold).join("\r\n") + "\r\n";

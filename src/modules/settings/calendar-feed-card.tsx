@@ -59,8 +59,8 @@ export function CalendarFeedCard() {
           <CalendarDays className="size-5 text-primary" /> Assinar a agenda
         </CardTitle>
         <CardDescription>
-          Veja seus eventos no Outlook, Google (Android) e Apple (iPhone). Eles atualizam
-          sozinhos. Este link é pessoal e secreto — não compartilhe.
+          Veja seus eventos e tarefas (com vencimento) no Outlook, Google (Android) e Apple
+          (iPhone). Atualizam sozinhos. Este link é pessoal e secreto — não compartilhe.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

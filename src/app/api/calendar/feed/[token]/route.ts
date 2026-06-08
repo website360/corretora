@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { buildCalendar } from "@/lib/ics";
 import { env } from "@/config/env";
-import type { CalendarEvent } from "@/types/domain";
+import type { CalendarEvent, Ticket } from "@/types/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -39,20 +39,37 @@ export async function GET(
   }
   const u = user as { id: string; name: string; company_id: string };
 
-  // Eventos da empresa em que o usuário é responsável, envolvido ou criador.
-  const { data, error } = await admin
-    .from("calendar_events")
-    .select("*")
-    .eq("company_id", u.company_id)
-    .is("deleted_at", null)
-    .or(`owner_id.eq.${u.id},created_by.eq.${u.id},participant_ids.cs.{${u.id}}`)
-    .order("starts_at", { ascending: true });
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const mine = `owner_id.eq.${u.id},created_by.eq.${u.id},participant_ids.cs.{${u.id}}`;
+  const mineTask = `assignee_id.eq.${u.id},created_by.eq.${u.id},participant_ids.cs.{${u.id}}`;
+
+  // Eventos + tarefas com vencimento em que o usuário é responsável,
+  // envolvido ou criador.
+  const [eventsRes, tasksRes] = await Promise.all([
+    admin
+      .from("calendar_events")
+      .select("*")
+      .eq("company_id", u.company_id)
+      .is("deleted_at", null)
+      .or(mine)
+      .order("starts_at", { ascending: true }),
+    admin
+      .from("tickets")
+      .select("*")
+      .eq("company_id", u.company_id)
+      .is("deleted_at", null)
+      .not("due_at", "is", null)
+      .or(mineTask),
+  ]);
+  if (eventsRes.error || tasksRes.error) {
+    const msg = (eventsRes.error ?? tasksRes.error)?.message ?? "Erro ao ler a agenda.";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 
   const ics = buildCalendar(
-    (data as CalendarEvent[]) ?? [],
+    {
+      events: (eventsRes.data as CalendarEvent[]) ?? [],
+      tasks: (tasksRes.data as Ticket[]) ?? [],
+    },
     `${env.appName} — Agenda de ${u.name}`,
   );
 
