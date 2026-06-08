@@ -159,6 +159,14 @@ export function LandingPage() {
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 30, restDelta: 0.001 });
   const [openFaq, setOpenFaq] = React.useState<number | null>(0);
+  const [scrolled, setScrolled] = React.useState(false);
+
+  React.useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -168,167 +176,227 @@ export function LandingPage() {
         className="fixed inset-x-0 top-0 z-50 h-1 origin-left bg-blue-600"
       />
 
-      {/* Navbar */}
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b1220]/80 backdrop-blur supports-[backdrop-filter]:bg-[#0b1220]/70">
-        <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
-          <Link href="#topo" className="flex items-center gap-2.5 text-white">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-900">
-              <Shield className="size-5" />
+      {/* Navbar flutuante */}
+      <motion.header
+        initial={{ y: -24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="fixed inset-x-0 top-0 z-40 px-4 pt-3 sm:pt-4"
+      >
+        <nav
+          className={cn(
+            "mx-auto flex h-14 max-w-5xl items-center justify-between rounded-2xl px-4 transition-all duration-300 sm:px-5",
+            scrolled
+              ? "border border-slate-200 bg-white/85 shadow-lg shadow-slate-900/5 backdrop-blur-xl"
+              : "border border-white/10 bg-white/[0.06] backdrop-blur-md",
+          )}
+        >
+          <Link
+            href="#topo"
+            className={cn(
+              "flex items-center gap-2.5 transition-colors",
+              scrolled ? "text-slate-900" : "text-white",
+            )}
+          >
+            <span className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-900 text-white">
+              <Shield className="size-4" />
             </span>
-            <span className="text-base font-semibold tracking-tight">{brand}</span>
+            <span className="text-sm font-semibold tracking-tight">{brand}</span>
           </Link>
-          <div className="hidden items-center gap-7 text-sm text-white/70 md:flex">
-            <a href="#recursos" className="transition-colors hover:text-white">Recursos</a>
-            <a href="#como-funciona" className="transition-colors hover:text-white">Como funciona</a>
-            <a href="#planos" className="transition-colors hover:text-white">Planos</a>
-            <a href="#faq" className="transition-colors hover:text-white">Dúvidas</a>
+          <div
+            className={cn(
+              "hidden items-center gap-7 text-sm transition-colors md:flex",
+              scrolled ? "text-slate-600" : "text-white/70",
+            )}
+          >
+            <a href="#recursos" className={cn("transition-colors", scrolled ? "hover:text-slate-900" : "hover:text-white")}>Recursos</a>
+            <a href="#como-funciona" className={cn("transition-colors", scrolled ? "hover:text-slate-900" : "hover:text-white")}>Como funciona</a>
+            <a href="#planos" className={cn("transition-colors", scrolled ? "hover:text-slate-900" : "hover:text-white")}>Planos</a>
+            <a href="#faq" className={cn("transition-colors", scrolled ? "hover:text-slate-900" : "hover:text-white")}>Dúvidas</a>
           </div>
           <div className="flex items-center gap-2">
             <Link
               href="/login"
-              className="hidden rounded-lg px-3.5 py-2 text-sm font-medium text-white/80 transition-colors hover:text-white sm:block"
+              className={cn(
+                "hidden rounded-lg px-3 py-1.5 text-sm font-medium transition-colors sm:block",
+                scrolled ? "text-slate-700 hover:text-slate-900" : "text-white/80 hover:text-white",
+              )}
             >
               Entrar
             </Link>
             <Link
               href="/cadastro"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-500 hover:shadow-blue-600/30"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition-all hover:bg-blue-500"
             >
               Começar grátis
             </Link>
           </div>
         </nav>
-      </header>
+      </motion.header>
 
       {/* Hero */}
-      <section id="topo" className="relative overflow-hidden bg-[#0b1220] text-white">
-        <div className="bg-grid pointer-events-none absolute inset-0 opacity-[0.06]" />
-        <motion.div
-          aria-hidden
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.4 }}
-          transition={{ duration: 1.2 }}
-          className="pointer-events-none absolute -right-40 top-0 size-[520px] rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, #2563eb, transparent 70%)" }}
-        />
-        <motion.div
-          aria-hidden
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.25 }}
-          transition={{ duration: 1.4, delay: 0.2 }}
-          className="pointer-events-none absolute -left-32 bottom-0 size-[420px] rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, #1e3a8a, transparent 70%)" }}
-        />
-
-        <div className="relative mx-auto grid max-w-6xl gap-12 px-5 pb-24 pt-16 lg:grid-cols-2 lg:items-center lg:pb-28 lg:pt-24">
-          <div>
-            <motion.span
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80"
-            >
-              <Sparkles className="size-3.5 text-blue-400" /> A plataforma completa para corretoras
-              de seguros
-            </motion.span>
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.05 }}
-              className="mt-5 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl"
-            >
-              Sua corretora organizada,{" "}
-              <span className="bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">
-                vendendo e renovando mais
-              </span>
-              .
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.12 }}
-              className="mt-5 max-w-xl text-lg text-white/70"
-            >
-              Clientes, apólices, atendimento, agenda e funil de vendas em um só lugar. Pare de
-              perder renovações e tempo com planilhas — gerencie tudo com a sofisticação de um
-              produto enterprise.
-            </motion.p>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.18 }}
-              className="mt-8 flex flex-wrap items-center gap-3"
-            >
-              <Link
-                href="/cadastro"
-                className="group inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow-xl shadow-blue-600/25 transition-all hover:bg-blue-500"
-              >
-                Começar grátis
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-              </Link>
-              <a
-                href={WHATSAPP_LINK}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/10"
-              >
-                <MessageCircle className="size-4 text-emerald-400" /> Falar com vendas
-              </a>
-            </motion.div>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.28 }}
-              className="mt-4 flex items-center gap-2 text-sm text-white/50"
-            >
-              <CheckCircle2 className="size-4 text-emerald-400" /> Teste grátis · sem cartão de crédito
-            </motion.p>
-          </div>
-
-          {/* Mockup animado */}
+      <section id="topo" className="relative flex min-h-screen flex-col overflow-hidden bg-[#070b15] text-white">
+        {/* Fundo: aurora animada + grid + vinheta */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="bg-grid absolute inset-0 opacity-[0.05]" />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="relative"
+            className="absolute -top-40 left-1/4 size-[640px] rounded-full blur-[120px]"
+            style={{ background: "radial-gradient(circle, rgba(37,99,235,0.55), transparent 70%)" }}
+            animate={{ x: [0, 60, 0], y: [0, 40, 0] }}
+            transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute -right-24 top-1/4 size-[520px] rounded-full blur-[120px]"
+            style={{ background: "radial-gradient(circle, rgba(99,102,241,0.45), transparent 70%)" }}
+            animate={{ x: [0, -50, 0], y: [0, 30, 0] }}
+            transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute bottom-10 left-1/3 size-[460px] rounded-full blur-[120px]"
+            style={{ background: "radial-gradient(circle, rgba(14,165,233,0.4), transparent 70%)" }}
+            animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
+            transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_25%,#070b15_85%)]" />
+        </div>
+
+        {/* Conteúdo */}
+        <div className="relative mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-5 pt-32 text-center">
+          <motion.a
+            href="#recursos"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-medium text-white/80 backdrop-blur transition-colors hover:bg-white/10"
           >
-            <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-2 shadow-2xl backdrop-blur">
-              <div className="rounded-xl bg-[#0e1626] p-4">
-                <div className="mb-3 flex items-center gap-1.5">
+            <Sparkles className="size-3.5 text-blue-400" /> A plataforma completa para corretoras de
+            seguros
+          </motion.a>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+            className="mt-6 text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl"
+          >
+            A plataforma que faz sua{" "}
+            <span className="bg-gradient-to-r from-blue-300 via-sky-300 to-indigo-300 bg-clip-text text-transparent">
+              corretora crescer
+            </span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            className="mt-6 max-w-2xl text-lg text-white/65 sm:text-xl"
+          >
+            Clientes, apólices, atendimento e vendas em um só lugar. Pare de perder renovações e
+            tempo com planilhas — com a sofisticação de um produto enterprise.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.22 }}
+            className="mt-9 flex flex-wrap items-center justify-center gap-3"
+          >
+            <Link
+              href="/cadastro"
+              className="group inline-flex items-center gap-2 rounded-xl bg-blue-600 px-7 py-4 text-base font-semibold text-white shadow-[0_8px_30px_rgba(37,99,235,0.4)] transition-all hover:-translate-y-0.5 hover:bg-blue-500"
+            >
+              Começar grátis
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+            <a
+              href={WHATSAPP_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-7 py-4 text-base font-semibold text-white backdrop-blur transition-colors hover:bg-white/10"
+            >
+              <MessageCircle className="size-4 text-emerald-400" /> Falar com vendas
+            </a>
+          </motion.div>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.32 }}
+            className="mt-5 flex items-center gap-2 text-sm text-white/45"
+          >
+            <CheckCircle2 className="size-4 text-emerald-400" /> Teste grátis · sem cartão de crédito
+          </motion.p>
+
+          {/* Mockup espiando */}
+          <motion.div
+            initial={{ opacity: 0, y: 60, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.9, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="relative mt-16 w-full max-w-5xl"
+          >
+            <div className="absolute -inset-x-10 -top-8 bottom-0 -z-10 rounded-full bg-blue-600/20 blur-[90px]" />
+            <div className="overflow-hidden rounded-t-2xl border border-white/10 bg-white/[0.04] p-2 shadow-2xl backdrop-blur">
+              <div className="rounded-t-xl bg-[#0c1322]">
+                <div className="flex items-center gap-1.5 border-b border-white/5 px-4 py-3">
                   <span className="size-2.5 rounded-full bg-red-400/70" />
                   <span className="size-2.5 rounded-full bg-amber-400/70" />
                   <span className="size-2.5 rounded-full bg-emerald-400/70" />
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {STATS.slice(0, 3).map((s, i) => (
-                    <motion.div
-                      key={s.label}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5 + i * 0.1 }}
-                      className="rounded-lg border border-white/5 bg-white/5 p-3"
-                    >
-                      <p className="text-lg font-bold text-blue-300">{s.value}</p>
-                      <p className="mt-0.5 text-[10px] leading-tight text-white/50">{s.label}</p>
-                    </motion.div>
-                  ))}
-                </div>
-                <div className="mt-3 space-y-2">
-                  {["Apólice renovada — Auto", "Novo lead — Vida", "Tarefa concluída"].map((t, i) => (
-                    <motion.div
-                      key={t}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.8 + i * 0.12 }}
-                      className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2"
-                    >
-                      <CheckCircle2 className="size-4 shrink-0 text-emerald-400" />
-                      <span className="text-xs text-white/70">{t}</span>
-                    </motion.div>
-                  ))}
+                <div className="grid grid-cols-[140px_1fr] text-left">
+                  {/* sidebar */}
+                  <div className="hidden space-y-1 border-r border-white/5 p-3 sm:block">
+                    {[LayoutDashboard, KanbanSquare, UserSquare2, ShieldCheck, CalendarDays, BarChart3].map(
+                      (Icon, i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            "flex items-center gap-2 rounded-lg px-2.5 py-1.5",
+                            i === 0 ? "bg-blue-600/20 text-blue-200" : "text-white/40",
+                          )}
+                        >
+                          <Icon className="size-3.5" />
+                          <span className="h-2 w-12 rounded bg-white/15" />
+                        </div>
+                      ),
+                    )}
+                  </div>
+                  {/* conteúdo */}
+                  <div className="space-y-3 p-4">
+                    <div className="grid grid-cols-3 gap-3">
+                      {STATS.slice(0, 3).map((s) => (
+                        <div key={s.label} className="rounded-lg border border-white/5 bg-white/5 p-3">
+                          <p className="text-base font-bold text-blue-300">{s.value}</p>
+                          <p className="mt-0.5 text-[10px] leading-tight text-white/40">{s.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex h-24 items-end gap-2 rounded-lg border border-white/5 bg-white/[0.03] p-3">
+                      {[40, 65, 50, 80, 60, 95, 72].map((h, i) => (
+                        <motion.span
+                          key={i}
+                          initial={{ height: 0 }}
+                          animate={{ height: `${h}%` }}
+                          transition={{ delay: 0.7 + i * 0.06, duration: 0.5 }}
+                          className="flex-1 rounded-t bg-gradient-to-t from-blue-600 to-sky-400"
+                        />
+                      ))}
+                    </div>
+                    <div className="space-y-1.5">
+                      {["Apólice renovada — Auto", "Novo lead — Vida"].map((t) => (
+                        <div
+                          key={t}
+                          className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2"
+                        >
+                          <CheckCircle2 className="size-3.5 shrink-0 text-emerald-400" />
+                          <span className="text-xs text-white/60">{t}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#070b15] to-transparent" />
           </motion.div>
         </div>
       </section>
