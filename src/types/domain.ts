@@ -437,6 +437,16 @@ export interface DefaultProduct {
   created_at: ISODateString;
 }
 
+/** System-wide default tag — new companies are seeded from these. */
+export interface DefaultTag {
+  id: UUID;
+  name: string;
+  color: StageColor;
+  modules: TagModule[];
+  position: number;
+  created_at: ISODateString;
+}
+
 export interface Ticket {
   id: UUID;
   company_id: UUID;

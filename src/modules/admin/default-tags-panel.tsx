@@ -1,0 +1,289 @@
+"use client";
+
+import * as React from "react";
+import { Pencil, Plus, RefreshCw, Tag as TagIcon, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { defaultTagsService } from "@/services/default-tags.service";
+import { useAsyncData } from "@/hooks/use-async-data";
+import { TAG_MODULE_META, TONE_DOT_CLASS } from "@/config/domain";
+import { cn } from "@/lib/utils";
+import type { DefaultTag, StageColor, TagModule } from "@/types/domain";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { EmptyState } from "@/components/common/empty-state";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+const COLORS: { value: StageColor; label: string }[] = [
+  { value: "neutral", label: "Cinza" },
+  { value: "primary", label: "Azul" },
+  { value: "success", label: "Verde" },
+  { value: "warning", label: "Amarelo" },
+  { value: "destructive", label: "Vermelho" },
+];
+
+const MODULE_OPTIONS = (Object.keys(TAG_MODULE_META) as TagModule[]).map((k) => ({
+  value: k,
+  label: TAG_MODULE_META[k].label,
+}));
+
+export function DefaultTagsPanel() {
+  const { data, loading, refetch } = useAsyncData(() => defaultTagsService.list());
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<DefaultTag | null>(null);
+  const [deleting, setDeleting] = React.useState<DefaultTag | null>(null);
+  const [syncing, setSyncing] = React.useState(false);
+
+  function openNew() {
+    setEditing(null);
+    setDialogOpen(true);
+  }
+  function openEdit(tag: DefaultTag) {
+    setEditing(tag);
+    setDialogOpen(true);
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    try {
+      await defaultTagsService.remove(deleting.id);
+      toast.success("Tag padrão excluída");
+      setDeleting(null);
+      refetch();
+    } catch {
+      toast.error("Não foi possível excluir.");
+    }
+  }
+
+  async function syncAll() {
+    setSyncing(true);
+    try {
+      await defaultTagsService.syncToAllCompanies();
+      toast.success("Tags padrão aplicadas a todas as empresas.");
+    } catch {
+      toast.error("Não foi possível aplicar a todas as empresas.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Tags padrão do sistema. Toda empresa nova já nasce com estas etiquetas. Ao adicionar uma
+          tag nova, ela é aplicada também às empresas já existentes (sem duplicar); use o botão ao
+          lado para reaplicar quando quiser.
+        </p>
+        <Button variant="outline" onClick={syncAll} loading={syncing}>
+          <RefreshCw /> Aplicar a todas as empresas
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <div>
+            <CardTitle>Etiquetas padrão</CardTitle>
+            <CardDescription>
+              Nome, cor e em quais módulos cada tag fica disponível.
+            </CardDescription>
+          </div>
+          <Button onClick={openNew}>
+            <Plus /> Nova tag
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 rounded-lg" />
+              ))}
+            </div>
+          ) : (data ?? []).length === 0 ? (
+            <EmptyState
+              icon={TagIcon}
+              title="Nenhuma tag padrão"
+              description="Crie a primeira tag que toda nova corretora vai receber."
+            />
+          ) : (
+            <ul className="divide-y divide-border">
+              {(data ?? []).map((tag) => (
+                <li key={tag.id} className="flex items-center gap-3 py-3">
+                  <span className={cn("size-3 shrink-0 rounded-full", TONE_DOT_CLASS[tag.color])} />
+                  <span className="font-medium">{tag.name}</span>
+                  <div className="ml-2 flex flex-wrap gap-1">
+                    {tag.modules.length === 0 ? (
+                      <Badge variant="secondary">Todos os módulos</Badge>
+                    ) : (
+                      tag.modules.map((m) => (
+                        <Badge key={m} variant="outline">
+                          {TAG_MODULE_META[m].label}
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                  <div className="ml-auto flex items-center gap-1">
+                    <Button variant="ghost" size="icon-sm" onClick={() => openEdit(tag)}>
+                      <Pencil />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDeleting(tag)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <DefaultTagDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        tag={editing}
+        onSaved={refetch}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        title="Excluir tag padrão"
+        description={`A tag "${deleting?.name ?? ""}" deixa de ser sugerida a novas empresas. As tags já criadas nas corretoras não são afetadas.`}
+        confirmLabel="Excluir"
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
+    </div>
+  );
+}
+
+function DefaultTagDialog({
+  open,
+  onOpenChange,
+  tag,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  tag: DefaultTag | null;
+  onSaved: () => void;
+}) {
+  const editing = Boolean(tag);
+  const [name, setName] = React.useState("");
+  const [color, setColor] = React.useState<StageColor>("primary");
+  const [modules, setModules] = React.useState<TagModule[]>([]);
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) {
+      setName(tag?.name ?? "");
+      setColor(tag?.color ?? "primary");
+      setModules(tag?.modules ?? []);
+    }
+  }, [open, tag]);
+
+  async function save() {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      if (editing) {
+        await defaultTagsService.update(tag!.id, { name: name.trim(), color, modules });
+        toast.success("Tag padrão atualizada");
+      } else {
+        await defaultTagsService.create({ name: name.trim(), color, modules });
+        // Aplica imediatamente às empresas existentes (sem duplicar).
+        await defaultTagsService.syncToAllCompanies();
+        toast.success("Tag padrão criada e aplicada às empresas");
+      }
+      onOpenChange(false);
+      onSaved();
+    } catch (e) {
+      toast.error((e as Error).message ?? "Erro ao salvar a tag");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{editing ? "Editar tag padrão" : "Nova tag padrão"}</DialogTitle>
+          <DialogDescription>Defina o nome, a cor e o escopo da tag.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="dtag-name">Nome</Label>
+            <Input
+              id="dtag-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex.: urgente"
+              autoFocus
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Cor</Label>
+            <div className="flex gap-2">
+              {COLORS.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  title={c.label}
+                  onClick={() => setColor(c.value)}
+                  className={cn(
+                    "flex size-9 items-center justify-center rounded-lg border-2 transition-colors",
+                    color === c.value
+                      ? "border-foreground"
+                      : "border-transparent hover:border-border",
+                  )}
+                >
+                  <span className={cn("size-4 rounded-full", TONE_DOT_CLASS[c.value])} />
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Disponível em</Label>
+            <MultiSelect
+              options={MODULE_OPTIONS}
+              values={modules}
+              onChange={(v) => setModules(v as TagModule[])}
+              placeholder="Todos os módulos"
+              searchPlaceholder="Buscar módulo..."
+              triggerClassName="w-full"
+            />
+            <p className="text-xs text-muted-foreground">
+              Deixe vazio para a tag valer em todos os módulos.
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={save} loading={saving} disabled={!name.trim()}>
+            {editing ? "Salvar" : "Criar tag"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

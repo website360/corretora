@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/common/page-header";
 import { DataTable } from "@/components/common/data-table";
 import { DefaultCatalogPanel } from "@/modules/admin/default-catalog-panel";
+import { DefaultTagsPanel } from "@/modules/admin/default-tags-panel";
 import { SystemSettingsPanel } from "@/modules/admin/system-settings-panel";
 import { EmptyState } from "@/components/common/empty-state";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
@@ -43,7 +44,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type Tab = "overview" | "companies" | "users" | "plans" | "payments" | "catalog" | "system";
+type Tab =
+  | "overview"
+  | "companies"
+  | "users"
+  | "plans"
+  | "payments"
+  | "catalog"
+  | "tags"
+  | "system";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Visão geral" },
@@ -52,6 +61,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "plans", label: "Planos & Valores" },
   { id: "payments", label: "Pagamentos" },
   { id: "catalog", label: "Catálogo padrão" },
+  { id: "tags", label: "Tags padrão" },
   { id: "system", label: "Sistema" },
 ];
 
@@ -262,6 +272,8 @@ export function SaasAdminView() {
         )}
 
         {tab === "catalog" && <DefaultCatalogPanel />}
+
+        {tab === "tags" && <DefaultTagsPanel />}
 
         {tab === "system" && <SystemSettingsPanel />}
       </div>
