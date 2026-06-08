@@ -7,11 +7,13 @@ import { customersService } from "@/services/customers.service";
 import { productsService } from "@/services/products.service";
 import { contractsService } from "@/services/contracts.service";
 import { useAsyncData } from "@/hooks/use-async-data";
+import { useDirectory, useDirectoryStore } from "@/stores/directory-store";
 import { SERVICE_CHANNEL_META } from "@/config/domain";
+import { extractMentionIds } from "@/lib/mentions";
 import type { ServiceChannel, ServiceRecord } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { MentionTextarea } from "@/components/common/mention-textarea";
 import { Combobox } from "@/components/ui/combobox";
 import {
   Dialog,
@@ -48,6 +50,8 @@ export function AtendimentoFormDialog({
   onSaved?: () => void;
 }) {
   const editing = Boolean(record);
+  useDirectory();
+  const directoryUsers = useDirectoryStore((s) => s.users);
   const { data: customers } = useAsyncData(() => customersService.list());
   const { data: products } = useAsyncData(() => productsService.list());
   const { data: contracts } = useAsyncData(() => contractsService.list());
@@ -101,6 +105,7 @@ export function AtendimentoFormDialog({
       contract_id: contractId === NONE ? null : contractId,
       channel,
       notes: notes.trim(),
+      mentions: extractMentionIds(notes, directoryUsers),
     };
     try {
       if (editing) await serviceRecordsService.update(record!.id, payload);
@@ -187,11 +192,11 @@ export function AtendimentoFormDialog({
 
           <div className="space-y-2">
             <Label>Atendimento *</Label>
-            <Textarea
+            <MentionTextarea
               rows={4}
-              placeholder="Ex.: Atendi o cliente por WhatsApp e informei os dados do seguro de vida."
+              placeholder="Ex.: Atendi o cliente por WhatsApp… (use @ para mencionar a equipe)"
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={setNotes}
               autoFocus
             />
           </div>

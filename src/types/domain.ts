@@ -227,6 +227,8 @@ export interface ServiceRecord {
   contract_id: UUID | null;
   channel: ServiceChannel;
   notes: string;
+  /** Usuários mencionados (@) no texto do atendimento. */
+  mentions?: UUID[];
   author_id: UUID | null;
   created_at: ISODateString;
 }

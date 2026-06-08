@@ -219,13 +219,14 @@ export function ContractProfile({ id }: { id: string }) {
         <AtendimentoChat
           records={records ?? []}
           fixedContractId={contract.id}
-          onSend={async ({ channel, notes }) => {
+          onSend={async ({ channel, notes, mentions }) => {
             await serviceRecordsService.create({
               customer_id: contract.customer_id,
               contract_id: contract.id,
               product_id: contract.product_id,
               channel,
               notes,
+              mentions,
             });
             refetchRecords();
           }}

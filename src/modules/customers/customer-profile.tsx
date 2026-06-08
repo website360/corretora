@@ -385,7 +385,7 @@ function ServiceTab({ customerId }: { customerId: string }) {
       loading={loading}
       contractOptions={contractOptions}
       contractLabel={contractLabel}
-      onSend={async ({ channel, notes, contract_id }) => {
+      onSend={async ({ channel, notes, contract_id, mentions }) => {
         const contract = (contracts ?? []).find((c) => c.id === contract_id);
         await serviceRecordsService.create({
           customer_id: customerId,
@@ -393,6 +393,7 @@ function ServiceTab({ customerId }: { customerId: string }) {
           product_id: contract?.product_id ?? null,
           channel,
           notes,
+          mentions,
         });
         refetch();
       }}

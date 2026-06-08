@@ -61,6 +61,7 @@ export const serviceRecordsService = {
       await sleep(300);
       const record: ServiceRecord = {
         ...input,
+        mentions: input.mentions ?? [],
         id: uid("sr"),
         company_id: getCurrentCompanyId(),
         author_id: getCurrentUserId(),
@@ -72,7 +73,12 @@ export const serviceRecordsService = {
     const sb = getSupabaseBrowserClient();
     const { data, error } = await sb
       .from("service_records")
-      .insert({ ...input, company_id: getCurrentCompanyId(), author_id: getCurrentUserId() })
+      .insert({
+        ...input,
+        mentions: input.mentions ?? [],
+        company_id: getCurrentCompanyId(),
+        author_id: getCurrentUserId(),
+      })
       .select("*")
       .single();
     if (error) throw error;

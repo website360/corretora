@@ -4,14 +4,15 @@ import * as React from "react";
 import { Headset, Send } from "lucide-react";
 import { toast } from "sonner";
 import { findProduct, findUser } from "@/services/lookup";
-import { useDirectory } from "@/stores/directory-store";
+import { useDirectory, useDirectoryStore } from "@/stores/directory-store";
 import { SERVICE_CHANNEL_META, TONE_BADGE_CLASS } from "@/config/domain";
 import { formatSmartDate } from "@/utils/format";
+import { extractMentionIds, renderWithMentions } from "@/lib/mentions";
 import { cn } from "@/lib/utils";
 import type { ServiceChannel, ServiceRecord } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+import { MentionTextarea } from "@/components/common/mention-textarea";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { EmptyState } from "@/components/common/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,9 +52,11 @@ export function AtendimentoChat({
     channel: ServiceChannel;
     notes: string;
     contract_id: string | null;
+    mentions: string[];
   }) => Promise<void>;
 }) {
   useDirectory(); // ensure products are loaded so the service tag resolves
+  const users = useDirectoryStore((s) => s.users);
   const [channel, setChannel] = React.useState<ServiceChannel>("whatsapp");
   const [contractId, setContractId] = React.useState<string>(GENERIC);
   const [filter, setFilter] = React.useState<string>("all"); // all | generic | <contractId>
@@ -82,6 +85,7 @@ export function AtendimentoChat({
         channel,
         notes: text.trim(),
         contract_id: fixedContractId ?? (contractId === GENERIC ? null : contractId),
+        mentions: extractMentionIds(text, users),
       });
       setText("");
     } catch {
@@ -155,7 +159,7 @@ export function AtendimentoChat({
                     {author?.name ?? "Atendente"} · {formatSmartDate(r.created_at)}
                   </span>
                 </div>
-                <p className="whitespace-pre-wrap text-sm">{r.notes}</p>
+                <p className="whitespace-pre-wrap text-sm">{renderWithMentions(r.notes, users)}</p>
               </div>
             );
           })
@@ -195,15 +199,16 @@ export function AtendimentoChat({
           )}
         </div>
         <div className="flex items-end gap-2">
-          <Textarea
+          <MentionTextarea
             rows={2}
-            placeholder="Ex.: Atendi o cliente por WhatsApp e informei os dados do seguro de vida."
+            placeholder="Ex.: Atendi o cliente por WhatsApp… (use @ para mencionar a equipe)"
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={setText}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
             }}
-            className="flex-1 resize-none"
+            wrapperClassName="flex-1"
+            className="resize-none"
           />
           <Button onClick={send} loading={sending} disabled={!text.trim()}>
             <Send className="size-4" /> Enviar
