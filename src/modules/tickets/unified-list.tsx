@@ -318,26 +318,39 @@ export function UnifiedList({
     },
     link: {
       id: "link",
-      header: "Menções",
+      header: "Categorias",
       cell: ({ row }) => {
         const r = row.original;
         const t = r.kind === "task" ? r.task : null;
         const e = r.kind === "event" ? r.event : null;
-        const chips = [
-          findCustomer(t?.customer_id ?? e?.customer_id)?.name,
-          findCarrier(t?.carrier_id ?? e?.carrier_id)?.name,
-          findProduct(t?.product_id ?? e?.product_id)?.name,
-          (t?.contract_id ?? e?.contract_id) ? "Contrato" : null,
-          (t?.quote_id ?? e?.quote_id) ? "Orçamento" : null,
-        ].filter(Boolean) as string[];
-        if (chips.length === 0) return <span className="text-sm text-muted-foreground">—</span>;
+        const customer = findCustomer(t?.customer_id ?? e?.customer_id)?.name;
+        const carrier = findCarrier(t?.carrier_id ?? e?.carrier_id)?.name;
+        const product = findProduct(t?.product_id ?? e?.product_id)?.name;
+        const items: { title: string }[] = [
+          customer ? { title: `Cliente: ${customer}` } : null,
+          carrier ? { title: `Seguradora: ${carrier}` } : null,
+          product ? { title: `Produto: ${product}` } : null,
+          (t?.contract_id ?? e?.contract_id) ? { title: "Contrato" } : null,
+          (t?.quote_id ?? e?.quote_id) ? { title: "Orçamento" } : null,
+        ].filter(Boolean) as { title: string }[];
+        if (items.length === 0) return <span className="text-sm text-muted-foreground">—</span>;
         return (
           <div className="flex flex-wrap gap-1">
-            {chips.map((c, i) => (
-              <Badge key={i} variant="outline" className="font-normal">
-                {c}
-              </Badge>
-            ))}
+            {items.map((item, i) => {
+              // Inicial = 1ª letra do nome (ignora o prefixo "Tipo: ").
+              const name = item.title.includes(": ")
+                ? item.title.split(": ")[1]!
+                : item.title;
+              return (
+                <span
+                  key={i}
+                  title={item.title}
+                  className="inline-flex size-6 cursor-default items-center justify-center rounded-full border bg-muted text-[11px] font-medium uppercase text-muted-foreground"
+                >
+                  {name.charAt(0)}
+                </span>
+              );
+            })}
           </div>
         );
       },

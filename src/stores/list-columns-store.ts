@@ -7,7 +7,7 @@ export const LIST_COLUMNS = [
   { id: "id", label: "ID" },
   { id: "title", label: "Título" },
   { id: "priority", label: "Prioridade" },
-  { id: "link", label: "Vínculo" },
+  { id: "link", label: "Categorias" },
   { id: "when", label: "Data" },
   { id: "tags", label: "Etiquetas" },
   { id: "stage", label: "Etapa" },
