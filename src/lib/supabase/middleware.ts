@@ -46,8 +46,28 @@ function noSharedCache<T extends NextResponse>(response: T): T {
  * protected routes. When mocks are enabled it becomes a no-op so the
  * product is fully navigable without a backend.
  */
+// Host dedicado à landing page de vendas: serve a LP na raiz "/".
+// Configurável por env; padrão = subdomínio do cliente.
+const MARKETING_HOST = (
+  process.env.MARKETING_HOST || "lp-corretora.agenciamay.com.br"
+).toLowerCase();
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
+
+  // No host de marketing, a raiz mostra a landing page (/lp) sem redirect.
+  const host = (
+    request.headers.get("x-forwarded-host") ||
+    request.headers.get("host") ||
+    ""
+  )
+    .split(":")[0]!
+    .toLowerCase();
+  if (host === MARKETING_HOST && request.nextUrl.pathname === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/lp";
+    return noSharedCache(NextResponse.rewrite(url));
+  }
 
   if (env.useMocks) return response;
 
