@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Paperclip, Send, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { MentionTextarea } from "@/components/common/mention-textarea";
 
 const EMOJIS = ["👍", "🙏", "✅", "🎉", "🔥", "😊", "📎", "⚠️"];
 
@@ -43,10 +43,10 @@ export function TicketComposer({ onSend }: TicketComposerProps) {
 
   return (
     <div className="rounded-xl border bg-card transition-colors">
-      <Textarea
+      <MentionTextarea
         ref={ref}
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={setBody}
         onKeyDown={onKeyDown}
         placeholder="Escreva uma mensagem para a equipe (use @ para mencionar)..."
         className="min-h-[88px] resize-none border-0 shadow-none focus-visible:ring-0"

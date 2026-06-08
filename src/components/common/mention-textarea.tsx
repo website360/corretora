@@ -21,17 +21,22 @@ interface MentionTextareaProps extends Omit<TextareaProps, "value" | "onChange">
  * sistema; selecionar insere "@Nome ". As menções são resolvidas depois com
  * `extractMentionIds` (src/lib/mentions).
  */
-export function MentionTextarea({
-  value,
-  onChange,
-  onKeyDown,
-  className,
-  wrapperClassName,
-  ...rest
-}: MentionTextareaProps) {
+export const MentionTextarea = React.forwardRef<HTMLTextAreaElement, MentionTextareaProps>(
+  function MentionTextarea(
+    { value, onChange, onKeyDown, className, wrapperClassName, ...rest },
+    forwardedRef,
+  ) {
   useDirectory();
   const users = useDirectoryStore((s) => s.users);
   const ref = React.useRef<HTMLTextAreaElement>(null);
+  const setRefs = React.useCallback(
+    (el: HTMLTextAreaElement | null) => {
+      ref.current = el;
+      if (typeof forwardedRef === "function") forwardedRef(el);
+      else if (forwardedRef) forwardedRef.current = el;
+    },
+    [forwardedRef],
+  );
 
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -121,7 +126,7 @@ export function MentionTextarea({
   return (
     <div className={cn("relative", wrapperClassName)}>
       <Textarea
-        ref={ref}
+        ref={setRefs}
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
@@ -154,4 +159,5 @@ export function MentionTextarea({
       )}
     </div>
   );
-}
+  },
+);
