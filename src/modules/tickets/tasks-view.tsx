@@ -16,6 +16,8 @@ import {
   Link2,
   List,
   Plus,
+  RotateCcw,
+  Save,
   Search,
   Shapes,
   Tag as TagIcon,
@@ -46,6 +48,12 @@ import { tagsService } from "@/services/tags.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useDirectory, useDirectoryStore } from "@/stores/directory-store";
 import { useUIStore } from "@/stores/ui-store";
+import { useSession } from "@/contexts/session-context";
+import {
+  loadTaskFilters,
+  saveTaskFilters,
+  clearTaskFilters,
+} from "@/lib/task-filters-storage";
 import { TICKET_PRIORITY_META, TICKET_SUBJECT_META } from "@/config/domain";
 import { eventCode } from "@/utils/format";
 import { cn } from "@/lib/utils";
@@ -119,6 +127,7 @@ const SUBJECT_OPTIONS = Object.entries(TICKET_SUBJECT_META).map(([value, m]) => 
 export function TasksView() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user } = useSession();
   useDirectory();
   const taskBoards = useDirectoryStore((s) => s.taskBoards);
   const { taskView, setTaskView } = useUIStore();
@@ -143,6 +152,63 @@ export function TasksView() {
   const [newTaskType, setNewTaskType] = React.useState<TicketSubjectType>("internal");
   const [newEventOpen, setNewEventOpen] = React.useState(false);
   const [newEventType, setNewEventType] = React.useState<TicketSubjectType>("internal");
+
+  // Restaura os filtros salvos pelo usuário ao abrir a tela (uma vez).
+  const hydrated = React.useRef(false);
+  React.useEffect(() => {
+    if (hydrated.current || !user.id) return;
+    hydrated.current = true;
+    const saved = loadTaskFilters(user.id);
+    if (!saved) return;
+    setSearch(saved.search ?? "");
+    setPriorities((saved.priorities ?? []) as TicketPriority[]);
+    setRelations((saved.relations ?? ["assignee"]) as AttributionRelation[]);
+    setPersonIds(saved.personIds ?? []);
+    setTagFilter(saved.tagFilter ?? []);
+    setBoardFilter(saved.boardFilter ?? []);
+    setHideClosed(Boolean(saved.hideClosed));
+    setSubjectFilter(saved.subjectFilter ?? []);
+    setEntryTypes((saved.entryTypes ?? ["tasks", "events"]) as EntryType[]);
+    setPeriodMode(saved.periodMode ?? "month");
+    setRangeFrom(saved.rangeFrom ?? "");
+    setRangeTo(saved.rangeTo ?? "");
+  }, [user.id]);
+
+  function handleSaveFilters() {
+    saveTaskFilters(user.id, {
+      search,
+      priorities,
+      relations,
+      personIds,
+      tagFilter,
+      boardFilter,
+      hideClosed,
+      subjectFilter,
+      entryTypes,
+      periodMode,
+      rangeFrom,
+      rangeTo,
+    });
+    toast.success("Filtros salvos — serão restaurados quando você voltar.");
+  }
+
+  function handleClearFilters() {
+    setSearch("");
+    setPriorities([]);
+    setRelations(["assignee"]);
+    setPersonIds([]);
+    setTagFilter([]);
+    setBoardFilter([]);
+    setHideClosed(false);
+    setSubjectFilter([]);
+    setEntryTypes(["tasks", "events"]);
+    setPeriodMode("month");
+    setCursor(new Date());
+    setRangeFrom("");
+    setRangeTo("");
+    clearTaskFilters(user.id);
+    toast.success("Filtros limpos.");
+  }
 
   const openNewTask = (type: TicketSubjectType) => {
     setNewTaskType(type);
@@ -523,6 +589,26 @@ export function TasksView() {
           onClick={() => setHideClosed((v) => !v)}
         >
           <EyeOff /> Ocultar concluídos
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9"
+          onClick={handleSaveFilters}
+          title="Salvar os filtros atuais para esta tela"
+        >
+          <Save /> Salvar filtros
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-9"
+          onClick={handleClearFilters}
+          title="Limpar a seleção de filtros"
+        >
+          <RotateCcw /> Limpar
         </Button>
 
         {/* View switcher — Lista, Quadro, Calendário */}
