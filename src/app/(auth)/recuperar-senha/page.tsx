@@ -6,6 +6,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, CheckCircle2, Mail } from "lucide-react";
+import { toast } from "sonner";
+import { env } from "@/config/env";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { normalizeEmail } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,8 +26,20 @@ export default function ForgotPasswordPage() {
     formState: { errors, isSubmitting },
   } = useForm<Values>({ resolver: zodResolver(schema) });
 
-  async function onSubmit(_values: Values) {
-    await new Promise((r) => setTimeout(r, 700));
+  async function onSubmit(values: Values) {
+    if (!env.useMocks) {
+      const sb = getSupabaseBrowserClient();
+      const redirectTo = `${window.location.origin}/auth/callback?next=/redefinir-senha`;
+      const { error } = await sb.auth.resetPasswordForEmail(normalizeEmail(values.email), {
+        redirectTo,
+      });
+      if (error) {
+        toast.error("Não foi possível enviar o e-mail. Tente novamente.");
+        return;
+      }
+    } else {
+      await new Promise((r) => setTimeout(r, 700));
+    }
     setSent(true);
   }
 

@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/common/page-header";
 import { DataTable } from "@/components/common/data-table";
 import { DefaultCatalogPanel } from "@/modules/admin/default-catalog-panel";
+import { SystemSettingsPanel } from "@/modules/admin/system-settings-panel";
 import { EmptyState } from "@/components/common/empty-state";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Card } from "@/components/ui/card";
@@ -42,7 +43,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type Tab = "overview" | "companies" | "users" | "plans" | "payments" | "catalog";
+type Tab = "overview" | "companies" | "users" | "plans" | "payments" | "catalog" | "system";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Visão geral" },
@@ -51,6 +52,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "plans", label: "Planos & Valores" },
   { id: "payments", label: "Pagamentos" },
   { id: "catalog", label: "Catálogo padrão" },
+  { id: "system", label: "Sistema" },
 ];
 
 const SUB_META: Record<SubscriptionStatus, { label: string; variant: "success" | "warning" | "destructive" | "secondary" }> = {
@@ -260,6 +262,8 @@ export function SaasAdminView() {
         )}
 
         {tab === "catalog" && <DefaultCatalogPanel />}
+
+        {tab === "system" && <SystemSettingsPanel />}
       </div>
 
       <ConfirmDialog

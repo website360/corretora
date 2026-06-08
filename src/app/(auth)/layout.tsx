@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { CheckCircle2, Shield } from "lucide-react";
 import { env } from "@/config/env";
@@ -53,7 +54,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       {/* Form panel */}
       <div className="flex items-center justify-center p-6 sm:p-12">
-        <div className="w-full max-w-sm">{children}</div>
+        <div className="w-full max-w-sm">
+          <Suspense fallback={null}>{children}</Suspense>
+        </div>
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Lock, Mail } from "lucide-react";
@@ -12,9 +13,18 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/auth/password-input";
+import { GoogleButton } from "@/components/auth/google-button";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("error") === "oauth") {
+      toast.error("Não foi possível entrar com o Google. Tente novamente.");
+    }
+  }, [searchParams]);
   const {
     register,
     handleSubmit,
@@ -74,9 +84,8 @@ export default function LoginPage() {
               Esqueceu a senha?
             </Link>
           </div>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             placeholder="••••••••"
             startIcon={<Lock />}
             {...register("password")}
@@ -88,6 +97,14 @@ export default function LoginPage() {
           Entrar
         </Button>
       </form>
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-xs text-muted-foreground">ou</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <GoogleButton />
 
       <p className="text-center text-sm text-muted-foreground">
         Não tem uma conta?{" "}

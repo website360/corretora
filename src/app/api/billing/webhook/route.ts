@@ -1,5 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { sendPaymentFailedEmail } from "@/lib/email";
+import { getPlatformSetting } from "@/lib/platform-settings/server";
+import { env } from "@/config/env";
 
 /**
  * POST /api/billing/webhook — Asaas event receiver.
@@ -9,7 +12,10 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
  * status based on payment events.
  */
 export async function POST(req: NextRequest) {
-  const expected = process.env.ASAAS_WEBHOOK_TOKEN;
+  const expected = await getPlatformSetting(
+    "asaas_webhook_token",
+    process.env.ASAAS_WEBHOOK_TOKEN ?? "",
+  );
   if (expected && req.headers.get("asaas-access-token") !== expected) {
     return NextResponse.json({ error: "Token inválido." }, { status: 401 });
   }
@@ -45,6 +51,37 @@ export async function POST(req: NextRequest) {
     .from("companies")
     .update({ subscription_status: status })
     .eq("asaas_subscription_id", subscriptionId);
+
+  // Pagamento atrasado: avisa os administradores da empresa por e-mail.
+  if (status === "past_due") {
+    try {
+      const { data: company } = await admin
+        .from("companies")
+        .select("id, trade_name")
+        .eq("asaas_subscription_id", subscriptionId)
+        .single();
+      if (company) {
+        const c = company as { id: string; trade_name: string | null };
+        const { data: admins } = await admin
+          .from("users")
+          .select("email")
+          .eq("company_id", c.id)
+          .in("role", ["admin", "super_admin"]);
+        const emails = (admins ?? [])
+          .map((a) => (a as { email: string | null }).email)
+          .filter((e): e is string => Boolean(e));
+        if (emails.length) {
+          await sendPaymentFailedEmail({
+            to: emails,
+            companyName: c.trade_name ?? undefined,
+            manageUrl: `${env.appUrl}/cobrancas`,
+          });
+        }
+      }
+    } catch (e) {
+      console.error("[webhook] aviso de pagamento falhou:", e);
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }

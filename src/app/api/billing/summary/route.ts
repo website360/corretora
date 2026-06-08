@@ -54,8 +54,9 @@ export async function GET() {
     plan = data ?? null;
   }
 
+  const billingLive = await asaasConfigured();
   let charges: unknown[] = [];
-  if (asaasConfigured() && (c.asaas_subscription_id || c.asaas_customer_id)) {
+  if (billingLive && (c.asaas_subscription_id || c.asaas_customer_id)) {
     try {
       charges = await listPayments({
         subscriptionId: c.asaas_subscription_id,
@@ -72,7 +73,7 @@ export async function GET() {
     trialEndsAt: c.trial_ends_at,
     card: c.card_last4 ? { last4: c.card_last4, brand: c.card_brand } : null,
     hasSubscription: Boolean(c.asaas_subscription_id),
-    billingLive: asaasConfigured(),
+    billingLive,
     charges,
   });
 }

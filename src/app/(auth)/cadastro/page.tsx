@@ -11,6 +11,9 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/auth/password-input";
+import { PasswordStrength } from "@/components/auth/password-strength";
+import { GoogleButton } from "@/components/auth/google-button";
 import { normalizeEmail, titleCase } from "@/lib/utils";
 
 export default function RegisterPage() {
@@ -18,8 +21,10 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterFormValues>({ resolver: zodResolver(registerSchema) });
+  } = useForm<RegisterFormValues>({ resolver: zodResolver(registerSchema), mode: "onChange" });
+  const password = watch("password") ?? "";
 
   async function onSubmit(values: RegisterFormValues) {
     const name = titleCase(values.name);
@@ -81,13 +86,14 @@ export default function RegisterPage() {
 
         <div className="space-y-2">
           <Label htmlFor="password">Senha</Label>
-          <Input id="password" type="password" placeholder="Mínimo 8 caracteres" {...register("password")} />
+          <PasswordInput id="password" placeholder="Crie uma senha forte" {...register("password")} />
+          <PasswordStrength value={password} />
           {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="confirm">Confirmar senha</Label>
-          <Input id="confirm" type="password" placeholder="Repita a senha" {...register("confirm")} />
+          <PasswordInput id="confirm" placeholder="Repita a senha" {...register("confirm")} />
           {errors.confirm && <p className="text-xs text-destructive">{errors.confirm.message}</p>}
         </div>
 
@@ -95,6 +101,14 @@ export default function RegisterPage() {
           Criar conta
         </Button>
       </form>
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-xs text-muted-foreground">ou</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <GoogleButton label="Cadastrar com Google" />
 
       <p className="text-center text-sm text-muted-foreground">
         Já tem uma conta?{" "}

@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { sendBillingWelcomeEmail } from "@/lib/email";
+import { env } from "@/config/env";
 import {
   asaasConfigured,
   createCardSubscription,
@@ -25,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await sb
     .from("users")
-    .select("company_id, role")
+    .select("company_id, role, name")
     .eq("id", user.id)
     .single();
   if (!profile || !["admin", "super_admin"].includes((profile as { role: string }).role)) {
@@ -68,8 +70,16 @@ export async function POST(req: NextRequest) {
 
   // Without an Asaas key we can't charge — record the chosen plan so the
   // trial proceeds, and tell the client billing isn't live yet.
-  if (!asaasConfigured()) {
+  if (!(await asaasConfigured())) {
     await admin.from("companies").update({ plan_id: plan.id }).eq("id", companyId);
+    if (user.email) {
+      await sendBillingWelcomeEmail({
+        to: user.email,
+        name: (profile as { name?: string }).name,
+        planName: (plan as { name: string }).name,
+        manageUrl: `${env.appUrl}/cobrancas`,
+      });
+    }
     return NextResponse.json({ ok: true, live: false });
   }
 
@@ -124,6 +134,15 @@ export async function POST(req: NextRequest) {
           is_default: true,
         });
       }
+    }
+
+    if (user.email) {
+      await sendBillingWelcomeEmail({
+        to: user.email,
+        name: (profile as { name?: string }).name,
+        planName: p.name,
+        manageUrl: `${env.appUrl}/cobrancas`,
+      });
     }
 
     return NextResponse.json({ ok: true, live: true });

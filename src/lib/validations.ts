@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isPasswordValid } from "@/lib/password";
 
 const addressSchema = z.object({
   street: z.string().min(1, "Informe a rua"),
@@ -76,7 +77,9 @@ export const registerSchema = z
     name: z.string().min(3, "Informe seu nome"),
     company: z.string().min(2, "Informe o nome da corretora"),
     email: z.string().email("E-mail inválido"),
-    password: z.string().min(8, "Mínimo de 8 caracteres"),
+    password: z
+      .string()
+      .refine(isPasswordValid, "Sua senha não atende a todos os requisitos"),
     confirm: z.string(),
   })
   .refine((d) => d.password === d.confirm, {
@@ -84,3 +87,16 @@ export const registerSchema = z
     path: ["confirm"],
   });
 export type RegisterFormValues = z.infer<typeof registerSchema>;
+
+export const resetPasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .refine(isPasswordValid, "Sua senha não atende a todos os requisitos"),
+    confirm: z.string(),
+  })
+  .refine((d) => d.password === d.confirm, {
+    message: "As senhas não coincidem",
+    path: ["confirm"],
+  });
+export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;

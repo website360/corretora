@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { sendTeamInviteEmail } from "@/lib/email";
+import { env } from "@/config/env";
 
 /**
  * POST /api/users — creates a team member in the caller's company.
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await sb
     .from("users")
-    .select("company_id, role")
+    .select("company_id, role, name")
     .eq("id", user.id)
     .single();
 
@@ -61,6 +63,38 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  const companyId = (profile as { company_id: string }).company_id;
+
+  // Best-effort welcome e-mail: the member sets their own password via a
+  // Supabase recovery link (we never e-mail the temporary password). Any
+  // failure here must not fail the user creation.
+  try {
+    const redirectTo = `${env.appUrl}/auth/callback?next=/redefinir-senha`;
+    const { data: link } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo },
+    });
+    const setPasswordUrl = link?.properties?.action_link ?? `${env.appUrl}/recuperar-senha`;
+
+    const { data: company } = await admin
+      .from("companies")
+      .select("trade_name")
+      .eq("id", companyId)
+      .single();
+
+    await sendTeamInviteEmail({
+      to: email,
+      name,
+      inviterName: (profile as { name?: string }).name,
+      companyName: (company as { trade_name?: string } | null)?.trade_name,
+      setPasswordUrl,
+      replyTo: user.email ?? undefined,
+    });
+  } catch (e) {
+    console.error("[users] convite por e-mail falhou:", e);
   }
 
   return NextResponse.json({ ok: true, id: data.user?.id });

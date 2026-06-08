@@ -22,3 +22,18 @@ export const env = {
 export function getServiceRoleKey() {
   return process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 }
+
+/** Server-only: Resend API key for transactional e-mail. */
+export function getResendApiKey() {
+  return process.env.RESEND_API_KEY ?? "";
+}
+
+/** Remetente padrão dos e-mails (ex.: "Corretora SaaS <nao-responda@seudominio.com>"). */
+export function getEmailFrom() {
+  return process.env.EMAIL_FROM ?? `${env.appName} <onboarding@resend.dev>`;
+}
+
+/** Reply-to opcional para os e-mails transacionais. */
+export function getEmailReplyTo() {
+  return process.env.EMAIL_REPLY_TO || undefined;
+}

@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   if (auth.error) return auth.error;
   const companyId = auth.companyId!;
 
-  if (!asaasConfigured()) {
+  if (!(await asaasConfigured())) {
     return NextResponse.json({ error: "Cobrança não configurada (Asaas)." }, { status: 503 });
   }
 

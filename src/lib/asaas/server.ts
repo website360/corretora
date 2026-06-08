@@ -9,21 +9,32 @@
  * Docs: https://docs.asaas.com
  */
 
+import "server-only";
+import { getPlatformSetting } from "@/lib/platform-settings/server";
+
 const DEFAULT_BASE = "https://sandbox.asaas.com/api/v3";
 
-export function asaasConfigured(): boolean {
-  return Boolean(process.env.ASAAS_API_KEY);
+/** Chave Asaas efetiva: banco (admin) sobrescreve, env é fallback. */
+function resolveKey() {
+  return getPlatformSetting("asaas_api_key", process.env.ASAAS_API_KEY ?? "");
 }
 
-function config() {
-  const key = process.env.ASAAS_API_KEY;
+export async function asaasConfigured(): Promise<boolean> {
+  return Boolean(await resolveKey());
+}
+
+async function config() {
+  const [key, base] = await Promise.all([
+    resolveKey(),
+    getPlatformSetting("asaas_base_url", process.env.ASAAS_BASE_URL ?? ""),
+  ]);
   if (!key) throw new Error("ASAAS_API_KEY não configurada.");
-  const baseUrl = (process.env.ASAAS_BASE_URL || DEFAULT_BASE).replace(/\/$/, "");
+  const baseUrl = (base || DEFAULT_BASE).replace(/\/$/, "");
   return { key, baseUrl };
 }
 
 async function asaasFetch<T>(path: string, init: RequestInit): Promise<T> {
-  const { key, baseUrl } = config();
+  const { key, baseUrl } = await config();
   const res = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers: {
