@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { env } from "@/config/env";
 
 /**
  * Callback de OAuth (Google). O Supabase redireciona para cá com um `code`
@@ -13,13 +14,22 @@ export async function GET(request: NextRequest) {
   // Evita open-redirect: só aceita caminhos internos.
   const safeNext = next.startsWith("/") ? next : "/dashboard";
 
+  // Host público. Atrás de um proxy/load balancer o `origin` do request reflete
+  // o endereço interno (ex.: localhost:8080); preferimos o host encaminhado pelo
+  // proxy e, em seguida, a URL canônica configurada (NEXT_PUBLIC_APP_URL).
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") ?? "https";
+  const base = forwardedHost
+    ? `${forwardedProto}://${forwardedHost}`
+    : env.appUrl || origin;
+
   if (code) {
     const supabase = await getSupabaseServerClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${safeNext}`);
+      return NextResponse.redirect(`${base}${safeNext}`);
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=oauth`);
+  return NextResponse.redirect(`${base}/login?error=oauth`);
 }
