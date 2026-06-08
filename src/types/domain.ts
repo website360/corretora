@@ -150,6 +150,8 @@ export interface User {
   status: EntityStatus;
   is_owner?: boolean;
   last_seen_at: ISODateString | null;
+  /** Token secreto do feed de calendário (.ics) do usuário. */
+  calendar_token?: string | null;
   created_at: ISODateString;
 }
 

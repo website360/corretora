@@ -27,6 +27,7 @@ import { GroupsManager } from "@/modules/settings/groups-manager";
 import { PreferencesPanel } from "@/modules/settings/preferences-panel";
 import { IntegrationsPanel } from "@/modules/settings/integrations-panel";
 import { BrandingPanel } from "@/modules/settings/branding-panel";
+import { CalendarFeedCard } from "@/modules/settings/calendar-feed-card";
 import { ProductsView } from "@/modules/catalog/products-view";
 import { plansService } from "@/services/plans.service";
 import { useAsyncData } from "@/hooks/use-async-data";
@@ -255,6 +256,10 @@ export function SettingsView() {
               </div>
             </CardContent>
           </Card>
+
+          <div className="mt-6">
+            <CalendarFeedCard />
+          </div>
         </TabsContent>
 
         {/* Company */}
