@@ -125,6 +125,16 @@ export function TicketConversation({ id }: { id: string }) {
           onChange={refetch}
           onEdit={() => setEditOpen(true)}
         />
+        {ticket.description && (
+          <div className="border-b bg-card/40 px-4 py-3 lg:px-6">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Descrição
+            </p>
+            <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-sm text-muted-foreground">
+              {ticket.description}
+            </p>
+          </div>
+        )}
         {/* Conversa / Atividade */}
         <div className="flex items-center gap-1 border-b bg-card/40 px-4 py-2 lg:px-6">
           <div className="inline-flex items-center rounded-lg border bg-muted/40 p-0.5">
