@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { motion, useScroll, useSpring } from "framer-motion";
 import {
+  AlertTriangle,
   ArrowRight,
   BarChart3,
   CalendarDays,
@@ -19,6 +20,7 @@ import {
   ShieldCheck,
   Smartphone,
   Sparkles,
+  Star,
   UserSquare2,
   Users,
 } from "lucide-react";
@@ -402,25 +404,29 @@ export function LandingPage() {
       </section>
 
       {/* Dores */}
-      <section className="mx-auto max-w-6xl px-5 py-20 lg:py-28">
+      <section className="mx-auto max-w-6xl px-5 py-24 lg:py-32">
         <Reveal className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">O problema</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-600">
+            O problema
+          </span>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
             Gerir uma corretora não precisa ser um caos
           </h2>
           <p className="mt-3 text-lg text-slate-600">
             Reconhece alguma dessas situações? Você não está sozinho — e dá para resolver.
           </p>
         </Reveal>
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {PAINS.map((p, i) => (
             <Reveal key={p.title} delay={i * 0.08}>
-              <div className="h-full rounded-2xl border border-slate-200 bg-slate-50 p-6 transition-shadow hover:shadow-lg">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-red-100 text-red-500">
-                  <span className="text-lg font-bold">!</span>
+              <div className="group h-full rounded-2xl bg-gradient-to-b from-slate-200/80 to-transparent p-px transition-all duration-300 hover:-translate-y-1 hover:from-red-300">
+                <div className="h-full rounded-2xl bg-white p-6 shadow-sm">
+                  <div className="flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-red-500/15 to-red-500/5 text-red-500">
+                    <AlertTriangle className="size-5" />
+                  </div>
+                  <h3 className="mt-4 font-semibold">{p.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{p.desc}</p>
                 </div>
-                <h3 className="mt-4 font-semibold">{p.title}</h3>
-                <p className="mt-1.5 text-sm text-slate-600">{p.desc}</p>
               </div>
             </Reveal>
           ))}
@@ -428,26 +434,31 @@ export function LandingPage() {
       </section>
 
       {/* Recursos */}
-      <section id="recursos" className="bg-slate-50 py-20 lg:py-28">
-        <div className="mx-auto max-w-6xl px-5">
+      <section id="recursos" className="relative overflow-hidden bg-slate-50 py-24 lg:py-32">
+        <div className="pointer-events-none absolute left-1/2 top-0 h-px w-2/3 -translate-x-1/2 bg-gradient-to-r from-transparent via-blue-300 to-transparent" />
+        <div className="relative mx-auto max-w-6xl px-5">
           <Reveal className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">A solução</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
+              A solução
+            </span>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
               Tudo o que a sua corretora precisa, num só sistema
             </h2>
             <p className="mt-3 text-lg text-slate-600">
               Do primeiro contato à renovação — com a operação inteira conectada.
             </p>
           </Reveal>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((f, i) => (
               <Reveal key={f.title} delay={(i % 4) * 0.07}>
-                <div className="group h-full rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
-                  <div className="flex size-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">
-                    <f.icon className="size-5" />
+                <div className="group h-full rounded-2xl bg-gradient-to-b from-slate-200/80 to-transparent p-px transition-all duration-300 hover:-translate-y-1.5 hover:from-blue-400 hover:shadow-xl hover:shadow-blue-600/10">
+                  <div className="h-full rounded-2xl bg-white p-6">
+                    <div className="flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/20">
+                      <f.icon className="size-5" />
+                    </div>
+                    <h3 className="mt-4 font-semibold">{f.title}</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{f.desc}</p>
                   </div>
-                  <h3 className="mt-4 font-semibold">{f.title}</h3>
-                  <p className="mt-1.5 text-sm text-slate-600">{f.desc}</p>
                 </div>
               </Reveal>
             ))}
@@ -456,42 +467,48 @@ export function LandingPage() {
       </section>
 
       {/* Como funciona */}
-      <section id="como-funciona" className="mx-auto max-w-6xl px-5 py-20 lg:py-28">
+      <section id="como-funciona" className="mx-auto max-w-6xl px-5 py-24 lg:py-32">
         <Reveal className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">Simples</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            Comece em 3 passos
-          </h2>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
+            Simples
+          </span>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Comece em 3 passos</h2>
         </Reveal>
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
+        <div className="relative mt-16 grid gap-10 md:grid-cols-3">
+          <div className="pointer-events-none absolute inset-x-[16%] top-7 hidden h-px bg-gradient-to-r from-blue-200 via-blue-400 to-blue-200 md:block" />
           {STEPS.map((s, i) => (
-            <Reveal key={s.n} delay={i * 0.1}>
-              <div className="relative rounded-2xl border border-slate-200 bg-white p-7">
-                <span className="text-4xl font-bold text-blue-100">{s.n}</span>
-                <h3 className="mt-2 text-lg font-semibold">{s.title}</h3>
-                <p className="mt-1.5 text-sm text-slate-600">{s.desc}</p>
+            <Reveal key={s.n} delay={i * 0.12} className="relative text-center md:text-left">
+              <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-lg font-bold text-white shadow-lg shadow-blue-600/25 md:mx-0">
+                {s.n}
               </div>
+              <h3 className="mt-5 text-lg font-semibold">{s.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{s.desc}</p>
             </Reveal>
           ))}
         </div>
       </section>
 
       {/* Vídeo demo */}
-      <section className="bg-[#0b1220] py-20 text-white lg:py-28">
-        <div className="mx-auto max-w-4xl px-5">
+      <section className="relative overflow-hidden bg-[#070b15] py-24 text-white lg:py-32">
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="bg-grid absolute inset-0 opacity-[0.04]" />
+          <div className="absolute left-1/2 top-1/2 size-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600/15 blur-[120px]" />
+        </div>
+        <div className="relative mx-auto max-w-4xl px-5">
           <Reveal className="text-center">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Veja em 2 minutos</h2>
             <p className="mt-3 text-lg text-white/60">
               Um tour rápido pelo sistema, do funil de vendas à renovação de apólices.
             </p>
           </Reveal>
-          <Reveal delay={0.1} className="mt-10">
+          <Reveal delay={0.1} className="mt-12">
             {/* Substitua por um embed de YouTube/Loom quando o vídeo estiver pronto. */}
             <div className="group relative aspect-video overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-blue-900/40 to-[#0e1626] shadow-2xl">
               <div className="bg-grid absolute inset-0 opacity-[0.05]" />
               <button className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                <span className="flex size-20 items-center justify-center rounded-full bg-blue-600 shadow-xl shadow-blue-600/30 transition-transform group-hover:scale-110">
-                  <Play className="size-8 translate-x-0.5 fill-white" />
+                <span className="relative flex size-20 items-center justify-center rounded-full bg-blue-600 shadow-xl shadow-blue-600/40 transition-transform group-hover:scale-110">
+                  <span className="absolute inset-0 animate-ping rounded-full bg-blue-600/40" />
+                  <Play className="relative size-8 translate-x-0.5 fill-white" />
                 </span>
                 <span className="text-sm font-medium text-white/70">Assistir à demonstração</span>
               </button>
@@ -501,75 +518,99 @@ export function LandingPage() {
       </section>
 
       {/* Números */}
-      <section className="mx-auto max-w-6xl px-5 py-20 lg:py-24">
-        <div className="grid gap-6 rounded-3xl border border-slate-200 bg-slate-50 p-8 sm:grid-cols-2 lg:grid-cols-4 lg:p-12">
+      <section className="relative overflow-hidden bg-[#070b15] py-20 text-white">
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-20 top-0 size-[360px] rounded-full bg-blue-600/15 blur-[100px]" />
+          <div className="absolute -right-20 bottom-0 size-[360px] rounded-full bg-indigo-600/15 blur-[100px]" />
+        </div>
+        <div className="relative mx-auto grid max-w-6xl gap-8 px-5 sm:grid-cols-2 lg:grid-cols-4">
           {STATS.map((s, i) => (
             <Reveal key={s.label} delay={i * 0.08} className="text-center">
-              <p className="text-4xl font-bold text-blue-600">{s.value}</p>
-              <p className="mt-1 text-sm text-slate-600">{s.label}</p>
+              <p className="bg-gradient-to-r from-blue-300 to-sky-300 bg-clip-text text-5xl font-bold tracking-tight text-transparent">
+                {s.value}
+              </p>
+              <p className="mt-2 text-sm text-white/55">{s.label}</p>
             </Reveal>
           ))}
         </div>
       </section>
 
       {/* Planos */}
-      <section id="planos" className="bg-slate-50 py-20 lg:py-28">
+      <section id="planos" className="bg-slate-50 py-24 lg:py-32">
         <div className="mx-auto max-w-6xl px-5">
           <Reveal className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">Planos</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
+              Planos
+            </span>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
               Preços que cabem na sua corretora
             </h2>
             <p className="mt-3 text-lg text-slate-600">
               Comece grátis. Faça upgrade quando crescer. Cancele quando quiser.
             </p>
           </Reveal>
-          <div className="mt-12 grid items-stretch gap-6 lg:grid-cols-3">
+          <div className="mt-14 grid items-stretch gap-6 lg:grid-cols-3">
             {PRICING.map((plan, i) => (
-              <Reveal key={plan.name} delay={i * 0.1}>
+              <Reveal key={plan.name} delay={i * 0.1} className={cn(plan.highlight && "lg:-mt-4")}>
                 <div
                   className={cn(
-                    "flex h-full flex-col rounded-3xl border bg-white p-7 transition-shadow",
+                    "relative flex h-full flex-col rounded-3xl p-px transition-all duration-300",
                     plan.highlight
-                      ? "border-blue-600 shadow-2xl shadow-blue-600/10 ring-1 ring-blue-600"
-                      : "border-slate-200 hover:shadow-lg",
+                      ? "bg-gradient-to-b from-blue-500 to-indigo-600 shadow-2xl shadow-blue-600/25"
+                      : "bg-slate-200/80 hover:-translate-y-1 hover:shadow-xl",
                   )}
                 >
-                  {plan.highlight && (
-                    <span className="mb-3 inline-flex w-fit items-center gap-1 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">
-                      <Sparkles className="size-3" /> Mais popular
-                    </span>
-                  )}
-                  <h3 className="text-lg font-semibold">{plan.name}</h3>
-                  <p className="mt-1 text-sm text-slate-500">{plan.tagline}</p>
-                  <div className="mt-5 flex items-end gap-1">
-                    <span className="text-4xl font-bold tracking-tight">{plan.price}</span>
-                    <span className="mb-1 text-sm text-slate-500">{plan.period}</span>
-                  </div>
-                  <ul className="mt-6 space-y-3 text-sm">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-500" />
-                        <span className="text-slate-700">{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    href="/cadastro"
+                  <div
                     className={cn(
-                      "mt-7 inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold transition-colors",
-                      plan.highlight
-                        ? "bg-blue-600 text-white hover:bg-blue-500"
-                        : "border border-slate-300 text-slate-900 hover:bg-slate-50",
+                      "flex h-full flex-col rounded-3xl p-7",
+                      plan.highlight ? "bg-[#0b1220] text-white" : "bg-white",
                     )}
                   >
-                    Começar grátis
-                  </Link>
+                    {plan.highlight && (
+                      <span className="mb-3 inline-flex w-fit items-center gap-1 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-3 py-1 text-xs font-semibold text-white">
+                        <Star className="size-3 fill-white" /> Mais popular
+                      </span>
+                    )}
+                    <h3 className="text-lg font-semibold">{plan.name}</h3>
+                    <p className={cn("mt-1 text-sm", plan.highlight ? "text-white/60" : "text-slate-500")}>
+                      {plan.tagline}
+                    </p>
+                    <div className="mt-5 flex items-end gap-1">
+                      <span className="text-4xl font-bold tracking-tight">{plan.price}</span>
+                      <span className={cn("mb-1 text-sm", plan.highlight ? "text-white/50" : "text-slate-500")}>
+                        {plan.period}
+                      </span>
+                    </div>
+                    <ul className="mt-6 space-y-3 text-sm">
+                      {plan.features.map((f) => (
+                        <li key={f} className="flex items-start gap-2">
+                          <CheckCircle2
+                            className={cn(
+                              "mt-0.5 size-4 shrink-0",
+                              plan.highlight ? "text-blue-400" : "text-emerald-500",
+                            )}
+                          />
+                          <span className={plan.highlight ? "text-white/80" : "text-slate-700"}>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link
+                      href="/cadastro"
+                      className={cn(
+                        "mt-auto inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold transition-all",
+                        plan.highlight
+                          ? "bg-white text-blue-700 hover:bg-blue-50"
+                          : "border border-slate-300 text-slate-900 hover:border-blue-400 hover:bg-blue-50",
+                      )}
+                    >
+                      Começar grátis
+                    </Link>
+                  </div>
                 </div>
               </Reveal>
             ))}
           </div>
-          <p className="mt-6 text-center text-sm text-slate-500">
+          <p className="mt-8 text-center text-sm text-slate-500">
             Precisa de algo sob medida?{" "}
             <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">
               Fale com nosso time
@@ -580,23 +621,37 @@ export function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="mx-auto max-w-3xl px-5 py-20 lg:py-28">
+      <section id="faq" className="mx-auto max-w-3xl px-5 py-24 lg:py-32">
         <Reveal className="text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Perguntas frequentes</h2>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
+            Dúvidas
+          </span>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Perguntas frequentes</h2>
         </Reveal>
-        <div className="mt-10 divide-y divide-slate-200 rounded-2xl border border-slate-200">
+        <div className="mt-12 space-y-3">
           {FAQ.map((item, i) => {
             const open = openFaq === i;
             return (
-              <div key={item.q}>
+              <div
+                key={item.q}
+                className={cn(
+                  "overflow-hidden rounded-2xl border bg-white transition-colors",
+                  open ? "border-blue-200 shadow-sm" : "border-slate-200",
+                )}
+              >
                 <button
                   onClick={() => setOpenFaq(open ? null : i)}
                   className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
                 >
                   <span className="font-medium">{item.q}</span>
-                  <ChevronDown
-                    className={cn("size-5 shrink-0 text-slate-400 transition-transform", open && "rotate-180")}
-                  />
+                  <span
+                    className={cn(
+                      "flex size-7 shrink-0 items-center justify-center rounded-full transition-all",
+                      open ? "rotate-180 bg-blue-600 text-white" : "bg-slate-100 text-slate-500",
+                    )}
+                  >
+                    <ChevronDown className="size-4" />
+                  </span>
                 </button>
                 <motion.div
                   initial={false}
@@ -604,7 +659,7 @@ export function LandingPage() {
                   transition={{ duration: 0.3 }}
                   className="overflow-hidden"
                 >
-                  <p className="px-5 pb-5 text-sm text-slate-600">{item.a}</p>
+                  <p className="px-5 pb-5 text-sm leading-relaxed text-slate-600">{item.a}</p>
                 </motion.div>
               </div>
             );
@@ -615,29 +670,42 @@ export function LandingPage() {
       {/* CTA final */}
       <section className="mx-auto max-w-6xl px-5 pb-24">
         <Reveal>
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-blue-900 px-8 py-14 text-center text-white shadow-2xl lg:px-16 lg:py-20">
-            <div className="bg-grid pointer-events-none absolute inset-0 opacity-[0.08]" />
+          <div className="relative overflow-hidden rounded-3xl bg-[#070b15] px-8 py-16 text-center text-white shadow-2xl lg:px-16 lg:py-24">
+            <div aria-hidden className="pointer-events-none absolute inset-0">
+              <div className="bg-grid absolute inset-0 opacity-[0.06]" />
+              <motion.div
+                className="absolute -left-10 top-0 size-[360px] rounded-full bg-blue-600/30 blur-[100px]"
+                animate={{ x: [0, 40, 0], y: [0, 20, 0] }}
+                transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <motion.div
+                className="absolute -right-10 bottom-0 size-[360px] rounded-full bg-indigo-600/30 blur-[100px]"
+                animate={{ x: [0, -40, 0], y: [0, -20, 0] }}
+                transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+              />
+            </div>
             <div className="relative">
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              <h2 className="mx-auto max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
                 Pronto para profissionalizar a sua corretora?
               </h2>
-              <p className="mx-auto mt-3 max-w-xl text-lg text-white/80">
+              <p className="mx-auto mt-4 max-w-xl text-lg text-white/70">
                 Comece o teste grátis agora ou fale com nosso time. Leva poucos minutos.
               </p>
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
                 <Link
                   href="/cadastro"
-                  className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 text-base font-semibold text-blue-700 shadow-lg transition-transform hover:scale-[1.02]"
+                  className="group inline-flex items-center gap-2 rounded-xl bg-blue-600 px-7 py-4 text-base font-semibold text-white shadow-[0_8px_30px_rgba(37,99,235,0.4)] transition-all hover:-translate-y-0.5 hover:bg-blue-500"
                 >
-                  Começar grátis <ArrowRight className="size-4" />
+                  Começar grátis{" "}
+                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
                 <a
                   href={WHATSAPP_LINK}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/30 px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/10"
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-7 py-4 text-base font-semibold text-white backdrop-blur transition-colors hover:bg-white/10"
                 >
-                  <MessageCircle className="size-4" /> Falar no WhatsApp
+                  <MessageCircle className="size-4 text-emerald-400" /> Falar no WhatsApp
                 </a>
               </div>
             </div>
@@ -647,24 +715,31 @@ export function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-5 py-10 sm:flex-row">
-          <div className="flex items-center gap-2.5">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-900 text-white">
-              <Shield className="size-4" />
-            </span>
-            <span className="font-semibold">{brand}</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
-            <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-slate-900">
-              <MessageCircle className="size-4" /> WhatsApp
-            </a>
-            <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-slate-900">{CONTACT_EMAIL}</a>
-            <Link href="/login" className="inline-flex items-center gap-1.5 hover:text-slate-900">
-              <Users className="size-4" /> Entrar
-            </Link>
-            <Link href="/cadastro" className="inline-flex items-center gap-1.5 hover:text-slate-900">
-              <Smartphone className="size-4" /> Criar conta
-            </Link>
+        <div className="mx-auto max-w-6xl px-5 py-12">
+          <div className="flex flex-col items-start justify-between gap-8 sm:flex-row sm:items-center">
+            <div className="max-w-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-900 text-white">
+                  <Shield className="size-4" />
+                </span>
+                <span className="font-semibold">{brand}</span>
+              </div>
+              <p className="mt-3 text-sm text-slate-500">
+                A plataforma completa para a sua corretora de seguros.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500">
+              <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-slate-900">
+                <MessageCircle className="size-4" /> WhatsApp
+              </a>
+              <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-slate-900">{CONTACT_EMAIL}</a>
+              <Link href="/login" className="inline-flex items-center gap-1.5 hover:text-slate-900">
+                <Users className="size-4" /> Entrar
+              </Link>
+              <Link href="/cadastro" className="inline-flex items-center gap-1.5 hover:text-slate-900">
+                <Smartphone className="size-4" /> Criar conta
+              </Link>
+            </div>
           </div>
         </div>
         <div className="border-t border-slate-100 py-5 text-center text-xs text-slate-400">
