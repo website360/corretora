@@ -2,6 +2,8 @@ import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { taskStages, ticketLogs, ticketMessages, tickets } from "@/services/mock/data";
 import { getCurrentCompanyId, getCurrentUserId } from "@/services/lookup";
+import { useDirectoryStore } from "@/stores/directory-store";
+import { extractMentionIds } from "@/lib/mentions";
 import { sleep, uid } from "@/lib/utils";
 import type {
   Ticket,
@@ -126,7 +128,9 @@ export const ticketsService = {
     body: string,
     kind: "message" | "internal_note" = "message",
   ): Promise<TicketMessage> {
-    const mentions = Array.from(body.matchAll(/@(\w+)/g)).map((m) => m[1]!);
+    // Resolve "@Nome" para os UUIDs reais dos usuários (a coluna mentions é
+    // uuid[]) — gravar o texto cru fazia o insert falhar e a mensagem sumir.
+    const mentions = extractMentionIds(body, useDirectoryStore.getState().users);
     if (env.useMocks) {
       await sleep(220);
       const message: TicketMessage = {
