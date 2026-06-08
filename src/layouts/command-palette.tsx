@@ -7,6 +7,7 @@ import { useTheme } from "next-themes";
 import { ALL_NAV_ITEMS } from "@/config/navigation";
 import { useUIStore } from "@/stores/ui-store";
 import { useDirectory } from "@/stores/directory-store";
+import { useIsMac } from "@/hooks/use-is-mac";
 import { customersService } from "@/services/customers.service";
 import { ticketsService } from "@/services/tickets.service";
 import { calendarService } from "@/services/calendar.service";
@@ -199,13 +200,14 @@ export function CommandPalette() {
 /** Search trigger rendered in the topbar. */
 export function CommandTrigger() {
   const setCommandOpen = useUIStore((s) => s.setCommandOpen);
+  const isMac = useIsMac();
   return (
     <button
       onClick={() => setCommandOpen(true)}
       className="group flex h-9 w-full max-w-xs items-center gap-2 rounded-lg border border-input bg-background px-3 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-accent/40"
     >
       <span className="flex-1 text-left">Buscar...</span>
-      <CommandShortcut>⌘K</CommandShortcut>
+      <CommandShortcut>{isMac ? "⌘K" : "Ctrl K"}</CommandShortcut>
     </button>
   );
 }

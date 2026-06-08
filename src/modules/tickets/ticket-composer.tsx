@@ -4,6 +4,7 @@ import * as React from "react";
 import { Paperclip, Send, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MentionTextarea } from "@/components/common/mention-textarea";
+import { useIsMac } from "@/hooks/use-is-mac";
 
 const EMOJIS = ["👍", "🙏", "✅", "🎉", "🔥", "😊", "📎", "⚠️"];
 
@@ -20,6 +21,7 @@ export function TicketComposer({ onSend }: TicketComposerProps) {
   const [sending, setSending] = React.useState(false);
   const [showEmoji, setShowEmoji] = React.useState(false);
   const ref = React.useRef<HTMLTextAreaElement>(null);
+  const isMac = useIsMac();
 
   async function submit() {
     const value = body.trim();
@@ -81,7 +83,7 @@ export function TicketComposer({ onSend }: TicketComposerProps) {
           </div>
         )}
         <span className="ml-auto mr-1 hidden text-[11px] text-muted-foreground sm:block">
-          ⌘ + Enter para enviar
+          {isMac ? "⌘" : "Ctrl"} + Enter para enviar
         </span>
         <Button size="sm" onClick={submit} loading={sending} disabled={!body.trim()}>
           <Send /> Enviar
