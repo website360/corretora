@@ -12,6 +12,7 @@ export interface SavedTaskFilters {
   personIds: string[];
   tagFilter: string[];
   boardFilter: string[];
+  stageFilter: string[];
   hideClosed: boolean;
   subjectFilter: string[];
   entryTypes: string[];

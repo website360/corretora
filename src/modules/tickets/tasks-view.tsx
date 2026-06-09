@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Columns3,
   EyeOff,
   Flag,
   Layers,
@@ -145,6 +146,7 @@ export function TasksView() {
   const { user } = useSession();
   useDirectory();
   const taskBoards = useDirectoryStore((s) => s.taskBoards);
+  const taskColumns = useDirectoryStore((s) => s.taskColumns);
   const { taskView, setTaskView } = useUIStore();
   const isCalendar = taskView === "calendar";
 
@@ -154,6 +156,7 @@ export function TasksView() {
   const [personIds, setPersonIds] = React.useState<string[]>([]);
   const [tagFilter, setTagFilter] = React.useState<string[]>([]);
   const [boardFilter, setBoardFilter] = React.useState<string[]>([]);
+  const [stageFilter, setStageFilter] = React.useState<string[]>([]);
   const [hideClosed, setHideClosed] = React.useState(false);
   const [subjectFilter, setSubjectFilter] = React.useState<string[]>([]);
   const [entryTypes, setEntryTypes] = React.useState<EntryType[]>(["tasks", "events"]);
@@ -182,6 +185,7 @@ export function TasksView() {
     personIds,
     tagFilter,
     boardFilter,
+    stageFilter,
     hideClosed,
     subjectFilter,
     entryTypes,
@@ -198,6 +202,7 @@ export function TasksView() {
     setPersonIds(f.personIds ?? []);
     setTagFilter(f.tagFilter ?? []);
     setBoardFilter(f.boardFilter ?? []);
+    setStageFilter(f.stageFilter ?? []);
     setHideClosed(Boolean(f.hideClosed));
     setSubjectFilter(f.subjectFilter ?? []);
     setEntryTypes((f.entryTypes ?? ["tasks", "events"]) as EntryType[]);
@@ -214,9 +219,32 @@ export function TasksView() {
     personIds.length +
     tagFilter.length +
     boardFilter.length +
+    stageFilter.length +
     (entryTypes.length === 2 ? 0 : 1) +
     (relations.length === 1 && relations[0] === "assignee" ? 0 : 1) +
     (hideClosed ? 1 : 0);
+
+  // Opções de etapa (colunas de kanban). Limita às colunas dos kanbans
+  // filtrados quando houver, e prefixa com o nome do kanban se houver vários.
+  const boardNameById = React.useMemo(
+    () => new Map(taskBoards.map((b) => [b.id, b.name])),
+    [taskBoards],
+  );
+  const stageOptions = React.useMemo(() => {
+    const cols = boardFilter.length
+      ? taskColumns.filter((c) => boardFilter.includes(c.board_id))
+      : taskColumns;
+    return [...cols]
+      .sort(
+        (a, b) =>
+          (boardNameById.get(a.board_id) ?? "").localeCompare(boardNameById.get(b.board_id) ?? "") ||
+          a.position - b.position,
+      )
+      .map((c) => ({
+        value: c.id,
+        label: taskBoards.length > 1 ? `${boardNameById.get(c.board_id) ?? "—"} · ${c.name}` : c.name,
+      }));
+  }, [taskColumns, boardFilter, boardNameById, taskBoards.length]);
 
   // Restaura os filtros do último uso + carrega os presets ao abrir (uma vez).
   const hydrated = React.useRef(false);
@@ -237,8 +265,17 @@ export function TasksView() {
   }
 
   function handleDeletePreset(id: string, name: string) {
+    const removed = presets.find((p) => p.id === id);
     setPresets(removeTaskPreset(user.id, id));
-    toast.success(`Filtro "${name}" excluído.`);
+    // Se o preset excluído é o que está aplicado agora, limpa os filtros.
+    const isApplied =
+      removed && JSON.stringify(removed.filters) === JSON.stringify(currentFilters());
+    if (isApplied) {
+      handleClearFilters();
+      toast.success(`Filtro "${name}" excluído e removido da tela.`);
+    } else {
+      toast.success(`Filtro "${name}" excluído.`);
+    }
   }
 
   function handleConfirmSavePreset() {
@@ -258,6 +295,7 @@ export function TasksView() {
     setPersonIds([]);
     setTagFilter([]);
     setBoardFilter([]);
+    setStageFilter([]);
     setHideClosed(false);
     setSubjectFilter([]);
     setEntryTypes(["tasks", "events"]);
@@ -424,6 +462,8 @@ export function TasksView() {
 
   const boardOk = (boardId?: string | null) =>
     boardFilter.length === 0 || (!!boardId && boardFilter.includes(boardId));
+  const stageOk = (columnId?: string | null) =>
+    stageFilter.length === 0 || (!!columnId && stageFilter.includes(columnId));
   const subjectOk = (subject?: string | null) =>
     subjectFilter.length === 0 || (!!subject && subjectFilter.includes(subject));
   // Finalização vem do status (tarefa) / finished (evento) — nunca da etapa.
@@ -481,7 +521,12 @@ export function TasksView() {
           : format(cursor, "MMMM yyyy", { locale: ptBR });
 
   const tickets = (showTasks ? localTickets : []).filter(
-    (t) => boardOk(t.board_id) && subjectOk(t.subject_type) && taskOpenOk(t) && taskInWindow(t),
+    (t) =>
+      boardOk(t.board_id) &&
+      stageOk(t.column_id) &&
+      subjectOk(t.subject_type) &&
+      taskOpenOk(t) &&
+      taskInWindow(t),
   );
 
   // Apply the same people/attribution/tags/search filters to events.
@@ -509,12 +554,13 @@ export function TasksView() {
       if (tagFilter.length && !(e.tags ?? []).some((t) => tagFilter.includes(t))) return false;
       if (subjectFilter.length && !subjectFilter.includes(e.subject_type)) return false;
       if (!boardOk(e.board_id)) return false;
+      if (!stageOk(e.column_id)) return false;
       if (!eventOpenOk(e)) return false;
       if (periodWindow && !inWindow(e.starts_at)) return false;
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localEvents, search, relations, personIds, tagFilter, subjectFilter, boardFilter, hideClosed, periodWindow, inWindow]);
+  }, [localEvents, search, relations, personIds, tagFilter, subjectFilter, boardFilter, stageFilter, hideClosed, periodWindow, inWindow]);
 
   const events = showEvents ? filteredEvents : [];
 
@@ -734,6 +780,16 @@ export function TasksView() {
             searchPlaceholder="Buscar kanban..."
             allLabel="Todos"
             allMode="selectAll"
+          />
+          <MultiSelect
+            icon={<Columns3 />}
+            options={stageOptions}
+            values={stageFilter}
+            onChange={setStageFilter}
+            placeholder="Toda etapa"
+            searchPlaceholder="Buscar etapa..."
+            emptyText="Nenhuma etapa."
+            allLabel="Todas"
           />
           <Button
             variant={hideClosed ? "default" : "outline"}
