@@ -109,9 +109,16 @@ export async function updateSession(request: NextRequest) {
     return noSharedCache(response);
   }
 
-  // Cliente autenticado só transita no /portal (+ marketing e callback de auth).
+  // Cliente autenticado só transita no /portal e nas APIs do portal
+  // (+ marketing e callback de auth).
   if (user && isCustomer) {
-    if (isMarketing(pathname) || pathname.startsWith("/auth")) return noSharedCache(response);
+    if (
+      isMarketing(pathname) ||
+      pathname.startsWith("/auth") ||
+      pathname.startsWith("/api/portal")
+    ) {
+      return noSharedCache(response);
+    }
     return redirectTo("/portal");
   }
 
