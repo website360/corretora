@@ -16,9 +16,12 @@ import { findCarrier, findCustomer, findProduct, findTaskColumn } from "@/servic
 import { ticketsService } from "@/services/tickets.service";
 import { calendarService } from "@/services/calendar.service";
 import { taskBoardsService } from "@/services/task-boards.service";
+import { tagsService } from "@/services/tags.service";
 import { reopenEvent, reopenTask } from "@/services/finalize.service";
+import { useAsyncData } from "@/hooks/use-async-data";
 import { InlineSelect, type InlineOption } from "@/components/common/inline-select";
 import { InlineDate } from "@/components/common/inline-date";
+import { InlineTags } from "@/components/common/inline-tags";
 import {
   EVENT_MODALITY_META,
   TICKET_PRIORITY_META,
@@ -79,6 +82,13 @@ export function UnifiedList({
 }) {
   const { user } = useSession();
   const { sortRules, taskTimeEnabled } = resolveSettings(user.company);
+
+  const { data: tagCatalog } = useAsyncData(() => tagsService.list());
+  const tagColor = React.useMemo(() => {
+    const map = new Map<string, StageColor>((tagCatalog ?? []).map((t) => [t.name, t.color]));
+    return (name: string) => map.get(name) ?? "neutral";
+  }, [tagCatalog]);
+  const tagOptions = React.useMemo(() => (tagCatalog ?? []).map((t) => t.name), [tagCatalog]);
 
   const sortValues = (r: AgendaRow): SortableRow =>
     r.kind === "task"
@@ -362,13 +372,29 @@ export function UnifiedList({
         const r = row.original;
         const tags = (r.kind === "task" ? r.task.tags : (r.event.tags ?? [])) ?? [];
         return (
-          <div className="flex flex-wrap gap-1">
-            {tags.slice(0, 2).map((t) => (
-              <Badge key={t} variant="outline" className="capitalize">
-                {t}
-              </Badge>
-            ))}
-          </div>
+          <InlineTags
+            value={tags}
+            options={tagOptions}
+            colorOf={tagColor}
+            onChange={async (next) => {
+              if (r.kind === "task") await ticketsService.update(r.task.id, { tags: next });
+              else await calendarService.update(r.event.id, { tags: next });
+              onChanged?.();
+            }}
+          >
+            {tags.length === 0 ? (
+              <span className="text-sm text-muted-foreground">—</span>
+            ) : (
+              <span className="flex flex-wrap items-center gap-1">
+                {tags.slice(0, 2).map((t) => (
+                  <Badge key={t} variant="outline" className={cn("capitalize", TONE_BADGE_CLASS[tagColor(t)])}>
+                    {t}
+                  </Badge>
+                ))}
+                {tags.length > 2 && <Badge variant="outline">+{tags.length - 2}</Badge>}
+              </span>
+            )}
+          </InlineTags>
         );
       },
     },

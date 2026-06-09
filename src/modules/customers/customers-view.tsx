@@ -217,6 +217,7 @@ export function CustomersView() {
         <InlineTags
           value={row.original.tags}
           options={(tags ?? []).map((t) => t.name)}
+          colorOf={tagColor}
           title="Editar etiquetas"
           onChange={async (next) => {
             await customersService.update(row.original.id, { tags: next });

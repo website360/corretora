@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   Blocks,
@@ -50,6 +50,7 @@ import { UserAvatar } from "@/components/common/user-avatar";
 export function SettingsView() {
   const { user, can } = useSession();
   const router = useRouter();
+  const initialTab = useSearchParams().get("tab") ?? "profile";
   const { theme, setTheme } = useTheme();
   const [modules, setModules] = React.useState(PLATFORM_MODULES);
 
@@ -147,7 +148,7 @@ export function SettingsView() {
     <div className="space-y-6 p-4 lg:p-6">
       <PageHeader title="Configurações" description="Gerencie seu perfil, empresa e módulos." />
 
-      <Tabs defaultValue="profile">
+      <Tabs defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="profile">
             <UserCircle className="size-4" /> Perfil

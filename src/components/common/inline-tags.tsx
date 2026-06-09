@@ -1,18 +1,25 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { TONE_DOT_CLASS } from "@/config/domain";
+import type { StageColor } from "@/types/domain";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 /**
  * Inline multi-select for tags (etiquetas). Toggles in a draft and persists
- * once the dropdown closes. Stops row-click propagation.
+ * once the dropdown closes. Mostra a cor de cada etiqueta e um atalho para
+ * gerenciar as etiquetas nas Configurações. Stops row-click propagation.
  */
 export function InlineTags({
   value,
@@ -21,6 +28,7 @@ export function InlineTags({
   children,
   title,
   align = "start",
+  colorOf,
 }: {
   value: string[];
   options: string[];
@@ -28,6 +36,8 @@ export function InlineTags({
   children: React.ReactNode;
   title?: string;
   align?: "start" | "end";
+  /** Cor de cada etiqueta (para o ponto colorido no menu). */
+  colorOf?: (name: string) => StageColor;
 }) {
   const [open, setOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<string[]>(value);
@@ -63,11 +73,9 @@ export function InlineTags({
             {children}
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align={align} className="max-h-72 overflow-y-auto">
+        <DropdownMenuContent align={align} className="max-h-80 w-56 overflow-y-auto">
           {options.length === 0 ? (
-            <p className="px-2 py-1.5 text-xs text-muted-foreground">
-              Nenhuma etiqueta. Crie em Configurações → Etiquetas.
-            </p>
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma etiqueta criada.</p>
           ) : (
             options.map((name) => (
               <DropdownMenuCheckboxItem
@@ -75,12 +83,22 @@ export function InlineTags({
                 checked={draft.includes(name)}
                 onCheckedChange={() => toggle(name)}
                 onSelect={(e) => e.preventDefault()}
-                className={cn("capitalize")}
               >
-                {name}
+                <span className="flex items-center gap-2">
+                  <span
+                    className={cn("size-2 shrink-0 rounded-full", TONE_DOT_CLASS[colorOf?.(name) ?? "neutral"])}
+                  />
+                  <span className="capitalize">{name}</span>
+                </span>
               </DropdownMenuCheckboxItem>
             ))
           )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href="/configuracoes?tab=tags" className="text-muted-foreground">
+              <Settings2 className="size-4" /> Gerenciar etiquetas
+            </Link>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </span>
