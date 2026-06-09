@@ -28,13 +28,16 @@ import {
   addDays,
   addMonths,
   addWeeks,
+  addYears,
   endOfDay,
   endOfMonth,
   endOfWeek,
+  endOfYear,
   format,
   startOfDay,
   startOfMonth,
   startOfWeek,
+  startOfYear,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -95,6 +98,7 @@ const PERIOD_LABEL: Record<PeriodMode, string> = {
   day: "Dia",
   week: "Semana",
   month: "Mês",
+  year: "Ano",
   range: "Intervalo",
 };
 
@@ -386,6 +390,7 @@ export function TasksView() {
         from: startOfWeek(cursor, { weekStartsOn: 0 }),
         to: endOfWeek(cursor, { weekStartsOn: 0 }),
       };
+    if (periodMode === "year") return { from: startOfYear(cursor), to: endOfYear(cursor) };
     return { from: startOfMonth(cursor), to: endOfMonth(cursor) };
   }, [periodMode, cursor, rangeFrom, rangeTo]);
 
@@ -402,7 +407,13 @@ export function TasksView() {
 
   const navigatePeriod = (dir: -1 | 1) =>
     setCursor((c) =>
-      periodMode === "day" ? addDays(c, dir) : periodMode === "week" ? addWeeks(c, dir) : addMonths(c, dir),
+      periodMode === "day"
+        ? addDays(c, dir)
+        : periodMode === "week"
+          ? addWeeks(c, dir)
+          : periodMode === "year"
+            ? addYears(c, dir)
+            : addMonths(c, dir),
     );
 
   const periodLabel =
@@ -410,7 +421,9 @@ export function TasksView() {
       ? format(cursor, "d 'de' MMMM 'de' yyyy", { locale: ptBR })
       : periodMode === "week" && periodWindow
         ? `${format(periodWindow.from, "d MMM", { locale: ptBR })} – ${format(periodWindow.to, "d MMM", { locale: ptBR })}`
-        : format(cursor, "MMMM yyyy", { locale: ptBR });
+        : periodMode === "year"
+          ? format(cursor, "yyyy", { locale: ptBR })
+          : format(cursor, "MMMM yyyy", { locale: ptBR });
 
   const tickets = (showTasks ? localTickets : []).filter(
     (t) => boardOk(t.board_id) && subjectOk(t.subject_type) && taskOpenOk(t) && taskInWindow(t),

@@ -7,7 +7,10 @@
       "Bash(sed -n '176,190p' src/modules/tickets/task-drawer.tsx)",
       "Bash(grep -rln \"Buscar etiqueta\\\\|Etiquetas\\\\|tagsService\" src/modules/quotes --include=\"*.tsx\")",
       "Bash(git -c commit.gpgsign=false commit -q -m \"feat\\(etiquetas\\): link 'Gerenciar etiquetas' nos campos de tag dos modais \\(contato e evento\\)\" -m \"Extrai ManageTagsLink e reaproveita no modal de tarefa/evento, no de contato e no de novo evento — todos levam a Configurações → Etiquetas.\" -m \"Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>\")",
-      "Bash(git -c commit.gpgsign=false commit -q -m \"fix\\(categorias\\): tarefas/eventos só têm Interna, Cliente e Seguradora\" -m \"Produto/Contrato/Orçamento deixam de ser categoria \\(são apenas Indicadores\\). TASK_CATEGORY_TYPES limita select inline, filtro e menus de criação às 3 categorias. Renovações passam a usar a categoria Seguradora. Migração 0058 reclassifica registros existentes \\(contract/product→carrier, quote→customer\\) preservando os vínculos.\" -m \"Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>\")"
+      "Bash(git -c commit.gpgsign=false commit -q -m \"fix\\(categorias\\): tarefas/eventos só têm Interna, Cliente e Seguradora\" -m \"Produto/Contrato/Orçamento deixam de ser categoria \\(são apenas Indicadores\\). TASK_CATEGORY_TYPES limita select inline, filtro e menus de criação às 3 categorias. Renovações passam a usar a categoria Seguradora. Migração 0058 reclassifica registros existentes \\(contract/product→carrier, quote→customer\\) preservando os vínculos.\" -m \"Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>\")",
+      "Bash(sed -n '88,100p' src/modules/tickets/tasks-view.tsx)",
+      "Bash(sed -n '375,430p' src/modules/tickets/tasks-view.tsx)",
+      "Bash(git -c commit.gpgsign=false commit -q -m \"feat\\(tarefas\\): renovação como categoria Cliente + filtro de período por Ano\" -m \"Renovações \\(contrato e conversão de orçamento\\) passam a usar a categoria Cliente; migração 0059 reclassifica as existentes \\(category='renewal'→customer\\). Controle de período ganha 'Ano' \\(janela/label/navegação\\) e o calendário exibe uma visão anual de 12 meses com marcadores de dias ocupados.\" -m \"Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>\")"
     ]
   }
 }

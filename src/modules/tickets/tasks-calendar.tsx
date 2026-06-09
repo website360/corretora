@@ -32,7 +32,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { UserAvatar } from "@/components/common/user-avatar";
 
 /** Shared time-window granularity (mirrors the page's period control). */
-export type PeriodMode = "day" | "week" | "month" | "range";
+export type PeriodMode = "day" | "week" | "month" | "year" | "range";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MAX_RANGE_DAYS = 62;
@@ -99,6 +99,14 @@ export function TasksCalendar({
     );
   }
 
+  if (mode === "year") {
+    return (
+      <div className="h-full overflow-auto">
+        <YearView cursor={cursor} bucketFor={bucketFor} />
+      </div>
+    );
+  }
+
   // week / range → a grid of day cards.
   let days: Date[] = [];
   if (mode === "week") {
@@ -127,6 +135,79 @@ export function TasksCalendar({
   return (
     <div className="h-full overflow-auto">
       <DaysGrid days={days} bucketFor={bucketFor} onOpenTask={openTask} onOpenEvent={onOpenEvent} />
+    </div>
+  );
+}
+
+/* ───────────────────────────────── Year ────────────────────────────────── */
+
+function YearView({
+  cursor,
+  bucketFor,
+}: {
+  cursor: Date;
+  bucketFor: (d: Date) => DayBucket;
+}) {
+  const year = cursor.getFullYear();
+  const months = Array.from({ length: 12 }, (_, i) => new Date(year, i, 1));
+  return (
+    <div className="grid gap-3 p-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {months.map((m) => {
+        const days = eachDayOfInterval({
+          start: startOfWeek(startOfMonth(m), { weekStartsOn: 0 }),
+          end: endOfWeek(endOfMonth(m), { weekStartsOn: 0 }),
+        });
+        return (
+          <Card key={m.toISOString()} className="p-2.5">
+            <h3 className="mb-1.5 text-center text-sm font-semibold capitalize">
+              {format(m, "MMMM", { locale: ptBR })}
+            </h3>
+            <div className="grid grid-cols-7 text-center text-[0.6rem] text-muted-foreground">
+              {WEEKDAYS.map((d) => (
+                <div key={d} className="py-0.5">
+                  {d[0]}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7">
+              {days.map((day) => {
+                const { events, tasks } = bucketFor(day);
+                const count = events.length + tasks.length;
+                const inMonth = isSameMonth(day, m);
+                return (
+                  <div
+                    key={day.toISOString()}
+                    title={
+                      count
+                        ? `${count} item(ns) — ${format(day, "d 'de' MMM", { locale: ptBR })}`
+                        : undefined
+                    }
+                    className={cn(
+                      "flex aspect-square flex-col items-center justify-center text-[0.65rem]",
+                      !inMonth && "text-muted-foreground/40",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex size-4 items-center justify-center rounded-full",
+                        isToday(day) && "bg-primary font-medium text-primary-foreground",
+                      )}
+                    >
+                      {format(day, "d")}
+                    </span>
+                    <span
+                      className={cn(
+                        "mt-0.5 size-1 rounded-full",
+                        count > 0 && inMonth ? "bg-primary" : "bg-transparent",
+                      )}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        );
+      })}
     </div>
   );
 }
