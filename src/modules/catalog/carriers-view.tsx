@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   Link2,
+  Lock,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -96,6 +97,15 @@ export function CarriersView() {
           <div className="flex items-center gap-3">
             <CarrierLogo src={c.logo_url} />
             <p className="truncate font-medium">{c.name}</p>
+            {c.is_system && (
+              <Badge
+                variant="secondary"
+                className="gap-1 text-muted-foreground"
+                title="Seguradora padrão do sistema. Para uma diferente, crie a sua."
+              >
+                <Lock className="size-3" /> Padrão
+              </Badge>
+            )}
           </div>
         );
       },
@@ -117,26 +127,31 @@ export function CarriersView() {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => (
-        <InlineSelect
-          value={row.original.status}
-          options={[
-            { value: "active", label: "Ativa" },
-            { value: "inactive", label: "Inativa" },
-          ]}
-          title="Trocar status"
-          onChange={async (v) => {
-            await carriersService.update(row.original.id, { status: v as Carrier["status"] });
-            refetch();
-          }}
-        >
-          {row.original.status === "active" ? (
+      cell: ({ row }) => {
+        const statusBadge =
+          row.original.status === "active" ? (
             <Badge variant="success">Ativa</Badge>
           ) : (
             <Badge variant="secondary">Inativa</Badge>
-          )}
-        </InlineSelect>
-      ),
+          );
+        if (row.original.is_system) return statusBadge;
+        return (
+          <InlineSelect
+            value={row.original.status}
+            options={[
+              { value: "active", label: "Ativa" },
+              { value: "inactive", label: "Inativa" },
+            ]}
+            title="Trocar status"
+            onChange={async (v) => {
+              await carriersService.update(row.original.id, { status: v as Carrier["status"] });
+              refetch();
+            }}
+          >
+            {statusBadge}
+          </InlineSelect>
+        );
+      },
     },
     {
       id: "actions",
@@ -154,16 +169,20 @@ export function CarriersView() {
               <DropdownMenuItem onClick={() => router.push(`/companhias/${row.original.id}`)}>
                 <SquareArrowOutUpRight /> Abrir
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openEdit(row.original)}>
-                <Pencil /> Editar
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setDeleteTarget(row.original)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 /> Excluir
-              </DropdownMenuItem>
+              {!row.original.is_system && (
+                <>
+                  <DropdownMenuItem onClick={() => openEdit(row.original)}>
+                    <Pencil /> Editar
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setDeleteTarget(row.original)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 /> Excluir
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { MoreHorizontal, Package, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Lock, MoreHorizontal, Package, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { productsService } from "@/services/products.service";
 import { useAsyncData } from "@/hooks/use-async-data";
@@ -72,60 +72,75 @@ export function ProductsView({ embedded = false }: { embedded?: boolean } = {}) 
             <Package className="size-4" />
           </span>
           <span className="truncate font-medium">{row.original.name}</span>
+          {row.original.is_system && (
+            <Badge
+              variant="secondary"
+              className="gap-1 text-muted-foreground"
+              title="Produto padrão do sistema. Para um diferente, crie o seu."
+            >
+              <Lock className="size-3" /> Padrão
+            </Badge>
+          )}
         </div>
       ),
     },
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => (
-        <InlineSelect
-          value={row.original.status}
-          options={[
-            { value: "active", label: "Ativo" },
-            { value: "inactive", label: "Inativo" },
-          ]}
-          title="Trocar status"
-          onChange={async (v) => {
-            await productsService.update(row.original.id, { status: v as Product["status"] });
-            refetch();
-          }}
-        >
-          {row.original.status === "active" ? (
+      cell: ({ row }) => {
+        const statusBadge =
+          row.original.status === "active" ? (
             <Badge variant="success">Ativo</Badge>
           ) : (
             <Badge variant="secondary">Inativo</Badge>
-          )}
-        </InlineSelect>
-      ),
+          );
+        if (row.original.is_system) return statusBadge;
+        return (
+          <InlineSelect
+            value={row.original.status}
+            options={[
+              { value: "active", label: "Ativo" },
+              { value: "inactive", label: "Inativo" },
+            ]}
+            title="Trocar status"
+            onChange={async (v) => {
+              await productsService.update(row.original.id, { status: v as Product["status"] });
+              refetch();
+            }}
+          >
+            {statusBadge}
+          </InlineSelect>
+        );
+      },
     },
     {
       id: "actions",
       header: "Ações",
       meta: { headClassName: "text-right pr-2", cellClassName: "pr-2" },
-      cell: ({ row }) => (
-        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" title="Ações">
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openEdit(row.original)}>
-                <Pencil /> Editar
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setDeleteTarget(row.original)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 /> Excluir
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      ),
+      cell: ({ row }) =>
+        row.original.is_system ? null : (
+          <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" title="Ações">
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openEdit(row.original)}>
+                  <Pencil /> Editar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setDeleteTarget(row.original)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 /> Excluir
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ),
     },
   ];
 

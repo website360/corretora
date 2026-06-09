@@ -205,6 +205,8 @@ export interface Carrier {
   links: CarrierLink[];
   notes: string | null;
   status: EntityStatus;
+  /** Seguradora padrão do sistema — não editável pela corretora. */
+  is_system?: boolean;
   created_at: ISODateString;
 }
 
@@ -215,6 +217,8 @@ export interface Product {
   carrier_id?: UUID | null;
   name: string;
   status: EntityStatus;
+  /** Produto padrão do sistema — não editável pela corretora. */
+  is_system?: boolean;
   created_at: ISODateString;
 }
 
