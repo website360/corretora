@@ -25,6 +25,7 @@ import { InlineTags } from "@/components/common/inline-tags";
 import {
   EVENT_MODALITY_META,
   TICKET_PRIORITY_META,
+  TICKET_SUBJECT_META,
   TONE_BADGE_CLASS,
   TONE_DOT_CLASS,
 } from "@/config/domain";
@@ -327,9 +328,25 @@ export function UnifiedList({
         );
       },
     },
+    subject: {
+      id: "subject",
+      header: "Categorias",
+      cell: ({ row }) => {
+        const r = row.original;
+        const st = r.kind === "task" ? r.task.subject_type : r.event.subject_type;
+        const meta = TICKET_SUBJECT_META[st];
+        if (!meta) return <span className="text-sm text-muted-foreground">—</span>;
+        const Icon = meta.icon;
+        return (
+          <Badge variant="outline" className={cn("gap-1", TONE_BADGE_CLASS[meta.tone])}>
+            <Icon className="size-3" /> {meta.label}
+          </Badge>
+        );
+      },
+    },
     link: {
       id: "link",
-      header: "Categorias",
+      header: "Indicadores",
       cell: ({ row }) => {
         const r = row.original;
         const t = r.kind === "task" ? r.task : null;

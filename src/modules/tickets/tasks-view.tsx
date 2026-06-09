@@ -536,8 +536,8 @@ export function TasksView() {
           options={SUBJECT_OPTIONS}
           values={subjectFilter}
           onChange={setSubjectFilter}
-          placeholder="Todo tipo"
-          searchPlaceholder="Buscar tipo..."
+          placeholder="Toda categoria"
+          searchPlaceholder="Buscar categoria..."
         />
 
         {/* Attribution dimension (multiple) + people */}
