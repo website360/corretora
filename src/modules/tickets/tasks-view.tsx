@@ -57,7 +57,12 @@ import { useAsyncData } from "@/hooks/use-async-data";
 import { useDirectory, useDirectoryStore } from "@/stores/directory-store";
 import { useUIStore } from "@/stores/ui-store";
 import { useSession } from "@/contexts/session-context";
-import { loadTaskFilters, type SavedTaskFilters } from "@/lib/task-filters-storage";
+import {
+  loadTaskFilters,
+  saveTaskFilters,
+  clearTaskFilters,
+  type SavedTaskFilters,
+} from "@/lib/task-filters-storage";
 import { SavedFiltersBar } from "@/components/common/saved-filters-bar";
 import type { PresetFilters } from "@/services/filter-presets.service";
 import { TASK_CATEGORY_TYPES, TICKET_PRIORITY_META, TICKET_SUBJECT_META } from "@/config/domain";
@@ -247,16 +252,19 @@ export function TasksView() {
   React.useEffect(() => {
     if (hydrated.current || !user.id) return;
     hydrated.current = true;
+    // localStorage (lido fresco a cada montagem) tem prioridade — é o filtro
+    // temporário "grudado". O valor do banco serve de fallback entre devices.
     const last =
-      (user.task_filter_last as SavedTaskFilters | undefined) ?? loadTaskFilters(user.id) ?? null;
+      loadTaskFilters(user.id) ?? (user.task_filter_last as SavedTaskFilters | undefined) ?? null;
     if (last) applyFilters(last);
   }, [user.id]);
 
-  // Aplica um preset vindo do SavedFiltersBar (e lembra como "último uso").
+  // Aplica um preset vindo do SavedFiltersBar (lembra como "último uso" e gruda).
   function onApplyPreset(f: PresetFilters) {
     const filters = f as unknown as SavedTaskFilters;
     applyFilters(filters);
     saveLastToDb(filters);
+    saveTaskFilters(user.id, filters);
     setCursor(new Date());
   }
 
@@ -276,6 +284,7 @@ export function TasksView() {
     setRangeFrom("");
     setRangeTo("");
     saveLastToDb(null);
+    clearTaskFilters(user.id);
     toast.success("Filtros limpos.");
   }
 
@@ -623,6 +632,7 @@ export function TasksView() {
             onChange={(v) => setEntryTypes(v as EntryType[])}
             placeholder="Tarefas e eventos"
             searchPlaceholder="Tipo..."
+            active={entryTypes.length !== 2}
           />
           <MultiSelect
             icon={<Flag />}
@@ -647,6 +657,7 @@ export function TasksView() {
             onChange={(v) => setRelations(v as AttributionRelation[])}
             placeholder="Atribuição"
             searchPlaceholder="Atribuição..."
+            active={!(relations.length === 1 && relations[0] === "assignee")}
           />
           <MultiSelect
             icon={<Users />}
@@ -701,8 +712,9 @@ export function TasksView() {
             className="h-9"
             title="Guardar os filtros atuais para quando você voltar (sem criar um preset)"
             onClick={() => {
+              saveTaskFilters(user.id, currentFilters());
               saveLastToDb(currentFilters());
-              toast.success("Filtro guardado — será restaurado ao voltar à página.");
+              toast.success("Filtro guardado — fica ativo ao sair e voltar à página.");
             }}
           >
             <Save /> Salvar filtro temporário

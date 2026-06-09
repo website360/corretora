@@ -39,6 +39,11 @@ interface MultiSelectProps {
   footer?: React.ReactNode;
   /** Override do portal (por padrão é automático: desligado dentro de Dialog). */
   portal?: boolean;
+  /**
+   * Força o destaque de "filtro ativo". Use quando o padrão NÃO é vazio (ex.:
+   * Tipo, Atribuição) — assim só destaca quando o usuário muda do padrão.
+   */
+  active?: boolean;
 }
 
 /** Searchable multi-select; empty selection reads as the placeholder. */
@@ -56,6 +61,7 @@ export function MultiSelect({
   allMode = "clear",
   footer,
   portal,
+  active: activeProp,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -70,8 +76,10 @@ export function MultiSelect({
   const allActive = allMode === "selectAll" ? allSelected : values.length === 0;
   const onAll = () => onChange(allMode === "selectAll" ? options.map((o) => o.value) : []);
 
-  // "Ativo" = há uma seleção que filtra de fato (em selectAll, tudo marcado = sem filtro).
-  const active = values.length > 0 && (allMode !== "selectAll" || values.length < options.length);
+  // "Ativo" = filtra de fato. Por padrão: tem seleção (em selectAll, tudo
+  // marcado = sem filtro). Quando o padrão NÃO é vazio, o pai passa `active`.
+  const active =
+    activeProp ?? (values.length > 0 && (allMode !== "selectAll" || values.length < options.length));
 
   const label =
     values.length === 0

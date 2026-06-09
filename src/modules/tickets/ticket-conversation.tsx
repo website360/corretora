@@ -78,6 +78,8 @@ export function TicketConversation({ id }: { id: string }) {
   const [messages, setMessages] = React.useState<TicketMessage[]>([]);
   const [editOpen, setEditOpen] = React.useState(false);
   const [tab, setTab] = React.useState<"chat" | "activity">("chat");
+  const [deleteMsg, setDeleteMsg] = React.useState<TicketMessage | null>(null);
+  const [deletingMsg, setDeletingMsg] = React.useState(false);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const { data: logs, refetch: refetchLogs } = useAsyncData(() => ticketsService.logs(id), [id]);
 
@@ -85,15 +87,20 @@ export function TicketConversation({ id }: { id: string }) {
     ticketsService.messages(id).then(setMessages);
   }, [id]);
 
-  async function handleDeleteMessage(m: TicketMessage) {
-    if (!window.confirm("Excluir esta mensagem? Esta ação não pode ser desfeita.")) return;
+  async function confirmDeleteMessage() {
+    const m = deleteMsg;
+    if (!m) return;
+    setDeletingMsg(true);
     try {
       await ticketsService.removeMessage(m.id, id);
       setMessages((prev) => prev.filter((x) => x.id !== m.id));
       refetchLogs();
+      setDeleteMsg(null);
       toast.success("Mensagem excluída");
     } catch {
       toast.error("Não foi possível excluir a mensagem.");
+    } finally {
+      setDeletingMsg(false);
     }
   }
 
@@ -168,7 +175,7 @@ export function TicketConversation({ id }: { id: string }) {
                     message={m}
                     currentUserId={user.id}
                     canDelete={m.author_id === user.id || isAdmin}
-                    onDelete={() => handleDeleteMessage(m)}
+                    onDelete={() => setDeleteMsg(m)}
                   />
                 ))}
               </div>
@@ -196,6 +203,17 @@ export function TicketConversation({ id }: { id: string }) {
         onOpenChange={setEditOpen}
         ticket={ticket}
         onSaved={refetch}
+      />
+
+      <ConfirmDialog
+        open={deleteMsg !== null}
+        onOpenChange={(o) => !o && setDeleteMsg(null)}
+        title="Excluir mensagem"
+        description="A mensagem será removida permanentemente e o registro ficará no histórico da tarefa."
+        confirmLabel="Excluir"
+        variant="destructive"
+        loading={deletingMsg}
+        onConfirm={confirmDeleteMessage}
       />
     </div>
   );
