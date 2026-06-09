@@ -42,6 +42,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Dados incompletos." }, { status: 400 });
   }
 
+  // ClickSign exige nome e sobrenome no signatário — valida antes de enviar.
+  const incomplete = body.signers.find(
+    (s) => s.email && s.name.trim().split(/\s+/).filter(Boolean).length < 2,
+  );
+  if (incomplete) {
+    return NextResponse.json(
+      {
+        error: `O nome "${incomplete.name}" precisa ter nome e sobrenome para a assinatura (exigência do ClickSign). Complete o nome do cliente e tente novamente.`,
+      },
+      { status: 400 },
+    );
+  }
+
   let admin;
   try {
     admin = getSupabaseAdminClient();
