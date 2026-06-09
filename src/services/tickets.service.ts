@@ -171,6 +171,34 @@ export const ticketsService = {
     return data as TicketMessage;
   },
 
+  /** Exclui uma mensagem da conversa e registra no log (não há edição). */
+  async removeMessage(messageId: string, ticketId: string): Promise<void> {
+    if (env.useMocks) {
+      await sleep(160);
+      const i = ticketMessages.findIndex((m) => m.id === messageId);
+      if (i >= 0) ticketMessages.splice(i, 1);
+      ticketLogs.push({
+        id: uid("tl"),
+        ticket_id: ticketId,
+        actor_id: getCurrentUserId(),
+        event: "comment_deleted",
+        meta: {},
+        created_at: new Date().toISOString(),
+      });
+      return;
+    }
+    const sb = getSupabaseBrowserClient();
+    const { error } = await sb.from("ticket_messages").delete().eq("id", messageId);
+    if (error) throw error;
+    await sb.from("ticket_logs").insert({
+      ticket_id: ticketId,
+      company_id: getCurrentCompanyId(),
+      actor_id: getCurrentUserId(),
+      event: "comment_deleted",
+      meta: {},
+    });
+  },
+
   async setStatus(ticketId: string, status: TicketStatus): Promise<void> {
     if (env.useMocks) {
       await sleep(200);

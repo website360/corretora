@@ -547,7 +547,8 @@ export type TicketEventType =
   | "due_changed"
   | "due_removed"
   | "edited"
-  | "comment";
+  | "comment"
+  | "comment_deleted";
 
 export interface TicketLog {
   id: UUID;

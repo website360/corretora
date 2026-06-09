@@ -14,6 +14,7 @@ import {
   Pencil,
   Plus,
   Tag,
+  Trash2,
   UserCircle,
   UserRound,
   Users,
@@ -68,7 +69,8 @@ import {
 } from "@/components/ui/select";
 
 export function TicketConversation({ id }: { id: string }) {
-  const { user } = useSession();
+  const { user, can } = useSession();
+  const isAdmin = can(["admin", "super_admin"]);
   useDirectory();
   const { data: ticket, loading, refetch } = useAsyncData(() => ticketsService.get(id), [id]);
   const { data: users } = useAsyncData(() => usersService.list());
@@ -77,11 +79,23 @@ export function TicketConversation({ id }: { id: string }) {
   const [editOpen, setEditOpen] = React.useState(false);
   const [tab, setTab] = React.useState<"chat" | "activity">("chat");
   const scrollRef = React.useRef<HTMLDivElement>(null);
-  const { data: logs } = useAsyncData(() => ticketsService.logs(id), [id]);
+  const { data: logs, refetch: refetchLogs } = useAsyncData(() => ticketsService.logs(id), [id]);
 
   React.useEffect(() => {
     ticketsService.messages(id).then(setMessages);
   }, [id]);
+
+  async function handleDeleteMessage(m: TicketMessage) {
+    if (!window.confirm("Excluir esta mensagem? Esta ação não pode ser desfeita.")) return;
+    try {
+      await ticketsService.removeMessage(m.id, id);
+      setMessages((prev) => prev.filter((x) => x.id !== m.id));
+      refetchLogs();
+      toast.success("Mensagem excluída");
+    } catch {
+      toast.error("Não foi possível excluir a mensagem.");
+    }
+  }
 
   // Live updates — appends new messages when Realtime is enabled.
   useRealtime<TicketMessage>({
@@ -149,7 +163,13 @@ export function TicketConversation({ id }: { id: string }) {
             <div ref={scrollRef} className="flex-1 overflow-y-auto">
               <div className="mx-auto max-w-3xl space-y-5 p-4 lg:p-6">
                 {messages.map((m) => (
-                  <MessageBubble key={m.id} message={m} currentUserId={user.id} />
+                  <MessageBubble
+                    key={m.id}
+                    message={m}
+                    currentUserId={user.id}
+                    canDelete={m.author_id === user.id || isAdmin}
+                    onDelete={() => handleDeleteMessage(m)}
+                  />
                 ))}
               </div>
             </div>
@@ -263,6 +283,8 @@ function feedDescribe(it: FeedItem): string {
       return "removeu o prazo";
     case "edited":
       return "editou a tarefa";
+    case "comment_deleted":
+      return "removeu um comentário";
     default:
       return "atualizou a tarefa";
   }
@@ -291,6 +313,8 @@ function FeedIcon({ item }: { item: FeedItem }) {
       return <CalendarClock className={cls} />;
     case "edited":
       return <Pencil className={cls} />;
+    case "comment_deleted":
+      return <Trash2 className={cls} />;
     default:
       return <History className={cls} />;
   }
@@ -494,15 +518,19 @@ function ConversationHeader({
 function MessageBubble({
   message,
   currentUserId,
+  canDelete,
+  onDelete,
 }: {
   message: TicketMessage;
   currentUserId: string;
+  canDelete?: boolean;
+  onDelete?: () => void;
 }) {
   const author = findUser(message.author_id);
   const isMine = message.author_id === currentUserId;
 
   return (
-    <div className={cn("flex gap-3", isMine && "flex-row-reverse")}>
+    <div className={cn("group flex gap-3", isMine && "flex-row-reverse")}>
       <Avatar className="size-8 shrink-0">
         {author?.avatar_url && <AvatarImage src={author.avatar_url} alt={author.name} />}
         <AvatarFallback>{initials(author?.name)}</AvatarFallback>
@@ -511,6 +539,16 @@ function MessageBubble({
         <div className={cn("flex items-center gap-2 text-xs", isMine && "flex-row-reverse")}>
           <span className="font-medium text-foreground">{author?.name ?? "Usuário"}</span>
           <span className="text-muted-foreground">{formatSmartDate(message.created_at)}</span>
+          {canDelete && onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              title="Excluir mensagem"
+              className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          )}
         </div>
         <div
           className={cn(
