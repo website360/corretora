@@ -77,13 +77,26 @@ export function ClickSignIntegration({ onBack }: { onBack: () => void }) {
             <p className="mb-1 font-semibold text-warning">Pré-requisitos no painel do ClickSign</p>
             <ul className="list-disc space-y-1 pl-4">
               <li>
-                No ClickSign, em <strong>Configurações → API</strong>, preencha o{" "}
-                <strong>e-mail do usuário da API</strong>. Sem isso, o envio falha com
-                &quot;E-mail do usuário da API não configurado&quot;.
+                Preencha o <strong>e-mail do usuário da API</strong> na MESMA conta do ambiente
+                selecionado abaixo. Como está em{" "}
+                <strong>{environment === "production" ? "Produção" : "Sandbox"}</strong>, acesse{" "}
+                <a
+                  href={
+                    environment === "production"
+                      ? "https://app.clicksign.com"
+                      : "https://sandbox.clicksign.com"
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium underline"
+                >
+                  {environment === "production" ? "app.clicksign.com" : "sandbox.clicksign.com"}
+                </a>{" "}
+                → <strong>Configurações → API</strong>. Preencher no outro ambiente não resolve.
               </li>
               <li>
-                O <strong>Ambiente</strong> abaixo (Sandbox/Produção) precisa ser o mesmo do token
-                que você gerou — token de sandbox só funciona em Sandbox, e vice-versa.
+                O <strong>token</strong> também precisa ser do mesmo ambiente — token de sandbox só
+                funciona em Sandbox, e de produção só em Produção.
               </li>
             </ul>
           </div>
