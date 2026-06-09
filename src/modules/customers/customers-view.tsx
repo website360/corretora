@@ -57,6 +57,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { TagBadge } from "@/components/common/tag-badge";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { SavedFiltersBar } from "@/components/common/saved-filters-bar";
+import type { PresetFilters } from "@/services/filter-presets.service";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -118,6 +120,21 @@ export function CustomersView() {
   const [search, setSearch] = React.useState("");
   const [statuses, setStatuses] = React.useState<string[]>([]);
   const [tagSel, setTagSel] = React.useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+
+  const activeFilterCount =
+    (search.trim() ? 1 : 0) + statuses.length + tagSel.length;
+  const currentFilters = (): PresetFilters => ({ search, statuses, tagSel });
+  const applyFilters = (f: PresetFilters) => {
+    setSearch((f.search as string) ?? "");
+    setStatuses((f.statuses as string[]) ?? []);
+    setTagSel((f.tagSel as string[]) ?? []);
+  };
+  const clearFilters = () => {
+    setSearch("");
+    setStatuses([]);
+    setTagSel([]);
+  };
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [viewCustomer, setViewCustomer] = React.useState<Customer | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<Customer | null>(null);
@@ -619,7 +636,7 @@ export function CustomersView() {
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="w-full max-w-xs">
+        <div className="w-full min-w-[180px] flex-1 sm:w-auto sm:max-w-xs">
           <Input
             placeholder="Buscar por nome, documento ou e-mail..."
             startIcon={<Search />}
@@ -628,28 +645,14 @@ export function CustomersView() {
           />
         </div>
 
-        <MultiSelect
-          icon={<CircleDot />}
-          options={[
-            { value: "active", label: "Ativo" },
-            { value: "inactive", label: "Inativo" },
-          ]}
-          values={statuses}
-          onChange={setStatuses}
-          placeholder="Todos os status"
-          searchPlaceholder="Status..."
-          allLabel="Todos"
-        />
-
-        <MultiSelect
-          icon={<TagIcon />}
-          options={(tags ?? []).map((t) => ({ value: t.name, label: t.name }))}
-          values={tagSel}
-          onChange={setTagSel}
-          placeholder="Todas as etiquetas"
-          searchPlaceholder="Buscar etiqueta..."
-          emptyText="Nenhuma etiqueta."
-          allLabel="Todas"
+        <SavedFiltersBar
+          scope="customers"
+          filtersOpen={filtersOpen}
+          onToggleFilters={() => setFiltersOpen((v) => !v)}
+          activeCount={activeFilterCount}
+          onClear={clearFilters}
+          getCurrent={currentFilters}
+          onApply={applyFilters}
         />
 
         <div className="ml-auto">
@@ -664,6 +667,33 @@ export function CustomersView() {
           />
         </div>
       </div>
+
+      {filtersOpen && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 p-2">
+          <MultiSelect
+            icon={<CircleDot />}
+            options={[
+              { value: "active", label: "Ativo" },
+              { value: "inactive", label: "Inativo" },
+            ]}
+            values={statuses}
+            onChange={setStatuses}
+            placeholder="Todos os status"
+            searchPlaceholder="Status..."
+            allLabel="Todos"
+          />
+          <MultiSelect
+            icon={<TagIcon />}
+            options={(tags ?? []).map((t) => ({ value: t.name, label: t.name }))}
+            values={tagSel}
+            onChange={setTagSel}
+            placeholder="Todas as etiquetas"
+            searchPlaceholder="Buscar etiqueta..."
+            emptyText="Nenhuma etiqueta."
+            allLabel="Todas"
+          />
+        </div>
+      )}
 
       <DataTable
         columns={columns}

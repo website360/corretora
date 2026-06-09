@@ -33,6 +33,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { SavedFiltersBar } from "@/components/common/saved-filters-bar";
+import type { PresetFilters } from "@/services/filter-presets.service";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import {
@@ -63,10 +65,47 @@ export function AtendimentosView() {
   const [produtos, setProdutos] = React.useState<string[]>([]);
   const [dateFrom, setDateFrom] = React.useState("");
   const [dateTo, setDateTo] = React.useState("");
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<ServiceRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<ServiceRecord | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+
+  const activeFilterCount =
+    (search.trim() ? 1 : 0) +
+    channels.length +
+    clientes.length +
+    atendentes.length +
+    produtos.length +
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0);
+  const currentFilters = (): PresetFilters => ({
+    search,
+    channels,
+    clientes,
+    atendentes,
+    produtos,
+    dateFrom,
+    dateTo,
+  });
+  const applyFilters = (f: PresetFilters) => {
+    setSearch((f.search as string) ?? "");
+    setChannels((f.channels as string[]) ?? []);
+    setClientes((f.clientes as string[]) ?? []);
+    setAtendentes((f.atendentes as string[]) ?? []);
+    setProdutos((f.produtos as string[]) ?? []);
+    setDateFrom((f.dateFrom as string) ?? "");
+    setDateTo((f.dateTo as string) ?? "");
+  };
+  const clearFilters = () => {
+    setSearch("");
+    setChannels([]);
+    setClientes([]);
+    setAtendentes([]);
+    setProdutos([]);
+    setDateFrom("");
+    setDateTo("");
+  };
 
   const customerName = React.useMemo(
     () => new Map((customers ?? []).map((c) => [c.id, c.name || "Sem nome"])),
@@ -234,7 +273,7 @@ export function AtendimentosView() {
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="w-full max-w-xs">
+        <div className="w-full min-w-[180px] flex-1 sm:w-auto sm:max-w-xs">
           <Input
             placeholder="Buscar por cliente ou texto..."
             startIcon={<Search />}
@@ -242,63 +281,77 @@ export function AtendimentosView() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <MultiSelect
-          icon={<Headset className="size-4" />}
-          options={(Object.keys(SERVICE_CHANNEL_META) as ServiceChannel[]).map((c) => ({
-            value: c,
-            label: SERVICE_CHANNEL_META[c].label,
-          }))}
-          values={channels}
-          onChange={setChannels}
-          placeholder="Todos os canais"
-          searchPlaceholder="Canal..."
-          allLabel="Todos"
+        <SavedFiltersBar
+          scope="service"
+          filtersOpen={filtersOpen}
+          onToggleFilters={() => setFiltersOpen((v) => !v)}
+          activeCount={activeFilterCount}
+          onClear={clearFilters}
+          getCurrent={currentFilters}
+          onApply={applyFilters}
         />
-        <MultiSelect
-          icon={<User className="size-4" />}
-          options={(customers ?? []).map((c) => ({ value: c.id, label: c.name || "Sem nome" }))}
-          values={clientes}
-          onChange={setClientes}
-          placeholder="Todos os clientes"
-          searchPlaceholder="Buscar cliente..."
-          allLabel="Todos"
-        />
-        <MultiSelect
-          icon={<Users className="size-4" />}
-          options={(users ?? []).map((u) => ({ value: u.id, label: u.name }))}
-          values={atendentes}
-          onChange={setAtendentes}
-          placeholder="Todos os atendentes"
-          searchPlaceholder="Buscar atendente..."
-          allLabel="Todos"
-        />
-        <MultiSelect
-          icon={<Package className="size-4" />}
-          options={(products ?? []).map((p) => ({ value: p.id, label: p.name }))}
-          values={produtos}
-          onChange={setProdutos}
-          placeholder="Todos os produtos"
-          searchPlaceholder="Buscar produto..."
-          allLabel="Todos"
-        />
-        <div className="flex items-center gap-1.5">
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="h-9 w-[150px]"
-            title="Data inicial"
-          />
-          <span className="text-sm text-muted-foreground">até</span>
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="h-9 w-[150px]"
-            title="Data final"
-          />
-        </div>
       </div>
+
+      {filtersOpen && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 p-2">
+          <MultiSelect
+            icon={<Headset className="size-4" />}
+            options={(Object.keys(SERVICE_CHANNEL_META) as ServiceChannel[]).map((c) => ({
+              value: c,
+              label: SERVICE_CHANNEL_META[c].label,
+            }))}
+            values={channels}
+            onChange={setChannels}
+            placeholder="Todos os canais"
+            searchPlaceholder="Canal..."
+            allLabel="Todos"
+          />
+          <MultiSelect
+            icon={<User className="size-4" />}
+            options={(customers ?? []).map((c) => ({ value: c.id, label: c.name || "Sem nome" }))}
+            values={clientes}
+            onChange={setClientes}
+            placeholder="Todos os clientes"
+            searchPlaceholder="Buscar cliente..."
+            allLabel="Todos"
+          />
+          <MultiSelect
+            icon={<Users className="size-4" />}
+            options={(users ?? []).map((u) => ({ value: u.id, label: u.name }))}
+            values={atendentes}
+            onChange={setAtendentes}
+            placeholder="Todos os atendentes"
+            searchPlaceholder="Buscar atendente..."
+            allLabel="Todos"
+          />
+          <MultiSelect
+            icon={<Package className="size-4" />}
+            options={(products ?? []).map((p) => ({ value: p.id, label: p.name }))}
+            values={produtos}
+            onChange={setProdutos}
+            placeholder="Todos os produtos"
+            searchPlaceholder="Buscar produto..."
+            allLabel="Todos"
+          />
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-9 w-[150px]"
+              title="Data inicial"
+            />
+            <span className="text-sm text-muted-foreground">até</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-9 w-[150px]"
+              title="Data final"
+            />
+          </div>
+        </div>
+      )}
 
       <DataTable
         columns={columns}

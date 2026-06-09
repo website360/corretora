@@ -33,6 +33,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { SavedFiltersBar } from "@/components/common/saved-filters-bar";
+import type { PresetFilters } from "@/services/filter-presets.service";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import {
   DropdownMenu,
@@ -59,10 +61,51 @@ export function ContractsView() {
   const [dateTo, setDateTo] = React.useState("");
   const [valorMin, setValorMin] = React.useState("");
   const [valorMax, setValorMax] = React.useState("");
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Contract | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<Contract | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+
+  const activeFilterCount =
+    (search.trim() ? 1 : 0) +
+    statuses.length +
+    clientes.length +
+    produtos.length +
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0) +
+    (valorMin ? 1 : 0) +
+    (valorMax ? 1 : 0);
+  const currentFilters = (): PresetFilters => ({
+    search,
+    statuses,
+    clientes,
+    produtos,
+    dateFrom,
+    dateTo,
+    valorMin,
+    valorMax,
+  });
+  const applyFilters = (f: PresetFilters) => {
+    setSearch((f.search as string) ?? "");
+    setStatuses((f.statuses as string[]) ?? []);
+    setClientes((f.clientes as string[]) ?? []);
+    setProdutos((f.produtos as string[]) ?? []);
+    setDateFrom((f.dateFrom as string) ?? "");
+    setDateTo((f.dateTo as string) ?? "");
+    setValorMin((f.valorMin as string) ?? "");
+    setValorMax((f.valorMax as string) ?? "");
+  };
+  const clearFilters = () => {
+    setSearch("");
+    setStatuses([]);
+    setClientes([]);
+    setProdutos([]);
+    setDateFrom("");
+    setDateTo("");
+    setValorMin("");
+    setValorMax("");
+  };
 
   const customerName = React.useMemo(
     () => new Map((customers ?? []).map((c) => [c.id, c.name || "Sem nome"])),
@@ -301,7 +344,7 @@ export function ContractsView() {
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="w-full max-w-xs">
+        <div className="w-full min-w-[180px] flex-1 sm:w-auto sm:max-w-xs">
           <Input
             placeholder="Buscar por cliente ou apólice..."
             startIcon={<Search />}
@@ -309,73 +352,87 @@ export function ContractsView() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <MultiSelect
-          icon={<FileText className="size-4" />}
-          options={(Object.keys(CONTRACT_STATUS_META) as ContractStatus[]).map((s) => ({
-            value: s,
-            label: CONTRACT_STATUS_META[s].label,
-          }))}
-          values={statuses}
-          onChange={setStatuses}
-          placeholder="Todos os status"
-          searchPlaceholder="Status..."
-          allLabel="Todos"
+        <SavedFiltersBar
+          scope="contracts"
+          filtersOpen={filtersOpen}
+          onToggleFilters={() => setFiltersOpen((v) => !v)}
+          activeCount={activeFilterCount}
+          onClear={clearFilters}
+          getCurrent={currentFilters}
+          onApply={applyFilters}
         />
-        <MultiSelect
-          icon={<User className="size-4" />}
-          options={(customers ?? []).map((c) => ({ value: c.id, label: c.name || "Sem nome" }))}
-          values={clientes}
-          onChange={setClientes}
-          placeholder="Todos os clientes"
-          searchPlaceholder="Buscar cliente..."
-          allLabel="Todos"
-        />
-        <MultiSelect
-          icon={<Package className="size-4" />}
-          options={(products ?? []).map((p) => ({ value: p.id, label: p.name }))}
-          values={produtos}
-          onChange={setProdutos}
-          placeholder="Todos os produtos"
-          searchPlaceholder="Buscar produto..."
-          allLabel="Todos"
-        />
-        <div className="flex items-center gap-1.5">
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="h-9 w-[150px]"
-            title="Vigência — data inicial"
-          />
-          <span className="text-sm text-muted-foreground">até</span>
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="h-9 w-[150px]"
-            title="Vigência — data final"
-          />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Input
-            inputMode="decimal"
-            placeholder="R$ mín"
-            value={valorMin}
-            onChange={(e) => setValorMin(e.target.value)}
-            className="h-9 w-[110px]"
-            title="Prêmio mínimo"
-          />
-          <span className="text-sm text-muted-foreground">–</span>
-          <Input
-            inputMode="decimal"
-            placeholder="R$ máx"
-            value={valorMax}
-            onChange={(e) => setValorMax(e.target.value)}
-            className="h-9 w-[110px]"
-            title="Prêmio máximo"
-          />
-        </div>
       </div>
+
+      {filtersOpen && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 p-2">
+          <MultiSelect
+            icon={<FileText className="size-4" />}
+            options={(Object.keys(CONTRACT_STATUS_META) as ContractStatus[]).map((s) => ({
+              value: s,
+              label: CONTRACT_STATUS_META[s].label,
+            }))}
+            values={statuses}
+            onChange={setStatuses}
+            placeholder="Todos os status"
+            searchPlaceholder="Status..."
+            allLabel="Todos"
+          />
+          <MultiSelect
+            icon={<User className="size-4" />}
+            options={(customers ?? []).map((c) => ({ value: c.id, label: c.name || "Sem nome" }))}
+            values={clientes}
+            onChange={setClientes}
+            placeholder="Todos os clientes"
+            searchPlaceholder="Buscar cliente..."
+            allLabel="Todos"
+          />
+          <MultiSelect
+            icon={<Package className="size-4" />}
+            options={(products ?? []).map((p) => ({ value: p.id, label: p.name }))}
+            values={produtos}
+            onChange={setProdutos}
+            placeholder="Todos os produtos"
+            searchPlaceholder="Buscar produto..."
+            allLabel="Todos"
+          />
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-9 w-[150px]"
+              title="Vigência — data inicial"
+            />
+            <span className="text-sm text-muted-foreground">até</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-9 w-[150px]"
+              title="Vigência — data final"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Input
+              inputMode="decimal"
+              placeholder="R$ mín"
+              value={valorMin}
+              onChange={(e) => setValorMin(e.target.value)}
+              className="h-9 w-[110px]"
+              title="Prêmio mínimo"
+            />
+            <span className="text-sm text-muted-foreground">–</span>
+            <Input
+              inputMode="decimal"
+              placeholder="R$ máx"
+              value={valorMax}
+              onChange={(e) => setValorMax(e.target.value)}
+              className="h-9 w-[110px]"
+              title="Prêmio máximo"
+            />
+          </div>
+        </div>
+      )}
 
       <DataTable
         columns={columns}

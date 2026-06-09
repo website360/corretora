@@ -57,11 +57,9 @@ import { useAsyncData } from "@/hooks/use-async-data";
 import { useDirectory, useDirectoryStore } from "@/stores/directory-store";
 import { useUIStore } from "@/stores/ui-store";
 import { useSession } from "@/contexts/session-context";
-import { loadTaskFilters, loadTaskPresets, type SavedTaskFilters } from "@/lib/task-filters-storage";
-import {
-  taskFilterPresetsService,
-  type TaskFilterPreset,
-} from "@/services/task-filter-presets.service";
+import { loadTaskFilters, type SavedTaskFilters } from "@/lib/task-filters-storage";
+import { SavedFiltersBar } from "@/components/common/saved-filters-bar";
+import type { PresetFilters } from "@/services/filter-presets.service";
 import { TASK_CATEGORY_TYPES, TICKET_PRIORITY_META, TICKET_SUBJECT_META } from "@/config/domain";
 import { eventCode } from "@/utils/format";
 import { cn } from "@/lib/utils";
@@ -167,12 +165,8 @@ export function TasksView() {
   const [newEventOpen, setNewEventOpen] = React.useState(false);
   const [newEventType, setNewEventType] = React.useState<TicketSubjectType>("internal");
 
-  // Painel de filtros recolhível + presets nomeados.
+  // Painel de filtros recolhível (presets ficam no SavedFiltersBar).
   const [filtersOpen, setFiltersOpen] = React.useState(false);
-  const [presets, setPresets] = React.useState<TaskFilterPreset[]>([]);
-  const [saveOpen, setSaveOpen] = React.useState(false);
-  const [presetName, setPresetName] = React.useState("");
-  const [shareNew, setShareNew] = React.useState(false);
 
   // Snapshot dos filtros atuais (para salvar como preset ou como "último uso").
   const currentFilters = (): SavedTaskFilters => ({
@@ -247,98 +241,23 @@ export function TasksView() {
   const saveLastToDb = (last: SavedTaskFilters | null) => {
     usersService.update(user.id, { task_filter_last: last }).catch(() => {});
   };
-  const refetchPresets = React.useCallback(() => {
-    taskFilterPresetsService
-      .list()
-      .then(setPresets)
-      .catch(() => {});
-  }, []);
 
-  // Restaura o último filtro + carrega os presets (próprios + da equipe) ao abrir.
+  // Restaura o último filtro usado ao abrir (os presets ficam no SavedFiltersBar).
   const hydrated = React.useRef(false);
   React.useEffect(() => {
     if (hydrated.current || !user.id) return;
     hydrated.current = true;
-    // Presets vêm da tabela (RLS). Fallback: migra do localStorage antigo se a
-    // lista vier vazia (presets criados antes da tabela existir).
-    taskFilterPresetsService
-      .list()
-      .then(async (list) => {
-        if (list.length === 0) {
-          const ls = loadTaskPresets(user.id);
-          if (ls.length) {
-            await Promise.all(
-              ls.map((p) =>
-                taskFilterPresetsService
-                  .create({ name: p.name, filters: p.filters, shared: false })
-                  .catch(() => {}),
-              ),
-            );
-            return taskFilterPresetsService.list();
-          }
-        }
-        return list;
-      })
-      .then(setPresets)
-      .catch(() => {});
     const last =
       (user.task_filter_last as SavedTaskFilters | undefined) ?? loadTaskFilters(user.id) ?? null;
     if (last) applyFilters(last);
   }, [user.id]);
 
-  // Aplica um preset (e lembra como "último uso") + feedback.
-  function applyPreset(preset: TaskFilterPreset) {
-    applyFilters(preset.filters);
-    saveLastToDb(preset.filters);
+  // Aplica um preset vindo do SavedFiltersBar (e lembra como "último uso").
+  function onApplyPreset(f: PresetFilters) {
+    const filters = f as unknown as SavedTaskFilters;
+    applyFilters(filters);
+    saveLastToDb(filters);
     setCursor(new Date());
-    toast.success(`Filtro "${preset.name}" aplicado.`);
-  }
-
-  async function handleDeletePreset(id: string, name: string) {
-    const removed = presets.find((p) => p.id === id);
-    try {
-      await taskFilterPresetsService.remove(id);
-    } catch {
-      toast.error("Não foi possível excluir o filtro.");
-      return;
-    }
-    refetchPresets();
-    const isApplied =
-      removed && JSON.stringify(removed.filters) === JSON.stringify(currentFilters());
-    if (isApplied) {
-      handleClearFilters();
-      toast.success(`Filtro "${name}" excluído e removido da tela.`);
-    } else {
-      toast.success(`Filtro "${name}" excluído.`);
-    }
-  }
-
-  async function handleToggleShare(p: TaskFilterPreset) {
-    try {
-      await taskFilterPresetsService.update(p.id, { shared: !p.shared });
-    } catch {
-      toast.error("Não foi possível alterar o compartilhamento.");
-      return;
-    }
-    refetchPresets();
-    toast.success(p.shared ? `"${p.name}" agora é só seu.` : `"${p.name}" compartilhado com a equipe.`);
-  }
-
-  async function handleConfirmSavePreset() {
-    const name = presetName.trim();
-    if (!name) return;
-    try {
-      await taskFilterPresetsService.create({ name, filters: currentFilters(), shared: shareNew });
-    } catch {
-      toast.error("Não foi possível salvar o filtro.");
-      return;
-    }
-    refetchPresets();
-    saveLastToDb(currentFilters());
-    setSaveOpen(false);
-    setPresetName("");
-    setShareNew(false);
-    toast.success(`Filtro "${name}" salvo.`);
   }
 
   function handleClearFilters() {
@@ -676,120 +595,15 @@ export function TasksView() {
           />
         </div>
 
-        <Button
-          variant={filtersOpen ? "default" : "outline"}
-          size="sm"
-          className="h-9"
-          onClick={() => setFiltersOpen((v) => !v)}
-        >
-          <SlidersHorizontal /> Filtros
-          {activeFilterCount > 0 && (
-            <Badge
-              variant={filtersOpen ? "secondary" : "default"}
-              className="ml-1 h-5 min-w-5 justify-center rounded-full px-1 text-[0.7rem]"
-            >
-              {activeFilterCount}
-            </Badge>
-          )}
-          <ChevronDown className={cn("transition-transform", filtersOpen && "rotate-180")} />
-        </Button>
-
-        {/* Filtros salvos (presets nomeados) */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9">
-              <Bookmark /> Filtros salvos
-              {presets.length > 0 && (
-                <span className="text-xs text-muted-foreground">({presets.length})</span>
-              )}
-              <ChevronDown className="opacity-70" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-64">
-            <DropdownMenuLabel>Filtros salvos</DropdownMenuLabel>
-            {presets.length === 0 ? (
-              <p className="px-2 py-1.5 text-xs text-muted-foreground">
-                Configure os filtros e salve para reutilizar com um clique.
-              </p>
-            ) : (
-              presets.map((p) => {
-                const mine = p.user_id === user.id;
-                const owner = mine ? null : (users ?? []).find((u) => u.id === p.user_id)?.name;
-                return (
-                  <DropdownMenuItem
-                    key={p.id}
-                    onSelect={() => applyPreset(p)}
-                    className="flex items-center justify-between gap-2"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      {p.shared ? (
-                        <Users className="size-3.5 shrink-0 text-primary" />
-                      ) : (
-                        <Bookmark className="size-3.5 shrink-0" />
-                      )}
-                      <span className="truncate">{p.name}</span>
-                      {owner && (
-                        <span className="shrink-0 text-xs text-muted-foreground">· {owner}</span>
-                      )}
-                    </span>
-                    {mine && (
-                      <span className="flex shrink-0 items-center">
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          title={p.shared ? "Tornar só meu" : "Compartilhar com a equipe"}
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleShare(p);
-                          }}
-                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-primary"
-                        >
-                          {p.shared ? <Lock className="size-3.5" /> : <Users className="size-3.5" />}
-                        </span>
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          title="Excluir filtro"
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeletePreset(p.id, p.name);
-                          }}
-                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </span>
-                      </span>
-                    )}
-                  </DropdownMenuItem>
-                );
-              })
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={() => {
-                setPresetName("");
-                setShareNew(false);
-                setSaveOpen(true);
-              }}
-            >
-              <Save /> Salvar filtro atual…
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {activeFilterCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9"
-            onClick={handleClearFilters}
-            title="Limpar a seleção de filtros"
-          >
-            <RotateCcw /> Limpar
-          </Button>
-        )}
+        <SavedFiltersBar
+          scope="tasks"
+          filtersOpen={filtersOpen}
+          onToggleFilters={() => setFiltersOpen((v) => !v)}
+          activeCount={activeFilterCount}
+          onClear={handleClearFilters}
+          getCurrent={() => currentFilters() as unknown as PresetFilters}
+          onApply={onApplyPreset}
+        />
 
         {/* View switcher — Lista, Quadro, Calendário */}
         <div className="ml-auto inline-flex items-center rounded-lg border bg-muted/40 p-0.5">
@@ -983,50 +797,6 @@ export function TasksView() {
           />
         )}
       </div>
-
-      {/* Salvar filtro atual como preset nomeado */}
-      <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Salvar filtro</DialogTitle>
-            <DialogDescription>
-              Dê um nome para reaplicar esta combinação de filtros com um clique.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            autoFocus
-            value={presetName}
-            onChange={(e) => setPresetName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleConfirmSavePreset()}
-            placeholder="Ex.: Minhas renovações do mês"
-            maxLength={40}
-          />
-          <label className="flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm">
-            <input
-              type="checkbox"
-              checked={shareNew}
-              onChange={(e) => setShareNew(e.target.checked)}
-              className="mt-0.5 size-4 accent-primary"
-            />
-            <span>
-              <span className="flex items-center gap-1.5 font-medium">
-                <Users className="size-3.5" /> Compartilhar com a equipe
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Todos da empresa poderão aplicar este filtro. Só você pode editá-lo ou excluí-lo.
-              </span>
-            </span>
-          </label>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSaveOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleConfirmSavePreset} disabled={!presetName.trim()}>
-              <Save /> Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <TicketFormDialog
         open={newTaskOpen}
