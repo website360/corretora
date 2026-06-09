@@ -14,6 +14,7 @@ import {
   EyeOff,
   Flag,
   Layers,
+  Lock,
   LayoutGrid,
   Link2,
   List,
@@ -56,14 +57,11 @@ import { useAsyncData } from "@/hooks/use-async-data";
 import { useDirectory, useDirectoryStore } from "@/stores/directory-store";
 import { useUIStore } from "@/stores/ui-store";
 import { useSession } from "@/contexts/session-context";
+import { loadTaskFilters, loadTaskPresets, type SavedTaskFilters } from "@/lib/task-filters-storage";
 import {
-  loadTaskFilters,
-  loadTaskPresets,
-  upsertPreset,
-  removePreset,
-  type FilterPreset,
-  type SavedTaskFilters,
-} from "@/lib/task-filters-storage";
+  taskFilterPresetsService,
+  type TaskFilterPreset,
+} from "@/services/task-filter-presets.service";
 import { TASK_CATEGORY_TYPES, TICKET_PRIORITY_META, TICKET_SUBJECT_META } from "@/config/domain";
 import { eventCode } from "@/utils/format";
 import { cn } from "@/lib/utils";
@@ -171,9 +169,10 @@ export function TasksView() {
 
   // Painel de filtros recolhível + presets nomeados.
   const [filtersOpen, setFiltersOpen] = React.useState(false);
-  const [presets, setPresets] = React.useState<FilterPreset[]>([]);
+  const [presets, setPresets] = React.useState<TaskFilterPreset[]>([]);
   const [saveOpen, setSaveOpen] = React.useState(false);
   const [presetName, setPresetName] = React.useState("");
+  const [shareNew, setShareNew] = React.useState(false);
 
   // Snapshot dos filtros atuais (para salvar como preset ou como "último uso").
   const currentFilters = (): SavedTaskFilters => ({
@@ -244,49 +243,66 @@ export function TasksView() {
       }));
   }, [taskColumns, boardFilter, boardNameById, taskBoards.length]);
 
-  // Persistência por USUÁRIO no banco (segue o usuário em qualquer dispositivo).
-  const savePresetsToDb = (next: FilterPreset[]) => {
-    usersService.update(user.id, { task_filter_presets: next }).catch(() => {});
-  };
+  // "Último filtro usado" continua por usuário (users.task_filter_last).
   const saveLastToDb = (last: SavedTaskFilters | null) => {
     usersService.update(user.id, { task_filter_last: last }).catch(() => {});
   };
+  const refetchPresets = React.useCallback(() => {
+    taskFilterPresetsService
+      .list()
+      .then(setPresets)
+      .catch(() => {});
+  }, []);
 
-  // Restaura os filtros do último uso + carrega os presets ao abrir (uma vez).
-  // Lê da sessão (banco) e migra presets antigos do localStorage, se houver.
+  // Restaura o último filtro + carrega os presets (próprios + da equipe) ao abrir.
   const hydrated = React.useRef(false);
   React.useEffect(() => {
     if (hydrated.current || !user.id) return;
     hydrated.current = true;
-    const dbPresets = (user.task_filter_presets as FilterPreset[] | undefined) ?? [];
-    if (dbPresets.length) {
-      setPresets(dbPresets);
-    } else {
-      const ls = loadTaskPresets(user.id);
-      if (ls.length) {
-        setPresets(ls);
-        savePresetsToDb(ls); // migra para o banco (uma vez)
-      }
-    }
+    // Presets vêm da tabela (RLS). Fallback: migra do localStorage antigo se a
+    // lista vier vazia (presets criados antes da tabela existir).
+    taskFilterPresetsService
+      .list()
+      .then(async (list) => {
+        if (list.length === 0) {
+          const ls = loadTaskPresets(user.id);
+          if (ls.length) {
+            await Promise.all(
+              ls.map((p) =>
+                taskFilterPresetsService
+                  .create({ name: p.name, filters: p.filters, shared: false })
+                  .catch(() => {}),
+              ),
+            );
+            return taskFilterPresetsService.list();
+          }
+        }
+        return list;
+      })
+      .then(setPresets)
+      .catch(() => {});
     const last =
       (user.task_filter_last as SavedTaskFilters | undefined) ?? loadTaskFilters(user.id) ?? null;
     if (last) applyFilters(last);
   }, [user.id]);
 
   // Aplica um preset (e lembra como "último uso") + feedback.
-  function applyPreset(preset: FilterPreset) {
+  function applyPreset(preset: TaskFilterPreset) {
     applyFilters(preset.filters);
     saveLastToDb(preset.filters);
     setCursor(new Date());
     toast.success(`Filtro "${preset.name}" aplicado.`);
   }
 
-  function handleDeletePreset(id: string, name: string) {
+  async function handleDeletePreset(id: string, name: string) {
     const removed = presets.find((p) => p.id === id);
-    const next = removePreset(presets, id);
-    setPresets(next);
-    savePresetsToDb(next);
-    // Se o preset excluído é o que está aplicado agora, limpa os filtros.
+    try {
+      await taskFilterPresetsService.remove(id);
+    } catch {
+      toast.error("Não foi possível excluir o filtro.");
+      return;
+    }
+    refetchPresets();
     const isApplied =
       removed && JSON.stringify(removed.filters) === JSON.stringify(currentFilters());
     if (isApplied) {
@@ -297,15 +313,31 @@ export function TasksView() {
     }
   }
 
-  function handleConfirmSavePreset() {
+  async function handleToggleShare(p: TaskFilterPreset) {
+    try {
+      await taskFilterPresetsService.update(p.id, { shared: !p.shared });
+    } catch {
+      toast.error("Não foi possível alterar o compartilhamento.");
+      return;
+    }
+    refetchPresets();
+    toast.success(p.shared ? `"${p.name}" agora é só seu.` : `"${p.name}" compartilhado com a equipe.`);
+  }
+
+  async function handleConfirmSavePreset() {
     const name = presetName.trim();
     if (!name) return;
-    const next = upsertPreset(presets, name, currentFilters());
-    setPresets(next);
-    savePresetsToDb(next);
+    try {
+      await taskFilterPresetsService.create({ name, filters: currentFilters(), shared: shareNew });
+    } catch {
+      toast.error("Não foi possível salvar o filtro.");
+      return;
+    }
+    refetchPresets();
     saveLastToDb(currentFilters());
     setSaveOpen(false);
     setPresetName("");
+    setShareNew(false);
     toast.success(`Filtro "${name}" salvo.`);
   }
 
@@ -680,36 +712,65 @@ export function TasksView() {
                 Configure os filtros e salve para reutilizar com um clique.
               </p>
             ) : (
-              presets.map((p) => (
-                <DropdownMenuItem
-                  key={p.id}
-                  onSelect={() => applyPreset(p)}
-                  className="flex items-center justify-between gap-2"
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <Bookmark className="size-3.5 shrink-0" />
-                    <span className="truncate">{p.name}</span>
-                  </span>
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    title="Excluir filtro"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeletePreset(p.id, p.name);
-                    }}
-                    className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
+              presets.map((p) => {
+                const mine = p.user_id === user.id;
+                const owner = mine ? null : (users ?? []).find((u) => u.id === p.user_id)?.name;
+                return (
+                  <DropdownMenuItem
+                    key={p.id}
+                    onSelect={() => applyPreset(p)}
+                    className="flex items-center justify-between gap-2"
                   >
-                    <Trash2 className="size-3.5" />
-                  </span>
-                </DropdownMenuItem>
-              ))
+                    <span className="flex min-w-0 items-center gap-2">
+                      {p.shared ? (
+                        <Users className="size-3.5 shrink-0 text-primary" />
+                      ) : (
+                        <Bookmark className="size-3.5 shrink-0" />
+                      )}
+                      <span className="truncate">{p.name}</span>
+                      {owner && (
+                        <span className="shrink-0 text-xs text-muted-foreground">· {owner}</span>
+                      )}
+                    </span>
+                    {mine && (
+                      <span className="flex shrink-0 items-center">
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          title={p.shared ? "Tornar só meu" : "Compartilhar com a equipe"}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleShare(p);
+                          }}
+                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-primary"
+                        >
+                          {p.shared ? <Lock className="size-3.5" /> : <Users className="size-3.5" />}
+                        </span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          title="Excluir filtro"
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePreset(p.id, p.name);
+                          }}
+                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </span>
+                      </span>
+                    )}
+                  </DropdownMenuItem>
+                );
+              })
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={() => {
                 setPresetName("");
+                setShareNew(false);
                 setSaveOpen(true);
               }}
             >
@@ -940,6 +1001,22 @@ export function TasksView() {
             placeholder="Ex.: Minhas renovações do mês"
             maxLength={40}
           />
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm">
+            <input
+              type="checkbox"
+              checked={shareNew}
+              onChange={(e) => setShareNew(e.target.checked)}
+              className="mt-0.5 size-4 accent-primary"
+            />
+            <span>
+              <span className="flex items-center gap-1.5 font-medium">
+                <Users className="size-3.5" /> Compartilhar com a equipe
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Todos da empresa poderão aplicar este filtro. Só você pode editá-lo ou excluí-lo.
+              </span>
+            </span>
+          </label>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSaveOpen(false)}>
               Cancelar
