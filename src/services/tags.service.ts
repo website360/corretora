@@ -1,6 +1,6 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { getCurrentCompanyId } from "@/services/lookup";
+import { getCurrentCompanyId, getViewCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
 import type { StageColor, Tag, TagModule } from "@/types/domain";
 
@@ -25,11 +25,10 @@ export const tagsService = {
       return mockTags.filter((t) => appliesTo(t, module)).sort((a, b) => a.name.localeCompare(b.name));
     }
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb
-      .from("tags")
-      .select("*")
-      .eq("company_id", getCurrentCompanyId())
-      .order("name");
+    let query = sb.from("tags").select("*");
+    const cid = getViewCompanyId();
+    if (cid) query = query.eq("company_id", cid);
+    const { data, error } = await query.order("name");
     if (error) throw error;
     return ((data as Tag[]) ?? []).filter((t) => appliesTo(t, module));
   },

@@ -1,6 +1,6 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { getCurrentCompanyId, getCurrentUserId } from "@/services/lookup";
+import { getCurrentCompanyId, getCurrentUserId, getViewCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
 import type { ServiceRecord } from "@/types/domain";
 
@@ -13,10 +13,10 @@ export const serviceRecordsService = {
       return mockRecords.filter((r) => r.company_id === getCurrentCompanyId());
     }
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb
-      .from("service_records")
-      .select("*")
-      .eq("company_id", getCurrentCompanyId())
+    let query = sb.from("service_records").select("*");
+    const cid = getViewCompanyId();
+    if (cid) query = query.eq("company_id", cid);
+    const { data, error } = await query
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) throw error;

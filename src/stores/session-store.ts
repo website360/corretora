@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { Role } from "@/types/domain";
 
 /**
  * Holds the signed-in user/company ids for client-side reads (e.g. when a
@@ -8,11 +9,13 @@ import { create } from "zustand";
 interface SessionStoreState {
   userId: string | null;
   companyId: string | null;
-  setSession: (userId: string, companyId: string) => void;
+  role: Role | null;
+  setSession: (userId: string, companyId: string, role: Role) => void;
 }
 
 export const useSessionStore = create<SessionStoreState>((set) => ({
   userId: null,
   companyId: null,
-  setSession: (userId, companyId) => set({ userId, companyId }),
+  role: null,
+  setSession: (userId, companyId, role) => set({ userId, companyId, role }),
 }));

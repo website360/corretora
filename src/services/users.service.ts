@@ -1,7 +1,7 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { users } from "@/services/mock/data";
-import { getCurrentCompanyId } from "@/services/lookup";
+import { getCurrentCompanyId, getViewCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
 import type { User } from "@/types/domain";
 
@@ -15,14 +15,12 @@ export const usersService = {
         .sort((a, b) => a.name.localeCompare(b.name));
     }
     const sb = getSupabaseBrowserClient();
-    // Escopa SEMPRE à empresa atual — inclusive para super_admin (cuja RLS
-    // veria todas as empresas), evitando atribuir tarefas/eventos a usuários
-    // de outra empresa.
-    const { data, error } = await sb
-      .from("users")
-      .select("*")
-      .eq("company_id", getCurrentCompanyId())
-      .order("name");
+    // Usuário comum: sua empresa. Super_admin: respeita o filtro global de
+    // empresa (null = todas).
+    let query = sb.from("users").select("*");
+    const cid = getViewCompanyId();
+    if (cid) query = query.eq("company_id", cid);
+    const { data, error } = await query.order("name");
     if (error) throw error;
     return (data as User[]) ?? [];
   },

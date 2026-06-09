@@ -1,7 +1,7 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { calendarEvents } from "@/services/mock/data";
-import { getCurrentCompanyId } from "@/services/lookup";
+import { getCurrentCompanyId, getViewCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
 import type { CalendarEvent } from "@/types/domain";
 
@@ -15,10 +15,10 @@ export const calendarService = {
         .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
     }
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb
-      .from("calendar_events")
-      .select("*")
-      .eq("company_id", getCurrentCompanyId())
+    let query = sb.from("calendar_events").select("*");
+    const cid = getViewCompanyId();
+    if (cid) query = query.eq("company_id", cid);
+    const { data, error } = await query
       .is("deleted_at", null)
       .order("starts_at", { ascending: true });
     if (error) throw error;

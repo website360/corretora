@@ -9,6 +9,7 @@ import {
 } from "@/services/mock/data";
 import { useDirectoryStore } from "@/stores/directory-store";
 import { useSessionStore } from "@/stores/session-store";
+import { useViewCompanyStore } from "@/stores/view-company-store";
 import type {
   Carrier,
   Company,
@@ -35,6 +36,20 @@ export function getCurrentCompanyId() {
 export function getCurrentUserId() {
   if (env.useMocks) return CURRENT_USER_ID;
   return useSessionStore.getState().userId ?? "";
+}
+
+/**
+ * Empresa-escopo para os reads do app. Usuário comum: sua própria empresa.
+ * Super Admin: respeita o filtro global (null = todas as empresas → sem
+ * escopo, vê o sistema inteiro). Usado nas listas; os inserts continuam
+ * usando `getCurrentCompanyId()`.
+ */
+export function getViewCompanyId(): string | null {
+  if (env.useMocks) return getCurrentCompanyId();
+  if (useSessionStore.getState().role === "super_admin") {
+    return useViewCompanyStore.getState().companyId;
+  }
+  return getCurrentCompanyId();
 }
 
 export function findUser(id?: string | null): User | undefined {

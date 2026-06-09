@@ -4,7 +4,7 @@ import * as React from "react";
 import { create } from "zustand";
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { getCurrentCompanyId } from "@/services/lookup";
+import { getViewCompanyId } from "@/services/lookup";
 import { taskStages as mockStages } from "@/services/mock/data";
 import type {
   Carrier,
@@ -101,30 +101,40 @@ export function useDirectory() {
     if (!useDirectoryStore.getState().beginLoad()) return;
 
     const sb = getSupabaseBrowserClient();
-    const co = getCurrentCompanyId();
+    // Escopo da empresa: usuário comum vê a sua; super_admin respeita o filtro
+    // global (null = todas as empresas → diretório de todo o sistema).
+    const co = getViewCompanyId();
     (async () => {
       try {
-        // Escopa à empresa atual: um super_admin "fura" o RLS (is_super_admin)
-        // e veria dados de TODAS as empresas no app — aqui no app só a dele.
+        const q = {
+          users: sb.from("users").select("*"),
+          customers: sb.from("customers").select("*"),
+          companies: sb.from("companies").select("*"),
+          stages: sb.from("task_stages").select("*"),
+          carriers: sb.from("insurance_carriers").select("*").is("deleted_at", null),
+          products: sb.from("insurance_products").select("*").is("deleted_at", null),
+          boards: sb.from("task_boards").select("*"),
+          columns: sb.from("task_columns").select("*"),
+        };
+        if (co) {
+          q.users.eq("company_id", co);
+          q.customers.eq("company_id", co);
+          q.companies.eq("id", co);
+          q.stages.eq("company_id", co);
+          q.carriers.eq("company_id", co);
+          q.products.eq("company_id", co);
+          q.boards.eq("company_id", co);
+          q.columns.eq("company_id", co);
+        }
         const results = await Promise.all([
-          sb.from("users").select("*").eq("company_id", co),
-          sb.from("customers").select("*").eq("company_id", co),
-          sb.from("companies").select("*").eq("id", co),
-          sb.from("task_stages").select("*").eq("company_id", co).order("position"),
-          sb
-            .from("insurance_carriers")
-            .select("*")
-            .eq("company_id", co)
-            .is("deleted_at", null)
-            .order("name"),
-          sb
-            .from("insurance_products")
-            .select("*")
-            .eq("company_id", co)
-            .is("deleted_at", null)
-            .order("name"),
-          sb.from("task_boards").select("*").eq("company_id", co).order("position"),
-          sb.from("task_columns").select("*").eq("company_id", co).order("position"),
+          q.users,
+          q.customers,
+          q.companies,
+          q.stages.order("position"),
+          q.carriers.order("name"),
+          q.products.order("name"),
+          q.boards.order("position"),
+          q.columns.order("position"),
         ]);
         // If ANY query errored, don't cache a half-empty directory (which made
         // etapas/seguradoras "disappear"). Reset so the next mount retries.

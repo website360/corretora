@@ -1,6 +1,6 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { getCurrentCompanyId } from "@/services/lookup";
+import { getCurrentCompanyId, getViewCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
 import type { Carrier } from "@/types/domain";
 
@@ -13,12 +13,10 @@ export const carriersService = {
       return mockCarriers.filter((c) => c.company_id === getCurrentCompanyId());
     }
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb
-      .from("insurance_carriers")
-      .select("*")
-      .eq("company_id", getCurrentCompanyId())
-      .is("deleted_at", null)
-      .order("name");
+    let query = sb.from("insurance_carriers").select("*");
+    const cid = getViewCompanyId();
+    if (cid) query = query.eq("company_id", cid);
+    const { data, error } = await query.is("deleted_at", null).order("name");
     if (error) throw error;
     return (data as Carrier[]) ?? [];
   },

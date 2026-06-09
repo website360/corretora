@@ -22,8 +22,8 @@ export function SessionProvider({
   // Expose the ids to the client-side stores so service inserts can stamp
   // company_id / author_id under RLS.
   React.useEffect(() => {
-    useSessionStore.getState().setSession(user.id, user.company_id);
-  }, [user.id, user.company_id]);
+    useSessionStore.getState().setSession(user.id, user.company_id, user.role);
+  }, [user.id, user.company_id, user.role]);
 
   const value = React.useMemo<SessionContextValue>(
     () => ({

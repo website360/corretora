@@ -1,7 +1,7 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { taskStages, ticketLogs, ticketMessages, tickets } from "@/services/mock/data";
-import { getCurrentCompanyId, getCurrentUserId } from "@/services/lookup";
+import { getCurrentCompanyId, getCurrentUserId, getViewCompanyId } from "@/services/lookup";
 import { useDirectoryStore } from "@/stores/directory-store";
 import { extractMentionIds } from "@/lib/mentions";
 import { sleep, uid } from "@/lib/utils";
@@ -71,11 +71,10 @@ export const ticketsService = {
     }
 
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb
-      .from("tickets")
-      .select("*")
-      .eq("company_id", getCurrentCompanyId())
-      .is("deleted_at", null);
+    let query = sb.from("tickets").select("*");
+    const cid = getViewCompanyId();
+    if (cid) query = query.eq("company_id", cid);
+    const { data, error } = await query.is("deleted_at", null);
     if (error) throw error;
     return applyFilters((data as Ticket[]) ?? [], filters);
   },

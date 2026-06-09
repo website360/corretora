@@ -1,7 +1,7 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { customerInteractions, customers } from "@/services/mock/data";
-import { getCurrentCompanyId } from "@/services/lookup";
+import { getCurrentCompanyId, getViewCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
 import type { Customer, CustomerInteraction } from "@/types/domain";
 
@@ -15,10 +15,10 @@ export const customersService = {
         .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
     }
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb
-      .from("customers")
-      .select("*")
-      .eq("company_id", getCurrentCompanyId())
+    let query = sb.from("customers").select("*");
+    const cid = getViewCompanyId();
+    if (cid) query = query.eq("company_id", cid);
+    const { data, error } = await query
       .is("deleted_at", null)
       .order("name", { ascending: true });
     if (error) throw error;

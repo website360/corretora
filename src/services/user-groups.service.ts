@@ -1,6 +1,6 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { getCurrentCompanyId } from "@/services/lookup";
+import { getCurrentCompanyId, getViewCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
 import type { UserGroup } from "@/types/domain";
 
@@ -35,11 +35,10 @@ export const userGroupsService = {
         .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
     }
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb
-      .from("user_groups")
-      .select("*")
-      .eq("company_id", getCurrentCompanyId())
-      .order("name");
+    let query = sb.from("user_groups").select("*");
+    const cid = getViewCompanyId();
+    if (cid) query = query.eq("company_id", cid);
+    const { data, error } = await query.order("name");
     if (error) throw error;
     return (data as UserGroup[]) ?? [];
   },

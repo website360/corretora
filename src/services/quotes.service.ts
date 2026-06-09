@@ -1,6 +1,6 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { getCurrentCompanyId, getCurrentUserId } from "@/services/lookup";
+import { getCurrentCompanyId, getCurrentUserId, getViewCompanyId } from "@/services/lookup";
 import { contractsService } from "@/services/contracts.service";
 import { ticketsService } from "@/services/tickets.service";
 import { sleep, uid } from "@/lib/utils";
@@ -24,10 +24,10 @@ export const quotesService = {
       return mockQuotes.filter((q) => q.company_id === getCurrentCompanyId());
     }
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb
-      .from("quotes")
-      .select("*")
-      .eq("company_id", getCurrentCompanyId())
+    let query = sb.from("quotes").select("*");
+    const cid = getViewCompanyId();
+    if (cid) query = query.eq("company_id", cid);
+    const { data, error } = await query
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) throw error;

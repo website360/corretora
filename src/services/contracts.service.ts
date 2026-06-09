@@ -1,6 +1,6 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { getCurrentCompanyId } from "@/services/lookup";
+import { getCurrentCompanyId, getViewCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
 import type { Contract } from "@/types/domain";
 
@@ -13,10 +13,10 @@ export const contractsService = {
       return mockContracts.filter((c) => c.company_id === getCurrentCompanyId());
     }
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb
-      .from("contracts")
-      .select("*")
-      .eq("company_id", getCurrentCompanyId())
+    let query = sb.from("contracts").select("*");
+    const cid = getViewCompanyId();
+    if (cid) query = query.eq("company_id", cid);
+    const { data, error } = await query
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) throw error;
