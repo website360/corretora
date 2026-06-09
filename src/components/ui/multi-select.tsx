@@ -35,6 +35,10 @@ interface MultiSelectProps {
   allLabel?: string;
   /** "clear": all = empty selection. "selectAll": all = every option checked. */
   allMode?: "clear" | "selectAll";
+  /** Render no rodapé do popover (ex.: link "Gerenciar etiquetas"). */
+  footer?: React.ReactNode;
+  /** Override do portal (por padrão é automático: desligado dentro de Dialog). */
+  portal?: boolean;
 }
 
 /** Searchable multi-select; empty selection reads as the placeholder. */
@@ -50,6 +54,8 @@ export function MultiSelect({
   triggerClassName,
   allLabel,
   allMode = "clear",
+  footer,
+  portal,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -95,7 +101,7 @@ export function MultiSelect({
           <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className={cn("w-60 p-0", className)} align="start">
+      <PopoverContent className={cn("w-60 p-0", className)} align="start" portal={portal}>
         <Command shouldFilter={false}>
           <CommandInput placeholder={searchPlaceholder} value={search} onValueChange={setSearch} />
           <CommandList>
@@ -151,6 +157,7 @@ export function MultiSelect({
               </Button>
             </div>
           )}
+          {footer && <div className="border-t p-1">{footer}</div>}
         </Command>
       </PopoverContent>
     </Popover>

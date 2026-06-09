@@ -4,6 +4,7 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PopoverInDialogContext } from "@/components/ui/popover";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -41,7 +42,7 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
-      {children}
+      <PopoverInDialogContext.Provider value={true}>{children}</PopoverInDialogContext.Provider>
       <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:pointer-events-none">
         <X className="size-4" />
         <span className="sr-only">Fechar</span>

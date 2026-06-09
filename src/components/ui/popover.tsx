@@ -8,11 +8,26 @@ const Popover = PopoverPrimitive.Root;
 const PopoverTrigger = PopoverPrimitive.Trigger;
 const PopoverAnchor = PopoverPrimitive.Anchor;
 
+/**
+ * Sinaliza que o Popover está sendo renderizado dentro de um Dialog. Nesse
+ * caso o conteúdo não é portalado (senão o react-remove-scroll do Radix
+ * bloqueia a rolagem do dropdown). O Dialog provê `true`.
+ */
+const PopoverInDialogContext = React.createContext(false);
+
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = "center", sideOffset = 8, ...props }, ref) => (
-  <PopoverPrimitive.Portal>
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & {
+    /**
+     * Portala o conteúdo para o body. Se omitido, é automático: portala fora
+     * de um Dialog e NÃO portala dentro (corrige a rolagem do dropdown).
+     */
+    portal?: boolean;
+  }
+>(({ className, align = "center", sideOffset = 8, portal, ...props }, ref) => {
+  const inDialog = React.useContext(PopoverInDialogContext);
+  const shouldPortal = portal ?? !inDialog;
+  const content = (
     <PopoverPrimitive.Content
       ref={ref}
       align={align}
@@ -23,8 +38,9 @@ const PopoverContent = React.forwardRef<
       )}
       {...props}
     />
-  </PopoverPrimitive.Portal>
-));
+  );
+  return shouldPortal ? <PopoverPrimitive.Portal>{content}</PopoverPrimitive.Portal> : content;
+});
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
-export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor };
+export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor, PopoverInDialogContext };
