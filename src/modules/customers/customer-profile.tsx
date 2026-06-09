@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Building2,
@@ -15,6 +17,7 @@ import {
   StickyNote,
   Tag as TagIcon,
   User as UserIcon,
+  UserCheck,
   Users,
 } from "lucide-react";
 import { customersService } from "@/services/customers.service";
@@ -54,10 +57,42 @@ const INTERACTION_ICON = {
 
 export function CustomerProfile({ id }: { id: string }) {
   useDirectory();
+  const router = useRouter();
+  const pathname = usePathname();
   const { data: customer, loading, refetch } = useAsyncData(() => customersService.get(id), [id]);
   const { data: interactions } = useAsyncData(() => customersService.interactions(id), [id]);
   const { data: tags } = useAsyncData(() => tagsService.list("customers"));
   const [editOpen, setEditOpen] = React.useState(false);
+  const [converting, setConverting] = React.useState(false);
+
+  const isLead = customer?.kind === "lead";
+  const basePath = isLead ? "/leads" : "/clientes";
+
+  // Lead é lead, contato é contato: mantém a URL coerente com o tipo do registro.
+  React.useEffect(() => {
+    if (!customer) return;
+    if (isLead && pathname?.startsWith("/clientes/")) router.replace(`/leads/${id}`);
+    else if (!isLead && pathname?.startsWith("/leads/")) router.replace(`/clientes/${id}`);
+  }, [customer, isLead, pathname, id, router]);
+
+  async function convertToClient() {
+    if (!customer) return;
+    setConverting(true);
+    try {
+      await customersService.update(customer.id, {
+        kind: "client",
+        board_id: null,
+        column_id: null,
+      });
+      toast.success(`${customer.name || "Lead"} virou um cliente`);
+      router.replace(`/clientes/${customer.id}`);
+      refetch();
+    } catch {
+      toast.error("Não foi possível converter o lead.");
+    } finally {
+      setConverting(false);
+    }
+  }
 
   const tagColor = React.useMemo(() => {
     const map = new Map<string, string>((tags ?? []).map((t) => [t.name, t.color]));
@@ -101,7 +136,7 @@ export function CustomerProfile({ id }: { id: string }) {
             asChild
             className="mt-2 shrink-0 text-muted-foreground"
           >
-            <Link href="/clientes" aria-label="Voltar">
+            <Link href={isLead ? "/kanban" : "/clientes"} aria-label="Voltar">
               <ArrowLeft />
             </Link>
           </Button>
@@ -129,18 +164,27 @@ export function CustomerProfile({ id }: { id: string }) {
           </div>
         </div>
 
-        <Button onClick={() => setEditOpen(true)} className="shrink-0">
-          <Pencil /> Editar contato
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          {isLead && (
+            <Button variant="outline" onClick={convertToClient} loading={converting}>
+              <UserCheck /> Converter em cliente
+            </Button>
+          )}
+          <Button onClick={() => setEditOpen(true)}>
+            <Pencil /> {isLead ? "Editar lead" : "Editar contato"}
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
       <Tabs defaultValue="geral">
         <TabsList>
           <TabsTrigger value="geral">Geral</TabsTrigger>
-          <TabsTrigger value="contratos">
-            <FileText className="size-4" /> Contratos
-          </TabsTrigger>
+          {!isLead && (
+            <TabsTrigger value="contratos">
+              <FileText className="size-4" /> Contratos
+            </TabsTrigger>
+          )}
           <TabsTrigger value="atendimentos">
             <Headset className="size-4" /> Atendimentos
           </TabsTrigger>

@@ -21,10 +21,13 @@ export function LeadsList({
   leads,
   loading,
   tagColor,
+  onOpen,
 }: {
   leads: Customer[];
   loading?: boolean;
   tagColor: (name: string) => string;
+  /** Abre o lead (drawer rápido). Se ausente, navega para a página do lead. */
+  onOpen?: (lead: Customer) => void;
 }) {
   const router = useRouter();
 
@@ -102,7 +105,7 @@ export function LeadsList({
       columns={columns}
       data={leads}
       loading={loading}
-      onRowClick={(c) => router.push(`/clientes/${c.id}`)}
+      onRowClick={(c) => (onOpen ? onOpen(c) : router.push(`/leads/${c.id}`))}
       emptyIcon={UserSquare2}
       emptyTitle="Nenhum lead"
       emptyDescription="Crie leads no kanban para vê-los aqui."

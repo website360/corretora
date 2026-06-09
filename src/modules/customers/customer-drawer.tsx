@@ -2,8 +2,19 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Building2, Mail, MapPin, Pencil, Phone, SquareArrowOutUpRight, User as UserIcon } from "lucide-react";
+import {
+  Building2,
+  Mail,
+  MapPin,
+  Pencil,
+  Phone,
+  SquareArrowOutUpRight,
+  User as UserIcon,
+  UserCheck,
+} from "lucide-react";
+import { toast } from "sonner";
 import { findUser } from "@/services/lookup";
+import { customersService } from "@/services/customers.service";
 import { formatDocument, formatPhone } from "@/utils/format";
 import { TONE_BADGE_CLASS } from "@/config/domain";
 import { cn } from "@/lib/utils";
@@ -39,10 +50,26 @@ export function CustomerDrawer({
 }) {
   const [shown, setShown] = React.useState<Customer | null>(customer);
   const [editOpen, setEditOpen] = React.useState(false);
+  const [converting, setConverting] = React.useState(false);
 
   React.useEffect(() => {
     if (customer) setShown(customer);
   }, [customer]);
+
+  async function convertToClient() {
+    if (!shown) return;
+    setConverting(true);
+    try {
+      await customersService.update(shown.id, { kind: "client", board_id: null, column_id: null });
+      toast.success(`${shown.name || "Lead"} virou um cliente`);
+      setShown({ ...shown, kind: "client", board_id: null, column_id: null });
+      onChanged?.();
+    } catch {
+      toast.error("Não foi possível converter o lead.");
+    } finally {
+      setConverting(false);
+    }
+  }
 
   const owner = findUser(shown?.owner_id);
   const address = shown?.address;
@@ -131,10 +158,15 @@ export function CustomerDrawer({
 
               <SheetFooter>
                 <Button variant="outline" asChild>
-                  <Link href={`/clientes/${shown.id}`}>
+                  <Link href={`${shown.kind === "lead" ? "/leads" : "/clientes"}/${shown.id}`}>
                     <SquareArrowOutUpRight /> Abrir
                   </Link>
                 </Button>
+                {shown.kind === "lead" && (
+                  <Button variant="outline" onClick={convertToClient} loading={converting}>
+                    <UserCheck /> Converter
+                  </Button>
+                )}
                 <Button className="flex-1" onClick={() => setEditOpen(true)}>
                   <Pencil /> Editar
                 </Button>

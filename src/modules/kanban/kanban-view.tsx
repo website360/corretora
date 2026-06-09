@@ -47,6 +47,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CustomerFormDialog } from "@/modules/customers/customer-form-dialog";
+import { CustomerDrawer } from "@/modules/customers/customer-drawer";
 import { BoardDialog, ColumnDialog } from "@/modules/kanban/kanban-dialogs";
 import { LeadsList } from "@/modules/kanban/leads-list";
 import { LeadsCalendar } from "@/modules/kanban/leads-calendar";
@@ -83,6 +84,9 @@ export function KanbanView() {
   // Drag state
   const [dragLeadId, setDragLeadId] = React.useState<string | null>(null);
   const [overCol, setOverCol] = React.useState<string | null>(null);
+
+  // Painel rápido do lead (visão rápida; "Abrir" leva à página do lead).
+  const [drawerLead, setDrawerLead] = React.useState<Customer | null>(null);
 
   const tagColor = (name: string): string =>
     (tags ?? []).find((t) => t.name === name)?.color ?? "neutral";
@@ -252,7 +256,12 @@ export function KanbanView() {
 
       {view === "list" ? (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <LeadsList leads={allLeads} loading={!customers} tagColor={tagColor} />
+          <LeadsList
+            leads={allLeads}
+            loading={!customers}
+            tagColor={tagColor}
+            onOpen={setDrawerLead}
+          />
         </div>
       ) : view === "calendar" ? (
         <div className="min-h-0 flex-1">
@@ -329,7 +338,7 @@ export function KanbanView() {
                           key={lead.id}
                           lead={lead}
                           tagColor={tagColor}
-                          onOpen={() => router.push(`/clientes/${lead.id}`)}
+                          onOpen={() => setDrawerLead(lead)}
                           onDragStart={() => setDragLeadId(lead.id)}
                           onDragEnd={() => {
                             setDragLeadId(null);
@@ -411,6 +420,14 @@ export function KanbanView() {
         confirmLabel="Excluir"
         variant="destructive"
         onConfirm={confirmDeleteColumn}
+      />
+
+      <CustomerDrawer
+        customer={drawerLead}
+        open={drawerLead !== null}
+        onOpenChange={(o) => !o && setDrawerLead(null)}
+        onChanged={refetchCustomers}
+        tagColor={tagColor}
       />
     </div>
   );
