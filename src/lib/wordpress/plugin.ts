@@ -94,6 +94,14 @@ function crmlead_settings_page() {
         <h1>__APP_NAME__ — Conector de Leads</h1>
         <p class="description">Capture os leads dos formulários do seu site direto no funil do __APP_NAME__.</p>
 
+        <div style="margin:12px 0;padding:12px 14px;border:1px solid #c3e6cb;background:#f1fbf4;border-radius:8px;">
+            <strong>Na maioria dos casos, funciona automaticamente.</strong>
+            O plugin detecta sozinho os campos de <strong>nome</strong>, <strong>e-mail</strong> e
+            <strong>telefone</strong> dos formulários. O mapeamento abaixo é <em>opcional</em> — use
+            só se algum campo não for reconhecido. Dica: envie seu formulário uma vez e veja os
+            <strong>campos detectados</strong> no fim desta página.
+        </div>
+
         <form method="post" action="options.php">
             <?php settings_fields('crmlead_settings'); ?>
             <table class="form-table">
@@ -143,6 +151,20 @@ function crmlead_settings_page() {
                     <td><label><input type="checkbox" id="crmlead_enable_log" name="crmlead_enable_log" value="1" <?php checked($enable_log, 1); ?> /> Ativar log dos últimos envios (debug)</label></td>
                 </tr>
             </table>
+
+            <?php $last_fields = get_option('crmlead_last_fields', []); ?>
+            <h2 style="margin-top:8px;">Campos detectados</h2>
+            <?php if (!empty($last_fields)) : ?>
+                <p class="description">Campos recebidos no último formulário enviado. Copie o nome para o mapeamento acima, se precisar.</p>
+                <p>
+                    <?php foreach ($last_fields as $lf) : ?>
+                        <code style="display:inline-block;margin:2px 6px 2px 0;padding:3px 7px;background:#f0f0f1;border-radius:4px;"><?php echo esc_html($lf); ?></code>
+                    <?php endforeach; ?>
+                </p>
+            <?php else : ?>
+                <p class="description">Ainda nenhum envio recebido. Envie seu formulário uma vez (ou clique em "Enviar lead de teste" abaixo) e os campos detectados aparecem aqui.</p>
+            <?php endif; ?>
+
             <?php submit_button('Salvar configurações'); ?>
         </form>
 
@@ -318,6 +340,19 @@ function crmlead_map_fields(array $form_data): array {
         }
     }
     if (!empty($metadata)) $mapped['metadata'] = $metadata;
+
+    // Guarda os nomes dos campos recebidos, para o admin ver e mapear depois.
+    $seen = [];
+    foreach ($form_data as $k => $val) {
+        $k = (string) $k;
+        if ($k === '' || $k[0] === '_') continue;
+        $sv = is_array($val) ? implode(', ', $val) : (string) $val;
+        if (trim($sv) !== '') $seen[] = $k;
+    }
+    if (!empty($seen)) {
+        update_option('crmlead_last_fields', array_values(array_unique(array_slice($seen, 0, 60))));
+    }
+
     return $mapped;
 }
 
