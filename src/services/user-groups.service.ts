@@ -35,7 +35,11 @@ export const userGroupsService = {
         .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
     }
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb.from("user_groups").select("*").order("name");
+    const { data, error } = await sb
+      .from("user_groups")
+      .select("*")
+      .eq("company_id", getCurrentCompanyId())
+      .order("name");
     if (error) throw error;
     return (data as UserGroup[]) ?? [];
   },

@@ -16,6 +16,7 @@ export const carriersService = {
     const { data, error } = await sb
       .from("insurance_carriers")
       .select("*")
+      .eq("company_id", getCurrentCompanyId())
       .is("deleted_at", null)
       .order("name");
     if (error) throw error;

@@ -18,6 +18,7 @@ export const customersService = {
     const { data, error } = await sb
       .from("customers")
       .select("*")
+      .eq("company_id", getCurrentCompanyId())
       .is("deleted_at", null)
       .order("name", { ascending: true });
     if (error) throw error;

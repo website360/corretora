@@ -27,6 +27,7 @@ export const quotesService = {
     const { data, error } = await sb
       .from("quotes")
       .select("*")
+      .eq("company_id", getCurrentCompanyId())
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) throw error;

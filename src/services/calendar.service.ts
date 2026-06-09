@@ -18,6 +18,7 @@ export const calendarService = {
     const { data, error } = await sb
       .from("calendar_events")
       .select("*")
+      .eq("company_id", getCurrentCompanyId())
       .is("deleted_at", null)
       .order("starts_at", { ascending: true });
     if (error) throw error;

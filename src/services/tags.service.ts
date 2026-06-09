@@ -25,7 +25,11 @@ export const tagsService = {
       return mockTags.filter((t) => appliesTo(t, module)).sort((a, b) => a.name.localeCompare(b.name));
     }
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb.from("tags").select("*").order("name");
+    const { data, error } = await sb
+      .from("tags")
+      .select("*")
+      .eq("company_id", getCurrentCompanyId())
+      .order("name");
     if (error) throw error;
     return ((data as Tag[]) ?? []).filter((t) => appliesTo(t, module));
   },

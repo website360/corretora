@@ -16,6 +16,7 @@ export const contractsService = {
     const { data, error } = await sb
       .from("contracts")
       .select("*")
+      .eq("company_id", getCurrentCompanyId())
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) throw error;

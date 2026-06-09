@@ -16,6 +16,7 @@ export const productsService = {
     const { data, error } = await sb
       .from("insurance_products")
       .select("*")
+      .eq("company_id", getCurrentCompanyId())
       .is("deleted_at", null)
       .order("name");
     if (error) throw error;

@@ -71,7 +71,11 @@ export const ticketsService = {
     }
 
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb.from("tickets").select("*").is("deleted_at", null);
+    const { data, error } = await sb
+      .from("tickets")
+      .select("*")
+      .eq("company_id", getCurrentCompanyId())
+      .is("deleted_at", null);
     if (error) throw error;
     return applyFilters((data as Ticket[]) ?? [], filters);
   },
