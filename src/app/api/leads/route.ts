@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   const { data: company } = await admin
     .from("companies")
     .select("id")
-    .eq("settings->integrations->wordpress->>api_key", apiKey)
+    .eq("settings->integrations->wordpress->>apiKey", apiKey)
     .maybeSingle();
   if (!company) {
     return NextResponse.json({ error: "Chave de API inválida" }, { status: 401 });
