@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
       name,
       inviterName: (profile as { name?: string }).name,
       companyName: (company as { trade_name?: string } | null)?.trade_name,
+      companyId,
       setPasswordUrl,
       replyTo: user.email ?? undefined,
     });

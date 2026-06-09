@@ -74,6 +74,20 @@ export interface IntegrationsSettings {
   whatsapp?: WhatsAppIntegration;
   clicksign?: ClickSignIntegration;
   wordpress?: WordPressIntegration;
+  smtp?: SmtpIntegration;
+}
+
+/** Servidor SMTP próprio da empresa para envio de e-mails (alternativa ao Resend). */
+export interface SmtpIntegration {
+  host?: string;
+  port?: number;
+  /** SSL/TLS direto (porta 465). false = STARTTLS (587). */
+  secure?: boolean;
+  username?: string;
+  password?: string;
+  fromName?: string;
+  fromEmail?: string;
+  status?: "configured" | "disconnected";
 }
 
 /** Captura de leads do site/WordPress — chave de API por empresa. */

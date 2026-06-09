@@ -185,6 +185,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       to: customer.email,
       name: customer.name,
       companyName: (company as { trade_name?: string } | null)?.trade_name,
+      companyId: customer.company_id,
       setPasswordUrl: link?.properties?.action_link ?? `${env.appUrl}/portal/login`,
       loginUrl: `${env.appUrl}/portal/login`,
     });

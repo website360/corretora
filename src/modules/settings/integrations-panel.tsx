@@ -15,6 +15,7 @@ import {
 import { useSession } from "@/contexts/session-context";
 import type {
   ClickSignIntegration as ClickSignConfig,
+  SmtpIntegration as SmtpConfig,
   WhatsAppIntegration as WhatsAppConfig,
   WordPressIntegration as WordPressConfig,
 } from "@/types/domain";
@@ -25,8 +26,9 @@ import { WhatsAppIntegration } from "@/modules/settings/whatsapp-integration";
 import { ClickSignIntegration } from "@/modules/settings/clicksign-integration";
 import { WordPressIntegration } from "@/modules/settings/wordpress-integration";
 import { CalendarFeedCard } from "@/modules/settings/calendar-feed-card";
+import { SmtpIntegration } from "@/modules/settings/smtp-integration";
 
-type IntegrationId = "whatsapp" | "clicksign" | "wordpress" | "calendar";
+type IntegrationId = "whatsapp" | "clicksign" | "wordpress" | "calendar" | "email";
 
 interface IntegrationMeta {
   id: IntegrationId | string;
@@ -71,10 +73,9 @@ const INTEGRATIONS: IntegrationMeta[] = [
   {
     id: "email",
     title: "E-mail (SMTP)",
-    description: "Envie e-mails transacionais pelo seu próprio servidor.",
+    description: "Envie os e-mails do sistema pelo seu próprio servidor SMTP.",
     icon: Mail,
     iconClass: "bg-amber-500/10 text-amber-600",
-    soon: true,
   },
   {
     id: "wordpress",
@@ -114,6 +115,10 @@ export function IntegrationsPanel() {
     ? { label: "Configurado", variant: "secondary" as const }
     : null;
 
+  const smtp = (user.company.settings?.integrations?.smtp ?? {}) as SmtpConfig;
+  const smtpStatus =
+    smtp.host && smtp.fromEmail ? { label: "Configurado", variant: "secondary" as const } : null;
+
   if (open === "whatsapp") {
     return <WhatsAppIntegration onBack={() => setOpen(null)} />;
   }
@@ -125,6 +130,9 @@ export function IntegrationsPanel() {
   }
   if (open === "calendar") {
     return <CalendarFeedCard onBack={() => setOpen(null)} />;
+  }
+  if (open === "email") {
+    return <SmtpIntegration onBack={() => setOpen(null)} />;
   }
 
   return (
@@ -146,7 +154,9 @@ export function IntegrationsPanel() {
                 ? clicksignStatus
                 : it.id === "wordpress"
                   ? wordpressStatus
-                  : null;
+                  : it.id === "email"
+                    ? smtpStatus
+                    : null;
           return (
             <Card
               key={it.id}
