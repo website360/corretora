@@ -231,7 +231,9 @@ export function CustomerProfile({ id }: { id: string }) {
             </SectionCard>
           )}
 
-          <CustomerPortalCard customer={customer} onChange={refetch} />
+          {customer.kind === "client" && (
+            <CustomerPortalCard customer={customer} onChange={refetch} />
+          )}
         </TabsContent>
 
         <TabsContent value="contratos">
