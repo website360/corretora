@@ -43,13 +43,19 @@ export function CustomerPortalCard({
       const res = await fetch(`/api/customers/${customer.id}/portal`, { method: "POST" });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Falha ao habilitar.");
+      // Não recarrega agora: o refetch desmontaria o card e fecharia o diálogo
+      // antes de mostrar a senha. Atualiza só quando o diálogo for fechado.
       setPassword(json.password as string);
-      onChange();
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setBusy(false);
     }
+  }
+
+  function closePassword() {
+    setPassword(null);
+    onChange();
   }
 
   async function disable() {
@@ -120,7 +126,7 @@ export function CustomerPortalCard({
       </div>
 
       {/* Senha gerada */}
-      <Dialog open={Boolean(password)} onOpenChange={(o) => !o && setPassword(null)}>
+      <Dialog open={Boolean(password)} onOpenChange={(o) => !o && closePassword()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Acesso criado</DialogTitle>
@@ -149,7 +155,7 @@ export function CustomerPortalCard({
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setPassword(null)}>Concluído</Button>
+            <Button onClick={closePassword}>Concluído</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
