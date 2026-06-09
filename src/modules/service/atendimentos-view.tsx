@@ -156,7 +156,7 @@ export function AtendimentosView() {
       id: "notes",
       header: "Atendimento",
       cell: ({ row }) => (
-        <p className="line-clamp-2 max-w-md text-sm text-muted-foreground">{row.original.notes}</p>
+        <p className="truncate text-sm text-muted-foreground">{row.original.notes}</p>
       ),
     },
     {

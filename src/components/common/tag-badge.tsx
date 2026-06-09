@@ -15,8 +15,12 @@ export function TagBadge({
   className?: string;
 }) {
   return (
-    <Badge variant="outline" className={cn("gap-1 capitalize", TONE_BADGE_CLASS[color], className)}>
-      <TagIcon className="size-3 shrink-0" /> {name}
+    <Badge
+      variant="outline"
+      className={cn("max-w-[10rem] gap-1 capitalize", TONE_BADGE_CLASS[color], className)}
+    >
+      <TagIcon className="size-3 shrink-0" />
+      <span className="min-w-0 truncate">{name}</span>
     </Badge>
   );
 }

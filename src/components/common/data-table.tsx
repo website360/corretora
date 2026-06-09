@@ -319,7 +319,7 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableCell
                       key={cell.id}
-                      className={cn("overflow-hidden", meta?.cellClassName)}
+                      className={cn("truncate whitespace-nowrap", meta?.cellClassName)}
                       style={{ width: cell.column.getSize() }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

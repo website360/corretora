@@ -85,7 +85,7 @@ export function LeadsList({
         id: "tags",
         header: "Etiquetas",
         cell: ({ row }) => (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex items-center gap-1 overflow-hidden">
             {row.original.tags.slice(0, 3).map((t) => (
               <TagBadge key={t} name={t} color={tagColor(t)} />
             ))}

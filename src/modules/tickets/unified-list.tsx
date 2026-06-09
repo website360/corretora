@@ -363,7 +363,7 @@ export function UnifiedList({
         ].filter(Boolean) as { title: string }[];
         if (items.length === 0) return <span className="text-sm text-muted-foreground">—</span>;
         return (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex items-center gap-1 overflow-hidden">
             {items.map((item, i) => {
               // Inicial = 1ª letra do nome (ignora o prefixo "Tipo: ").
               const name = item.title.includes(": ")
@@ -403,11 +403,15 @@ export function UnifiedList({
             {tags.length === 0 ? (
               <span className="text-sm text-muted-foreground">—</span>
             ) : (
-              <span className="flex flex-wrap items-center gap-1">
+              <span className="flex items-center gap-1 overflow-hidden">
                 {tags.slice(0, 2).map((t) => (
                   <TagBadge key={t} name={t} color={tagColor(t)} />
                 ))}
-                {tags.length > 2 && <Badge variant="outline">+{tags.length - 2}</Badge>}
+                {tags.length > 2 && (
+                  <Badge variant="outline" className="shrink-0">
+                    +{tags.length - 2}
+                  </Badge>
+                )}
               </span>
             )}
           </InlineTags>

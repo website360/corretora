@@ -225,7 +225,7 @@ export function CustomersView() {
             refetch();
           }}
         >
-          <div className="flex flex-wrap gap-1">
+          <div className="flex items-center gap-1 overflow-hidden">
             {row.original.tags.length === 0 ? (
               <span className="text-sm text-muted-foreground">—</span>
             ) : (
@@ -234,7 +234,9 @@ export function CustomersView() {
                   <TagBadge key={t} name={t} color={tagColor(t)} />
                 ))}
                 {row.original.tags.length > 2 && (
-                  <Badge variant="outline">+{row.original.tags.length - 2}</Badge>
+                  <Badge variant="outline" className="shrink-0">
+                    +{row.original.tags.length - 2}
+                  </Badge>
                 )}
               </>
             )}
