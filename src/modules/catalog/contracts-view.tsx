@@ -360,6 +360,7 @@ export function ContractsView() {
           onClear={clearFilters}
           getCurrent={currentFilters}
           onApply={applyFilters}
+          sticky
         />
       </div>
 

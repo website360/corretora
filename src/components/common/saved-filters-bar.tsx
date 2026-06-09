@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   Bookmark,
   ChevronDown,
+  Clock,
   Lock,
   RotateCcw,
   Save,
@@ -56,6 +57,7 @@ export function SavedFiltersBar({
   onClear,
   getCurrent,
   onApply,
+  sticky,
 }: {
   /** Identifica a lista (ex.: "customers", "contracts"). */
   scope: string;
@@ -67,12 +69,37 @@ export function SavedFiltersBar({
   getCurrent: () => PresetFilters;
   /** Aplica um conjunto de filtros salvos aos controles da view. */
   onApply: (filters: PresetFilters) => void;
+  /**
+   * Habilita o "filtro temporário" grudado: guarda no localStorage e restaura
+   * ao voltar à página (sem virar preset). Inclui o item no menu e limpa junto.
+   */
+  sticky?: boolean;
 }) {
   const { user } = useSession();
   const [presets, setPresets] = React.useState<FilterPreset[]>([]);
   const [saveOpen, setSaveOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [shareNew, setShareNew] = React.useState(false);
+
+  const stickyKey = `corretora:filters-sticky:${scope}:${user.id}`;
+  const loadSticky = (): PresetFilters | null => {
+    if (!sticky || typeof window === "undefined") return null;
+    try {
+      const raw = window.localStorage.getItem(stickyKey);
+      return raw ? (JSON.parse(raw) as PresetFilters) : null;
+    } catch {
+      return null;
+    }
+  };
+  const writeSticky = (f: PresetFilters | null) => {
+    if (!sticky || typeof window === "undefined") return;
+    try {
+      if (f) window.localStorage.setItem(stickyKey, JSON.stringify(f));
+      else window.localStorage.removeItem(stickyKey);
+    } catch {
+      /* ignora */
+    }
+  };
 
   const refetch = React.useCallback(() => {
     filterPresetsService
@@ -84,6 +111,26 @@ export function SavedFiltersBar({
   React.useEffect(() => {
     refetch();
   }, [refetch]);
+
+  // Restaura o filtro temporário grudado ao montar (lido fresco do localStorage).
+  const hydrated = React.useRef(false);
+  React.useEffect(() => {
+    if (hydrated.current) return;
+    hydrated.current = true;
+    const s = loadSticky();
+    if (s) onApply(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function saveSticky() {
+    writeSticky(getCurrent());
+    toast.success("Filtro guardado — fica ativo ao sair e voltar à página.");
+  }
+
+  function clearAll() {
+    onClear();
+    writeSticky(null);
+  }
 
   async function handleSave() {
     const n = name.trim();
@@ -127,6 +174,7 @@ export function SavedFiltersBar({
 
   function handleApply(p: FilterPreset) {
     onApply(p.filters);
+    writeSticky(p.filters);
     toast.success(`Filtro "${p.name}" aplicado.`);
   }
 
@@ -222,6 +270,11 @@ export function SavedFiltersBar({
             })
           )}
           <DropdownMenuSeparator />
+          {sticky && (
+            <DropdownMenuItem onSelect={saveSticky}>
+              <Clock /> Guardar filtro temporário
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onSelect={() => {
               setName("");
@@ -239,7 +292,7 @@ export function SavedFiltersBar({
           variant="ghost"
           size="sm"
           className="h-9"
-          onClick={onClear}
+          onClick={clearAll}
           title="Limpar a seleção de filtros"
         >
           <RotateCcw /> Limpar

@@ -289,6 +289,7 @@ export function AtendimentosView() {
           onClear={clearFilters}
           getCurrent={currentFilters}
           onApply={applyFilters}
+          sticky
         />
       </div>
 

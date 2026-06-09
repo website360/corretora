@@ -653,6 +653,7 @@ export function CustomersView() {
           onClear={clearFilters}
           getCurrent={currentFilters}
           onApply={applyFilters}
+          sticky
         />
 
         <div className="ml-auto">
