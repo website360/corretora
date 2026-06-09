@@ -171,9 +171,11 @@ export function ContractFormDialog({
               description: "Lembrete automático de renovação de contrato.",
               priority: "medium",
               category: "renewal",
-              subject_type: "product",
+              subject_type: "contract",
               customer_id: customerId,
+              carrier_id: carrierId || undefined,
               product_id: product?.id,
+              contract_id: contractId,
               assignee_id: ownerId || undefined,
               due_at: due.toISOString(),
               tags: ["renovação"],
@@ -250,7 +252,11 @@ export function ContractFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Número da apólice</Label>
-              <Input value={policy} onChange={(e) => setPolicy(e.target.value)} />
+              <Input
+                value={policy}
+                onChange={(e) => setPolicy(e.target.value.replace(/[.\s]/g, ""))}
+                placeholder="Sem pontos ou espaços"
+              />
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
