@@ -118,6 +118,15 @@ export async function addSignerToDocument(
   });
 }
 
+/**
+ * Chamada autenticada leve para validar token + ambiente (sem criar nada).
+ * Sucesso => credenciais OK; o erro do "e-mail do usuário da API" só aparece no
+ * envio (criação da lista), confirmando que o bloqueio é a config da conta.
+ */
+export async function pingAccount(cfg: ClickSignConfig): Promise<void> {
+  await csFetch(cfg, "/documents", { method: "GET" });
+}
+
 export async function getDocument(cfg: ClickSignConfig, key: string): Promise<CsDocument> {
   const json = await csFetch<{ document: CsDocument }>(cfg, `/documents/${key}`, { method: "GET" });
   return json.document;

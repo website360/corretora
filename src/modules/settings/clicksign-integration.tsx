@@ -32,8 +32,26 @@ export function ClickSignIntegration({ onBack }: { onBack: () => void }) {
   const [apiToken, setApiToken] = React.useState(initial.apiToken ?? "");
   const [webhookSecret, setWebhookSecret] = React.useState(initial.webhookSecret ?? "");
   const [saving, setSaving] = React.useState(false);
+  const [testing, setTesting] = React.useState(false);
 
   const webhookUrl = `${env.appUrl}/api/integrations/clicksign/webhook`;
+
+  async function testConnection() {
+    setTesting(true);
+    try {
+      const res = await fetch("/api/integrations/clicksign/test", { method: "POST" });
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (json.ok) {
+        toast.success("Conexão OK — token e ambiente válidos. Se o envio falhar, é a config da conta ClickSign.");
+      } else {
+        toast.error(json.error || "Falha ao conectar ao ClickSign.");
+      }
+    } catch {
+      toast.error("Falha de rede ao testar.");
+    } finally {
+      setTesting(false);
+    }
+  }
 
   async function save() {
     setSaving(true);
@@ -165,7 +183,10 @@ export function ClickSignIntegration({ onBack }: { onBack: () => void }) {
           </fieldset>
 
           {isAdmin && (
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={testConnection} loading={testing}>
+                Testar conexão
+              </Button>
               <Button onClick={save} loading={saving}>
                 Salvar
               </Button>
