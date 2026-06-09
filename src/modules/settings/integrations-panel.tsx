@@ -3,8 +3,8 @@
 import * as React from "react";
 import {
   ArrowRight,
+  CalendarDays,
   FileSignature,
-  Globe,
   Instagram,
   LayoutTemplate,
   Mail,
@@ -24,8 +24,9 @@ import { cn } from "@/lib/utils";
 import { WhatsAppIntegration } from "@/modules/settings/whatsapp-integration";
 import { ClickSignIntegration } from "@/modules/settings/clicksign-integration";
 import { WordPressIntegration } from "@/modules/settings/wordpress-integration";
+import { CalendarFeedCard } from "@/modules/settings/calendar-feed-card";
 
-type IntegrationId = "whatsapp" | "clicksign" | "wordpress";
+type IntegrationId = "whatsapp" | "clicksign" | "wordpress" | "calendar";
 
 interface IntegrationMeta {
   id: IntegrationId | string;
@@ -82,6 +83,13 @@ const INTEGRATIONS: IntegrationMeta[] = [
     icon: LayoutTemplate,
     iconClass: "bg-indigo-500/10 text-indigo-600",
   },
+  {
+    id: "calendar",
+    title: "Assinar a agenda",
+    description: "Veja seus eventos e tarefas no Outlook, Google e Apple via link iCal.",
+    icon: CalendarDays,
+    iconClass: "bg-rose-500/10 text-rose-600",
+  },
 ];
 
 export function IntegrationsPanel() {
@@ -114,6 +122,9 @@ export function IntegrationsPanel() {
   }
   if (open === "wordpress") {
     return <WordPressIntegration onBack={() => setOpen(null)} />;
+  }
+  if (open === "calendar") {
+    return <CalendarFeedCard onBack={() => setOpen(null)} />;
   }
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CalendarDays, Check, Copy, RefreshCw } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, Copy, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/contexts/session-context";
 import { env } from "@/config/env";
@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
  * adicionar no Outlook, Google (Android) e Apple (iPhone). O link é secreto
  * (token) e pode ser regenerado para revogar o anterior.
  */
-export function CalendarFeedCard() {
+export function CalendarFeedCard({ onBack }: { onBack?: () => void }) {
   const { user } = useSession();
   const [token, setToken] = React.useState<string | null>(user.calendar_token ?? null);
   const [copied, setCopied] = React.useState(false);
@@ -53,7 +53,18 @@ export function CalendarFeedCard() {
   }
 
   return (
-    <Card>
+    <div className="space-y-4">
+      {onBack && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          className="-ml-2 text-muted-foreground"
+        >
+          <ArrowLeft /> Voltar para integrações
+        </Button>
+      )}
+      <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CalendarDays className="size-5 text-primary" /> Assinar a agenda
@@ -98,6 +109,7 @@ export function CalendarFeedCard() {
           </ul>
         </div>
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }
