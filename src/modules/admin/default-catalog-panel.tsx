@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DefaultTagsPanel } from "@/modules/admin/default-tags-panel";
 import {
   Dialog,
   DialogContent,
@@ -41,21 +43,38 @@ export function DefaultCatalogPanel() {
     }
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Catálogo padrão do sistema. Toda empresa nova já nasce com estas seguradoras e produtos.
-          Ao adicionar um item novo, ele é aplicado também às empresas já existentes (sem duplicar);
-          use o botão ao lado para reaplicar quando quiser.
-        </p>
-        <Button variant="outline" onClick={syncAll} loading={syncing}>
-          <RefreshCw /> Aplicar a todas as empresas
-        </Button>
-      </div>
-      <CarriersCard />
-      <ProductsCard />
+  const catalogSyncBar = (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <p className="max-w-2xl text-sm text-muted-foreground">
+        Catálogo padrão do sistema. Toda empresa nova já nasce com estes itens. Ao adicionar um
+        item novo, ele é aplicado também às empresas já existentes (sem duplicar); use o botão ao
+        lado para reaplicar quando quiser.
+      </p>
+      <Button variant="outline" onClick={syncAll} loading={syncing}>
+        <RefreshCw /> Aplicar a todas as empresas
+      </Button>
     </div>
+  );
+
+  return (
+    <Tabs defaultValue="carriers" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="carriers">Seguradoras</TabsTrigger>
+        <TabsTrigger value="products">Produtos</TabsTrigger>
+        <TabsTrigger value="tags">Etiquetas</TabsTrigger>
+      </TabsList>
+      <TabsContent value="carriers" className="space-y-4">
+        {catalogSyncBar}
+        <CarriersCard />
+      </TabsContent>
+      <TabsContent value="products" className="space-y-4">
+        {catalogSyncBar}
+        <ProductsCard />
+      </TabsContent>
+      <TabsContent value="tags">
+        <DefaultTagsPanel />
+      </TabsContent>
+    </Tabs>
   );
 }
 

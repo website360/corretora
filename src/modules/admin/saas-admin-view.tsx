@@ -26,7 +26,6 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/common/page-header";
 import { DataTable } from "@/components/common/data-table";
 import { DefaultCatalogPanel } from "@/modules/admin/default-catalog-panel";
-import { DefaultTagsPanel } from "@/modules/admin/default-tags-panel";
 import { SystemSettingsPanel } from "@/modules/admin/system-settings-panel";
 import { EmptyState } from "@/components/common/empty-state";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
@@ -52,7 +51,6 @@ type Tab =
   | "plans"
   | "payments"
   | "catalog"
-  | "tags"
   | "system";
 
 const TABS: { id: Tab; label: string }[] = [
@@ -62,7 +60,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "plans", label: "Planos & Valores" },
   { id: "payments", label: "Pagamentos" },
   { id: "catalog", label: "Catálogo padrão" },
-  { id: "tags", label: "Etiquetas padrão" },
   { id: "system", label: "Sistema" },
 ];
 
@@ -300,8 +297,6 @@ export function SaasAdminView() {
         )}
 
         {tab === "catalog" && <DefaultCatalogPanel />}
-
-        {tab === "tags" && <DefaultTagsPanel />}
 
         {tab === "system" && <SystemSettingsPanel />}
       </div>
