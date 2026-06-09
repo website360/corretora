@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -55,19 +56,27 @@ export function WordPressIntegration({ onBack }: { onBack: () => void }) {
 
   const [apiKey, setApiKey] = React.useState(initial.apiKey ?? "");
   const [boardId, setBoardId] = React.useState<string>(initial.boardId ?? "");
+  const [domains, setDomains] = React.useState<string[]>(initial.allowedDomains ?? []);
+  const [domainsText, setDomainsText] = React.useState((initial.allowedDomains ?? []).join("\n"));
   const [saving, setSaving] = React.useState(false);
   const { data: boards } = useAsyncData(() => kanbanService.listBoards());
 
   const apiUrl = `${env.appUrl.replace(/\/+$/, "")}/api/leads`;
 
-  async function persist(patch: { apiKey?: string; boardId?: string }) {
+  async function persist(patch: {
+    apiKey?: string;
+    boardId?: string;
+    allowedDomains?: string[];
+  }) {
     setSaving(true);
     try {
       const key = patch.apiKey !== undefined ? patch.apiKey : apiKey;
       const board = patch.boardId !== undefined ? patch.boardId : boardId;
+      const allowed = patch.allowedDomains !== undefined ? patch.allowedDomains : domains;
       const wordpress: WordPressConfig = {
         apiKey: key || undefined,
         boardId: board || null,
+        allowedDomains: allowed.length ? allowed : undefined,
         connectedAt: key ? new Date().toISOString() : null,
       };
       await companySettingsService.update(user.company.id, {
@@ -75,6 +84,10 @@ export function WordPressIntegration({ onBack }: { onBack: () => void }) {
       });
       if (patch.apiKey !== undefined) setApiKey(key);
       if (patch.boardId !== undefined) setBoardId(board);
+      if (patch.allowedDomains !== undefined) {
+        setDomains(allowed);
+        setDomainsText(allowed.join("\n"));
+      }
       router.refresh();
       return true;
     } catch {
@@ -82,6 +95,20 @@ export function WordPressIntegration({ onBack }: { onBack: () => void }) {
       return false;
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveDomains() {
+    const list = Array.from(
+      new Set(
+        domainsText
+          .split(/[\n,]/)
+          .map((s) => s.trim())
+          .filter(Boolean),
+      ),
+    );
+    if (await persist({ allowedDomains: list })) {
+      toast.success(list.length ? "Domínios autorizados salvos." : "Restrição de domínio removida.");
     }
   }
 
@@ -237,6 +264,30 @@ export function WordPressIntegration({ onBack }: { onBack: () => void }) {
                 HTML, adicione a classe <code>crm-lead-capture</code> ao <code>&lt;form&gt;</code>.
               </li>
             </ol>
+          </div>
+
+          {/* Domínios autorizados (segurança do script no navegador) */}
+          <div className="space-y-2">
+            <Label>Domínios autorizados (script)</Label>
+            <Textarea
+              value={domainsText}
+              onChange={(e) => setDomainsText(e.target.value)}
+              disabled={!isAdmin}
+              placeholder={"seusite.com.br\nlp.seusite.com.br"}
+              rows={3}
+              className="max-w-sm font-mono text-xs"
+            />
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <Button variant="outline" size="sm" onClick={saveDomains} loading={saving}>
+                  Salvar domínios
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Um por linha. Restringe o uso da chave no <strong>script</strong> a estes sites.
+                Vazio = qualquer site. O plugin do WordPress não é afetado.
+              </p>
+            </div>
           </div>
 
           {/* Script genérico (qualquer site) */}

@@ -1,35 +1,68 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
-// Permite chamadas do navegador (script genérico em qualquer site).
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
+const BASE_CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, X-API-Key",
 };
 
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS });
+/** Cabeçalhos CORS refletindo a origem da requisição (ou `*` se ausente). */
+function corsFor(origin: string | null) {
+  return { ...BASE_CORS, "Access-Control-Allow-Origin": origin || "*" };
+}
+
+function hostFromOrigin(origin: string): string | null {
+  try {
+    return new URL(origin).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+/** Normaliza uma entrada de domínio (aceita URL, www., barras) para o hostname. */
+function normDomain(d: string): string | null {
+  let s = d.trim().toLowerCase();
+  if (!s) return null;
+  try {
+    if (s.includes("://")) s = new URL(s).hostname;
+  } catch {
+    /* mantém o texto */
+  }
+  s = s.replace(/^www\./, "").replace(/\/.*$/, "");
+  return s || null;
+}
+
+function originAllowed(origin: string, allowed: string[]): boolean {
+  const host = hostFromOrigin(origin);
+  if (!host) return false;
+  return allowed.some((a) => host === a || host.endsWith("." + a));
+}
+
+export async function OPTIONS(request: Request) {
+  return new NextResponse(null, { status: 204, headers: corsFor(request.headers.get("origin")) });
 }
 
 /**
  * Ingestão pública de leads (site / WordPress / script). O cliente envia o
- * header `X-API-Key` (chave por empresa, em companies.settings.integrations.
- * wordpress) e um JSON { name, email, phone, source, notes, metadata }. Cria um
- * lead (customers.kind = 'lead') na empresa dona da chave, no kanban escolhido
- * (settings.integrations.wordpress.boardId). Responde 201 no sucesso.
+ * header `X-API-Key` (chave por empresa) e um JSON { name, email, phone,
+ * source, notes, metadata }. Cria um lead na empresa dona da chave, no kanban
+ * escolhido. Chamadas do navegador são restritas aos domínios autorizados
+ * (allowedDomains); o plugin server-side não envia Origin e não é afetado.
  */
 export async function POST(request: Request) {
+  const origin = request.headers.get("origin");
+  const cors = corsFor(origin);
+
   const apiKey = request.headers.get("x-api-key")?.trim();
   if (!apiKey) {
-    return NextResponse.json({ error: "Chave de API ausente" }, { status: 401, headers: CORS });
+    return NextResponse.json({ error: "Chave de API ausente" }, { status: 401, headers: cors });
   }
 
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;
   } catch {
-    return NextResponse.json({ error: "JSON inválido" }, { status: 400, headers: CORS });
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400, headers: cors });
   }
 
   const name = String(body.name ?? "").trim();
@@ -37,20 +70,30 @@ export async function POST(request: Request) {
   if (!name || !email) {
     return NextResponse.json(
       { error: "Nome e email são obrigatórios" },
-      { status: 400, headers: CORS },
+      { status: 400, headers: cors },
     );
   }
 
   const admin = getSupabaseAdminClient();
 
-  // Identifica a empresa pela chave (bypass RLS) e lê o kanban de destino.
   const { data: company } = await admin
     .from("companies")
     .select("id, settings")
     .eq("settings->integrations->wordpress->>apiKey", apiKey)
     .maybeSingle();
   if (!company) {
-    return NextResponse.json({ error: "Chave de API inválida" }, { status: 401, headers: CORS });
+    return NextResponse.json({ error: "Chave de API inválida" }, { status: 401, headers: cors });
+  }
+
+  const settings = (company.settings ?? {}) as {
+    integrations?: { wordpress?: { boardId?: string | null; allowedDomains?: string[] } };
+  };
+  const wp = settings.integrations?.wordpress;
+
+  // Allowlist de domínios: só vale para chamadas do navegador (com Origin).
+  const allowed = (wp?.allowedDomains ?? []).map(normDomain).filter(Boolean) as string[];
+  if (allowed.length && origin && !originAllowed(origin, allowed)) {
+    return NextResponse.json({ error: "Origem não autorizada" }, { status: 403, headers: cors });
   }
 
   // Evita duplicar quando o formulário é reenviado.
@@ -63,14 +106,11 @@ export async function POST(request: Request) {
     .limit(1)
     .maybeSingle();
   if (existing) {
-    return NextResponse.json({ ok: true, duplicate: true }, { status: 201, headers: CORS });
+    return NextResponse.json({ ok: true, duplicate: true }, { status: 201, headers: cors });
   }
 
   // Kanban de destino (opcional). Coloca o lead na 1ª coluna do board escolhido.
-  const settings = (company.settings ?? {}) as {
-    integrations?: { wordpress?: { boardId?: string | null } };
-  };
-  const boardId = settings.integrations?.wordpress?.boardId ?? null;
+  const boardId = wp?.boardId ?? null;
   let columnId: string | null = null;
   if (boardId) {
     const { data: col } = await admin
@@ -111,8 +151,8 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    return NextResponse.json({ error: "Falha ao salvar o lead" }, { status: 500, headers: CORS });
+    return NextResponse.json({ error: "Falha ao salvar o lead" }, { status: 500, headers: cors });
   }
 
-  return NextResponse.json({ ok: true }, { status: 201, headers: CORS });
+  return NextResponse.json({ ok: true }, { status: 201, headers: cors });
 }

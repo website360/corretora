@@ -82,6 +82,8 @@ export interface WordPressIntegration {
   apiKey?: string;
   /** Kanban (board de leads) onde os leads capturados devem chegar. */
   boardId?: string | null;
+  /** Domínios autorizados a usar a chave no navegador (script). Vazio = qualquer. */
+  allowedDomains?: string[];
   connectedAt?: string | null;
 }
 
