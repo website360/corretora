@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { taskBoardsService } from "@/services/task-boards.service";
 import { findUser } from "@/services/lookup";
+import { useSession } from "@/contexts/session-context";
 import { useDirectoryStore } from "@/stores/directory-store";
 import { useLastBoardStore } from "@/stores/last-board-store";
 import { EVENT_MODALITY_META, TONE_DOT_CLASS } from "@/config/domain";
@@ -61,6 +62,7 @@ export function TasksBoard({
   onOpenEvent?: (event: CalendarEvent) => void;
   onOpenTask?: (task: Ticket) => void;
 }) {
+  const { can } = useSession();
   const boards = useDirectoryStore((s) => s.taskBoards);
   const allColumns = useDirectoryStore((s) => s.taskColumns);
 
@@ -248,7 +250,7 @@ export function TasksBoard({
               >
                 <Pencil /> Renomear kanban
               </DropdownMenuItem>
-              {!activeBoard.is_default && (
+              {(!activeBoard.is_default || can(["admin", "super_admin"])) && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
