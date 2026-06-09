@@ -695,6 +695,18 @@ export function TasksView() {
           >
             <EyeOff /> Ocultar concluídos
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            title="Guardar os filtros atuais para quando você voltar (sem criar um preset)"
+            onClick={() => {
+              saveLastToDb(currentFilters());
+              toast.success("Filtro guardado — será restaurado ao voltar à página.");
+            }}
+          >
+            <Save /> Salvar filtro temporário
+          </Button>
         </div>
       )}
 
