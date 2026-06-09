@@ -152,6 +152,10 @@ export interface User {
   last_seen_at: ISODateString | null;
   /** Token secreto do feed de calendário (.ics) do usuário. */
   calendar_token?: string | null;
+  /** Filtros salvos (presets) da tela de Tarefas — por usuário (jsonb). */
+  task_filter_presets?: unknown[];
+  /** Último filtro aplicado em Tarefas — restaurado ao voltar (jsonb). */
+  task_filter_last?: unknown;
   created_at: ISODateString;
 }
 

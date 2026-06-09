@@ -58,11 +58,9 @@ import { useUIStore } from "@/stores/ui-store";
 import { useSession } from "@/contexts/session-context";
 import {
   loadTaskFilters,
-  saveTaskFilters,
-  clearTaskFilters,
   loadTaskPresets,
-  addTaskPreset,
-  removeTaskPreset,
+  upsertPreset,
+  removePreset,
   type FilterPreset,
   type SavedTaskFilters,
 } from "@/lib/task-filters-storage";
@@ -246,27 +244,48 @@ export function TasksView() {
       }));
   }, [taskColumns, boardFilter, boardNameById, taskBoards.length]);
 
+  // Persistência por USUÁRIO no banco (segue o usuário em qualquer dispositivo).
+  const savePresetsToDb = (next: FilterPreset[]) => {
+    usersService.update(user.id, { task_filter_presets: next }).catch(() => {});
+  };
+  const saveLastToDb = (last: SavedTaskFilters | null) => {
+    usersService.update(user.id, { task_filter_last: last }).catch(() => {});
+  };
+
   // Restaura os filtros do último uso + carrega os presets ao abrir (uma vez).
+  // Lê da sessão (banco) e migra presets antigos do localStorage, se houver.
   const hydrated = React.useRef(false);
   React.useEffect(() => {
     if (hydrated.current || !user.id) return;
     hydrated.current = true;
-    setPresets(loadTaskPresets(user.id));
-    const saved = loadTaskFilters(user.id);
-    if (saved) applyFilters(saved);
+    const dbPresets = (user.task_filter_presets as FilterPreset[] | undefined) ?? [];
+    if (dbPresets.length) {
+      setPresets(dbPresets);
+    } else {
+      const ls = loadTaskPresets(user.id);
+      if (ls.length) {
+        setPresets(ls);
+        savePresetsToDb(ls); // migra para o banco (uma vez)
+      }
+    }
+    const last =
+      (user.task_filter_last as SavedTaskFilters | undefined) ?? loadTaskFilters(user.id) ?? null;
+    if (last) applyFilters(last);
   }, [user.id]);
 
   // Aplica um preset (e lembra como "último uso") + feedback.
   function applyPreset(preset: FilterPreset) {
     applyFilters(preset.filters);
-    saveTaskFilters(user.id, preset.filters);
+    saveLastToDb(preset.filters);
     setCursor(new Date());
     toast.success(`Filtro "${preset.name}" aplicado.`);
   }
 
   function handleDeletePreset(id: string, name: string) {
     const removed = presets.find((p) => p.id === id);
-    setPresets(removeTaskPreset(user.id, id));
+    const next = removePreset(presets, id);
+    setPresets(next);
+    savePresetsToDb(next);
     // Se o preset excluído é o que está aplicado agora, limpa os filtros.
     const isApplied =
       removed && JSON.stringify(removed.filters) === JSON.stringify(currentFilters());
@@ -281,8 +300,10 @@ export function TasksView() {
   function handleConfirmSavePreset() {
     const name = presetName.trim();
     if (!name) return;
-    setPresets(addTaskPreset(user.id, name, currentFilters()));
-    saveTaskFilters(user.id, currentFilters());
+    const next = upsertPreset(presets, name, currentFilters());
+    setPresets(next);
+    savePresetsToDb(next);
+    saveLastToDb(currentFilters());
     setSaveOpen(false);
     setPresetName("");
     toast.success(`Filtro "${name}" salvo.`);
@@ -303,7 +324,7 @@ export function TasksView() {
     setCursor(new Date());
     setRangeFrom("");
     setRangeTo("");
-    clearTaskFilters(user.id);
+    saveLastToDb(null);
     toast.success("Filtros limpos.");
   }
 

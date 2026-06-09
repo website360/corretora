@@ -89,30 +89,25 @@ function persistPresets(userId: string, presets: FilterPreset[]) {
   }
 }
 
+/* ── Transforms puros de lista (a persistência é feita por quem chama, no
+      banco — por usuário). Mantemos o localStorage acima só como fallback de
+      migração dos presets criados antes do 0060. ───────────────────────────── */
+
 /** Cria (ou renomeia, se o nome já existir) um preset e devolve a nova lista. */
-export function addTaskPreset(
-  userId: string,
+export function upsertPreset(
+  presets: FilterPreset[],
   name: string,
   filters: SavedTaskFilters,
 ): FilterPreset[] {
-  const presets = loadTaskPresets(userId);
   const existing = presets.find((p) => p.name.toLowerCase() === name.trim().toLowerCase());
-  let next: FilterPreset[];
   if (existing) {
-    next = presets.map((p) => (p.id === existing.id ? { ...p, filters } : p));
-  } else {
-    const id =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `p_${Date.now()}`;
-    next = [...presets, { id, name: name.trim(), filters }];
+    return presets.map((p) => (p.id === existing.id ? { ...p, filters } : p));
   }
-  persistPresets(userId, next);
-  return next;
+  const id =
+    typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `p_${Date.now()}`;
+  return [...presets, { id, name: name.trim(), filters }];
 }
 
-export function removeTaskPreset(userId: string, id: string): FilterPreset[] {
-  const next = loadTaskPresets(userId).filter((p) => p.id !== id);
-  persistPresets(userId, next);
-  return next;
+export function removePreset(presets: FilterPreset[], id: string): FilterPreset[] {
+  return presets.filter((p) => p.id !== id);
 }
