@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { TagBadge } from "@/components/common/tag-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { EmptyState } from "@/components/common/empty-state";
@@ -193,13 +194,7 @@ export function CustomerProfile({ id }: { id: string }) {
                   customer.tags.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
                       {customer.tags.map((t) => (
-                        <Badge
-                          key={t}
-                          variant="outline"
-                          className={cn("capitalize", TONE_BADGE_CLASS[tagColor(t)])}
-                        >
-                          {t}
-                        </Badge>
+                        <TagBadge key={t} name={t} color={tagColor(t)} />
                       ))}
                     </div>
                   ) : null

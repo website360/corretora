@@ -28,6 +28,7 @@ import type { Customer, KanbanColumn, StageColor } from "@/types/domain";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { TagBadge } from "@/components/common/tag-badge";
 import { EmptyState } from "@/components/common/empty-state";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
@@ -475,13 +476,7 @@ function LeadCard({
       <div className="mt-2 flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap gap-1">
           {lead.tags.slice(0, 2).map((t) => (
-            <Badge
-              key={t}
-              variant="outline"
-              className={cn("capitalize", TONE_BADGE_CLASS[tagColor(t)])}
-            >
-              {t}
-            </Badge>
+            <TagBadge key={t} name={t} color={tagColor(t)} />
           ))}
         </div>
         {owner && <UserAvatar name={owner.name} src={owner.avatar_url} className="size-6 shrink-0" />}

@@ -13,6 +13,7 @@ import { TONE_BADGE_CLASS } from "@/config/domain";
 import { cn } from "@/lib/utils";
 import { DataTable } from "@/components/common/data-table";
 import { Badge } from "@/components/ui/badge";
+import { TagBadge } from "@/components/common/tag-badge";
 import { UserAvatar } from "@/components/common/user-avatar";
 
 /** Tabular view of leads — mirrors the task list experience. */
@@ -86,13 +87,7 @@ export function LeadsList({
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1">
             {row.original.tags.slice(0, 3).map((t) => (
-              <Badge
-                key={t}
-                variant="outline"
-                className={cn("capitalize", TONE_BADGE_CLASS[tagColor(t)])}
-              >
-                {t}
-              </Badge>
+              <TagBadge key={t} name={t} color={tagColor(t)} />
             ))}
             {row.original.tags.length === 0 && <span className="text-muted-foreground">—</span>}
           </div>

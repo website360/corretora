@@ -51,6 +51,7 @@ import { TicketFormDialog } from "@/modules/tickets/ticket-form-dialog";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { TagBadge } from "@/components/common/tag-badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -624,13 +625,7 @@ function TicketDetails({
             <div className="flex flex-wrap gap-1.5">
               {ticket.tags.length > 0 ? (
                 ticket.tags.map((t) => (
-                  <Badge
-                    key={t}
-                    variant="outline"
-                    className={cn("capitalize", TONE_BADGE_CLASS[tagColor(t)])}
-                  >
-                    {t}
-                  </Badge>
+                  <TagBadge key={t} name={t} color={tagColor(t)} />
                 ))
               ) : (
                 <span className="text-sm text-muted-foreground">Sem tags</span>

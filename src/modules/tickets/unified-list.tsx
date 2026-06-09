@@ -42,6 +42,7 @@ import { useSession } from "@/contexts/session-context";
 import { makeComparator, resolveSettings, type SortableRow } from "@/config/sort";
 import { DataTable } from "@/components/common/data-table";
 import { Badge } from "@/components/ui/badge";
+import { TagBadge } from "@/components/common/tag-badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -387,9 +388,7 @@ export function UnifiedList({
             ) : (
               <span className="flex flex-wrap items-center gap-1">
                 {tags.slice(0, 2).map((t) => (
-                  <Badge key={t} variant="outline" className={cn("capitalize", TONE_BADGE_CLASS[tagColor(t)])}>
-                    {t}
-                  </Badge>
+                  <TagBadge key={t} name={t} color={tagColor(t)} />
                 ))}
                 {tags.length > 2 && <Badge variant="outline">+{tags.length - 2}</Badge>}
               </span>

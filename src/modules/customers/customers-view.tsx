@@ -55,6 +55,7 @@ import { ColumnsMenu } from "@/components/common/columns-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { TagBadge } from "@/components/common/tag-badge";
 import { MultiSelect } from "@/components/ui/multi-select";
 import {
   DropdownMenu,
@@ -230,13 +231,7 @@ export function CustomersView() {
             ) : (
               <>
                 {row.original.tags.slice(0, 2).map((t) => (
-                  <Badge
-                    key={t}
-                    variant="outline"
-                    className={cn("capitalize", TONE_BADGE_CLASS[tagColor(t)])}
-                  >
-                    {t}
-                  </Badge>
+                  <TagBadge key={t} name={t} color={tagColor(t)} />
                 ))}
                 {row.original.tags.length > 2 && (
                   <Badge variant="outline">+{row.original.tags.length - 2}</Badge>

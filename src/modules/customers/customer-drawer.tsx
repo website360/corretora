@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import type { Customer, StageColor } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { TagBadge } from "@/components/common/tag-badge";
 import { Separator } from "@/components/ui/separator";
 import { UserAvatar } from "@/components/common/user-avatar";
 import {
@@ -65,13 +66,7 @@ export function CustomerDrawer({
                     <Badge variant="secondary">Inativo</Badge>
                   )}
                   {shown.tags.map((t) => (
-                    <Badge
-                      key={t}
-                      variant="outline"
-                      className={cn("capitalize", TONE_BADGE_CLASS[tagColor(t)])}
-                    >
-                      {t}
-                    </Badge>
+                    <TagBadge key={t} name={t} color={tagColor(t)} />
                   ))}
                 </div>
                 <SheetTitle>{shown.name || "Sem nome"}</SheetTitle>
