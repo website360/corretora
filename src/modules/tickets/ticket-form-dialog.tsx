@@ -1,9 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Settings2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -30,6 +28,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/combobox";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { ManageTagsLink } from "@/components/common/manage-tags-link";
 import {
   Dialog,
   DialogContent,
@@ -405,18 +404,7 @@ export function TicketFormDialog({
                 searchPlaceholder="Buscar etiqueta..."
                 emptyText="Nenhuma etiqueta. Crie em Configurações → Etiquetas."
                 triggerClassName="w-full"
-                footer={
-                  <Button
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start text-xs text-muted-foreground"
-                  >
-                    <Link href="/configuracoes?tab=tags">
-                      <Settings2 className="size-4" /> Gerenciar etiquetas
-                    </Link>
-                  </Button>
-                }
+                footer={<ManageTagsLink />}
               />
             </div>
           </div>

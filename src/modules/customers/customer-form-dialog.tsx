@@ -30,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/combobox";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { ManageTagsLink } from "@/components/common/manage-tags-link";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -457,6 +458,7 @@ export function CustomerFormDialog({
               searchPlaceholder="Buscar etiqueta..."
               emptyText="Nenhuma etiqueta. Crie em Configurações → Etiquetas."
               triggerClassName="w-full"
+              footer={<ManageTagsLink />}
             />
           </div>
 
