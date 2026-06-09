@@ -649,9 +649,9 @@ export function CustomersView() {
           options={(tags ?? []).map((t) => ({ value: t.name, label: t.name }))}
           values={tagSel}
           onChange={setTagSel}
-          placeholder="Todas as tags"
-          searchPlaceholder="Buscar tag..."
-          emptyText="Nenhuma tag."
+          placeholder="Todas as etiquetas"
+          searchPlaceholder="Buscar etiqueta..."
+          emptyText="Nenhuma etiqueta."
           allLabel="Todas"
         />
 

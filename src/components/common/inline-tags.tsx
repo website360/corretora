@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Settings2 } from "lucide-react";
+import { Settings2, Tag as TagIcon } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { TONE_DOT_CLASS } from "@/config/domain";
+import { TONE_TEXT_CLASS } from "@/config/domain";
 import type { StageColor } from "@/types/domain";
 import {
   DropdownMenu,
@@ -85,8 +85,8 @@ export function InlineTags({
                 onSelect={(e) => e.preventDefault()}
               >
                 <span className="flex items-center gap-2">
-                  <span
-                    className={cn("size-2 shrink-0 rounded-full", TONE_DOT_CLASS[colorOf?.(name) ?? "neutral"])}
+                  <TagIcon
+                    className={cn("size-3.5 shrink-0", TONE_TEXT_CLASS[colorOf?.(name) ?? "neutral"])}
                   />
                   <span className="capitalize">{name}</span>
                 </span>

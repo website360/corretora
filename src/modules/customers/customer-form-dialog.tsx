@@ -454,8 +454,8 @@ export function CustomerFormDialog({
               values={watch("tags") ?? []}
               onChange={(v) => setValue("tags", v)}
               placeholder="Nenhuma"
-              searchPlaceholder="Buscar tag..."
-              emptyText="Nenhuma tag. Crie em Configurações → Etiquetas."
+              searchPlaceholder="Buscar etiqueta..."
+              emptyText="Nenhuma etiqueta. Crie em Configurações → Etiquetas."
               triggerClassName="w-full"
             />
           </div>

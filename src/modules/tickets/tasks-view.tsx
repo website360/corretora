@@ -565,9 +565,9 @@ export function TasksView() {
           options={(tags ?? []).map((t) => ({ value: t.name, label: t.name }))}
           values={tagFilter}
           onChange={setTagFilter}
-          placeholder="Todas as tags"
-          searchPlaceholder="Buscar tag..."
-          emptyText="Nenhuma tag."
+          placeholder="Todas as etiquetas"
+          searchPlaceholder="Buscar etiqueta..."
+          emptyText="Nenhuma etiqueta."
           allLabel="Todas"
         />
 

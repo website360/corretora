@@ -33,6 +33,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -61,7 +62,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "plans", label: "Planos & Valores" },
   { id: "payments", label: "Pagamentos" },
   { id: "catalog", label: "Catálogo padrão" },
-  { id: "tags", label: "Tags padrão" },
+  { id: "tags", label: "Etiquetas padrão" },
   { id: "system", label: "Sistema" },
 ];
 
@@ -77,9 +78,12 @@ function SubBadge({ status }: { status: SubscriptionStatus }) {
   return <Badge variant={m.variant}>{m.label}</Badge>;
 }
 
+const COMPANY_FILTER_TABS: Tab[] = ["companies", "users", "payments"];
+
 export function SaasAdminView() {
   const { can } = useSession();
   const [tab, setTab] = React.useState<Tab>("overview");
+  const [companyFilter, setCompanyFilter] = React.useState<string>("all");
 
   const { data: companies, loading, refetch: refetchCompanies } = useAsyncData(() =>
     companiesService.list(),
@@ -152,6 +156,17 @@ export function SaasAdminView() {
   }
 
   const list = companies ?? [];
+  const companyOptions = [
+    { value: "all", label: "Todas as empresas" },
+    ...list.map((c) => ({ value: c.id, label: c.trade_name })),
+  ];
+  const visibleCompanies =
+    companyFilter === "all" ? list : list.filter((c) => c.id === companyFilter);
+  const visibleUsers =
+    companyFilter === "all"
+      ? (users ?? [])
+      : (users ?? []).filter((u) => u.company_id === companyFilter);
+
   const activeSubs = list.filter((c) => c.subscription_status === "active");
   const trialing = list.filter((c) => c.subscription_status === "trialing");
   const pastDue = list.filter((c) => c.subscription_status === "past_due");
@@ -161,19 +176,32 @@ export function SaasAdminView() {
     <div className="flex h-[calc(100vh-4rem)] flex-col gap-4 p-4 lg:p-6">
       <PageHeader title="Painel SaaS" description="Administração da plataforma — empresas, usuários, planos e pagamentos." />
 
-      <div className="inline-flex w-fit flex-wrap items-center gap-0.5 rounded-lg border bg-muted/40 p-0.5">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "rounded-md px-3 py-1.5 text-sm font-medium",
-              tab === t.id ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="inline-flex w-fit flex-wrap items-center gap-0.5 rounded-lg border bg-muted/40 p-0.5">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium",
+                tab === t.id ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {COMPANY_FILTER_TABS.includes(tab) && (
+          <div className="w-full sm:w-64">
+            <Combobox
+              options={companyOptions}
+              value={companyFilter}
+              onChange={(v) => setCompanyFilter(v || "all")}
+              placeholder="Todas as empresas"
+              searchPlaceholder="Filtrar empresa..."
+            />
+          </div>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -220,7 +248,7 @@ export function SaasAdminView() {
               onToggle: (c) => companyAction(c, c.status === "active" ? "deactivate" : "activate"),
               onDelete: setDelCompany,
             })}
-            data={list}
+            data={visibleCompanies}
             loading={loading}
             emptyIcon={Building2}
             emptyTitle="Nenhuma empresa"
@@ -236,7 +264,7 @@ export function SaasAdminView() {
               onToggle: (u) => userAction(u, u.status === "active" ? "deactivate" : "activate"),
               onDelete: setDelUser,
             })}
-            data={users ?? []}
+            data={visibleUsers}
             emptyIcon={Users}
             emptyTitle="Nenhum usuário"
             emptyDescription="Usuários de todas as empresas aparecem aqui."
@@ -260,7 +288,7 @@ export function SaasAdminView() {
             </p>
             <DataTable
               columns={paymentColumns(planById, { onRemoveCard: setDelCard })}
-              data={list}
+              data={visibleCompanies}
               loading={loading}
               emptyIcon={CreditCard}
               emptyTitle="Sem dados"

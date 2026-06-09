@@ -620,7 +620,7 @@ function TicketDetails({
 
           <Separator />
 
-          <DetailSection icon={Tag} title="Tags">
+          <DetailSection icon={Tag} title="Etiquetas">
             <div className="flex flex-wrap gap-1.5">
               {ticket.tags.length > 0 ? (
                 ticket.tags.map((t) => (

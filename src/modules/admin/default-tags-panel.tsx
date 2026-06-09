@@ -5,7 +5,7 @@ import { Pencil, Plus, RefreshCw, Tag as TagIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { defaultTagsService } from "@/services/default-tags.service";
 import { useAsyncData } from "@/hooks/use-async-data";
-import { TAG_MODULE_META, TONE_DOT_CLASS } from "@/config/domain";
+import { TAG_MODULE_META, TONE_TEXT_CLASS } from "@/config/domain";
 import { cn } from "@/lib/utils";
 import type { DefaultTag, StageColor, TagModule } from "@/types/domain";
 import { Button } from "@/components/ui/button";
@@ -59,7 +59,7 @@ export function DefaultTagsPanel() {
     if (!deleting) return;
     try {
       await defaultTagsService.remove(deleting.id);
-      toast.success("Tag padrão excluída");
+      toast.success("Etiqueta padrão excluída");
       setDeleting(null);
       refetch();
     } catch {
@@ -71,7 +71,7 @@ export function DefaultTagsPanel() {
     setSyncing(true);
     try {
       await defaultTagsService.syncToAllCompanies();
-      toast.success("Tags padrão aplicadas a todas as empresas.");
+      toast.success("Etiquetas padrão aplicadas a todas as empresas.");
     } catch {
       toast.error("Não foi possível aplicar a todas as empresas.");
     } finally {
@@ -83,8 +83,8 @@ export function DefaultTagsPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Tags padrão do sistema. Toda empresa nova já nasce com estas etiquetas. Ao adicionar uma
-          tag nova, ela é aplicada também às empresas já existentes (sem duplicar); use o botão ao
+          Etiquetas padrão do sistema. Toda empresa nova já nasce com elas. Ao adicionar uma
+          etiqueta nova, ela é aplicada também às empresas já existentes (sem duplicar); use o botão ao
           lado para reaplicar quando quiser.
         </p>
         <Button variant="outline" onClick={syncAll} loading={syncing}>
@@ -97,11 +97,11 @@ export function DefaultTagsPanel() {
           <div>
             <CardTitle>Etiquetas padrão</CardTitle>
             <CardDescription>
-              Nome, cor e em quais módulos cada tag fica disponível.
+              Nome, cor e em quais módulos cada etiqueta fica disponível.
             </CardDescription>
           </div>
           <Button onClick={openNew}>
-            <Plus /> Nova tag
+            <Plus /> Nova etiqueta
           </Button>
         </CardHeader>
         <CardContent>
@@ -114,14 +114,14 @@ export function DefaultTagsPanel() {
           ) : (data ?? []).length === 0 ? (
             <EmptyState
               icon={TagIcon}
-              title="Nenhuma tag padrão"
-              description="Crie a primeira tag que toda nova corretora vai receber."
+              title="Nenhuma etiqueta padrão"
+              description="Crie a primeira etiqueta que toda nova corretora vai receber."
             />
           ) : (
             <ul className="divide-y divide-border">
               {(data ?? []).map((tag) => (
                 <li key={tag.id} className="flex items-center gap-3 py-3">
-                  <span className={cn("size-3 shrink-0 rounded-full", TONE_DOT_CLASS[tag.color])} />
+                  <TagIcon className={cn("size-4 shrink-0", TONE_TEXT_CLASS[tag.color])} />
                   <span className="font-medium">{tag.name}</span>
                   <div className="ml-2 flex flex-wrap gap-1">
                     {tag.modules.length === 0 ? (
@@ -164,7 +164,7 @@ export function DefaultTagsPanel() {
       <ConfirmDialog
         open={Boolean(deleting)}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title="Excluir tag padrão"
+        title="Excluir etiqueta padrão"
         description={`A tag "${deleting?.name ?? ""}" deixa de ser sugerida a novas empresas. As tags já criadas nas corretoras não são afetadas.`}
         confirmLabel="Excluir"
         variant="destructive"
@@ -205,17 +205,17 @@ function DefaultTagDialog({
     try {
       if (editing) {
         await defaultTagsService.update(tag!.id, { name: name.trim(), color, modules });
-        toast.success("Tag padrão atualizada");
+        toast.success("Etiqueta padrão atualizada");
       } else {
         await defaultTagsService.create({ name: name.trim(), color, modules });
         // Aplica imediatamente às empresas existentes (sem duplicar).
         await defaultTagsService.syncToAllCompanies();
-        toast.success("Tag padrão criada e aplicada às empresas");
+        toast.success("Etiqueta padrão criada e aplicada às empresas");
       }
       onOpenChange(false);
       onSaved();
     } catch (e) {
-      toast.error((e as Error).message ?? "Erro ao salvar a tag");
+      toast.error((e as Error).message ?? "Erro ao salvar a etiqueta");
     } finally {
       setSaving(false);
     }
@@ -225,8 +225,8 @@ function DefaultTagDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{editing ? "Editar tag padrão" : "Nova tag padrão"}</DialogTitle>
-          <DialogDescription>Defina o nome, a cor e o escopo da tag.</DialogDescription>
+          <DialogTitle>{editing ? "Editar etiqueta padrão" : "Nova etiqueta padrão"}</DialogTitle>
+          <DialogDescription>Defina o nome, a cor e o escopo da etiqueta.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -255,7 +255,7 @@ function DefaultTagDialog({
                       : "border-transparent hover:border-border",
                   )}
                 >
-                  <span className={cn("size-4 rounded-full", TONE_DOT_CLASS[c.value])} />
+                  <TagIcon className={cn("size-4", TONE_TEXT_CLASS[c.value])} />
                 </button>
               ))}
             </div>
@@ -271,7 +271,7 @@ function DefaultTagDialog({
               triggerClassName="w-full"
             />
             <p className="text-xs text-muted-foreground">
-              Deixe vazio para a tag valer em todos os módulos.
+              Deixe vazio para a etiqueta valer em todos os módulos.
             </p>
           </div>
         </div>
@@ -280,7 +280,7 @@ function DefaultTagDialog({
             Cancelar
           </Button>
           <Button onClick={save} loading={saving} disabled={!name.trim()}>
-            {editing ? "Salvar" : "Criar tag"}
+            {editing ? "Salvar" : "Criar etiqueta"}
           </Button>
         </DialogFooter>
       </DialogContent>

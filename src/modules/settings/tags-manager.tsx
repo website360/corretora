@@ -5,7 +5,7 @@ import { Lock, Pencil, Plus, Tag as TagIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { tagsService } from "@/services/tags.service";
 import { useAsyncData } from "@/hooks/use-async-data";
-import { TAG_MODULE_META, TONE_DOT_CLASS } from "@/config/domain";
+import { TAG_MODULE_META, TONE_TEXT_CLASS } from "@/config/domain";
 import { cn } from "@/lib/utils";
 import type { StageColor, Tag, TagModule } from "@/types/domain";
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,7 @@ export function TagsManager() {
   async function confirmDelete() {
     if (!deleting) return;
     await tagsService.remove(deleting.id);
-    toast.success("Tag excluída");
+    toast.success("Etiqueta excluída");
     setDeleting(null);
     refetch();
   }
@@ -65,13 +65,13 @@ export function TagsManager() {
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <div>
-          <CardTitle>Etiquetas (Tags)</CardTitle>
+          <CardTitle>Etiquetas</CardTitle>
           <CardDescription>
-            Crie tags e escolha em quais módulos elas ficam disponíveis.
+            Crie etiquetas e escolha em quais módulos elas ficam disponíveis.
           </CardDescription>
         </div>
         <Button onClick={openNew}>
-          <Plus /> Nova tag
+          <Plus /> Nova etiqueta
         </Button>
       </CardHeader>
       <CardContent>
@@ -84,14 +84,14 @@ export function TagsManager() {
         ) : (data ?? []).length === 0 ? (
           <EmptyState
             icon={TagIcon}
-            title="Nenhuma tag"
-            description="Crie a primeira tag para organizar tarefas, eventos e clientes."
+            title="Nenhuma etiqueta"
+            description="Crie a primeira etiqueta para organizar tarefas, eventos e clientes."
           />
         ) : (
           <ul className="divide-y divide-border">
             {(data ?? []).map((tag) => (
               <li key={tag.id} className="flex items-center gap-3 py-3">
-                <span className={cn("size-3 shrink-0 rounded-full", TONE_DOT_CLASS[tag.color])} />
+                <TagIcon className={cn("size-4 shrink-0", TONE_TEXT_CLASS[tag.color])} />
                 <span className="font-medium">{tag.name}</span>
                 <div className="ml-2 flex flex-wrap gap-1">
                   {tag.modules.length === 0 ? (
@@ -140,9 +140,9 @@ export function TagsManager() {
       <Dialog open={Boolean(deleting)} onOpenChange={(o) => !o && setDeleting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Excluir tag</DialogTitle>
+            <DialogTitle>Excluir etiqueta</DialogTitle>
             <DialogDescription>
-              A tag <strong>{deleting?.name}</strong> será removida do catálogo. Registros que já a
+              A etiqueta <strong>{deleting?.name}</strong> será removida. Registros que já a
               utilizam mantêm o texto.
             </DialogDescription>
           </DialogHeader>
@@ -191,15 +191,15 @@ function TagDialog({
     try {
       if (editing) {
         await tagsService.update(tag!.id, { name, color, modules });
-        toast.success("Tag atualizada");
+        toast.success("Etiqueta atualizada");
       } else {
         await tagsService.create({ name, color, modules });
-        toast.success("Tag criada");
+        toast.success("Etiqueta criada");
       }
       onOpenChange(false);
       onSaved();
     } catch (e) {
-      toast.error((e as Error).message ?? "Erro ao salvar a tag");
+      toast.error((e as Error).message ?? "Erro ao salvar a etiqueta");
     } finally {
       setSaving(false);
     }
@@ -209,8 +209,8 @@ function TagDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{editing ? "Editar tag" : "Nova tag"}</DialogTitle>
-          <DialogDescription>Defina o nome, a cor e o escopo da tag.</DialogDescription>
+          <DialogTitle>{editing ? "Editar etiqueta" : "Nova etiqueta"}</DialogTitle>
+          <DialogDescription>Defina o nome, a cor e o escopo da etiqueta.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -237,7 +237,7 @@ function TagDialog({
                     color === c.value ? "border-foreground" : "border-transparent hover:border-border",
                   )}
                 >
-                  <span className={cn("size-4 rounded-full", TONE_DOT_CLASS[c.value])} />
+                  <TagIcon className={cn("size-4", TONE_TEXT_CLASS[c.value])} />
                 </button>
               ))}
             </div>
@@ -253,7 +253,7 @@ function TagDialog({
               triggerClassName="w-full"
             />
             <p className="text-xs text-muted-foreground">
-              Deixe vazio para a tag valer em todos os módulos.
+              Deixe vazio para a etiqueta valer em todos os módulos.
             </p>
           </div>
         </div>
@@ -262,7 +262,7 @@ function TagDialog({
             Cancelar
           </Button>
           <Button onClick={save} loading={saving} disabled={!name.trim()}>
-            {editing ? "Salvar" : "Criar tag"}
+            {editing ? "Salvar" : "Criar etiqueta"}
           </Button>
         </DialogFooter>
       </DialogContent>

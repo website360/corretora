@@ -394,14 +394,14 @@ export function TicketFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>Tags</Label>
+              <Label>Etiquetas</Label>
               <MultiSelect
                 options={(tags ?? []).map((t) => ({ value: t.name, label: t.name }))}
                 values={watch("tags") ?? []}
                 onChange={(v) => setValue("tags", v)}
                 placeholder="Nenhuma"
-                searchPlaceholder="Buscar tag..."
-                emptyText="Nenhuma tag. Crie em Configurações → Etiquetas."
+                searchPlaceholder="Buscar etiqueta..."
+                emptyText="Nenhuma etiqueta. Crie em Configurações → Etiquetas."
                 triggerClassName="w-full"
               />
             </div>
