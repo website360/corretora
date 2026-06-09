@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Plus, Tag as TagIcon, Trash2 } from "lucide-react";
+import { Lock, Pencil, Plus, Tag as TagIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { tagsService } from "@/services/tags.service";
 import { useAsyncData } from "@/hooks/use-async-data";
@@ -105,17 +105,29 @@ export function TagsManager() {
                   )}
                 </div>
                 <div className="ml-auto flex items-center gap-1">
-                  <Button variant="ghost" size="icon-sm" onClick={() => openEdit(tag)}>
-                    <Pencil />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => setDeleting(tag)}
-                  >
-                    <Trash2 />
-                  </Button>
+                  {tag.is_system ? (
+                    <Badge
+                      variant="secondary"
+                      className="gap-1 text-muted-foreground"
+                      title="Etiqueta padrão do sistema. Para uma diferente, crie a sua."
+                    >
+                      <Lock className="size-3" /> Padrão
+                    </Badge>
+                  ) : (
+                    <>
+                      <Button variant="ghost" size="icon-sm" onClick={() => openEdit(tag)}>
+                        <Pencil />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setDeleting(tag)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </li>
             ))}

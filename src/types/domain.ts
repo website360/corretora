@@ -414,6 +414,8 @@ export interface Tag {
   name: string;
   color: StageColor;
   modules: TagModule[];
+  /** Tag padrão do sistema (semeada do catálogo) — não editável pela corretora. */
+  is_system?: boolean;
   created_at: ISODateString;
 }
 
