@@ -92,6 +92,12 @@ export const TICKET_SUBJECT_META: Record<TicketSubjectType, DisplayMeta> = {
   quote: { label: "Orçamento", tone: "warning", icon: Calculator },
 };
 
+/**
+ * Categorias de tarefa/evento que o usuário pode ESCOLHER e FILTRAR. Os demais
+ * tipos (produto/contrato/orçamento) não são categorias — viram Indicadores.
+ */
+export const TASK_CATEGORY_TYPES: TicketSubjectType[] = ["internal", "customer", "carrier"];
+
 export const CALENDAR_EVENT_META: Record<
   CalendarEventType,
   { label: string; tone: Tone; icon: React.ComponentType<{ className?: string }> }

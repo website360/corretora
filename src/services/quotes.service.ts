@@ -319,7 +319,7 @@ export const quotesService = {
           title: "Renovação de apólice",
           description: "Lembrete automático de renovação do contrato.",
           priority: "medium",
-          subject_type: "product",
+          subject_type: "carrier",
           customer_id: quote.customer_id,
           product_id: chosen.product_id ?? undefined,
           assignee_id: quote.owner_id ?? undefined,

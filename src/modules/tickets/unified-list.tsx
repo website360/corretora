@@ -25,6 +25,7 @@ import { InlineTags } from "@/components/common/inline-tags";
 import {
   EVENT_MODALITY_META,
   TICKET_PRIORITY_META,
+  TASK_CATEGORY_TYPES,
   TICKET_SUBJECT_META,
   TONE_BADGE_CLASS,
   TONE_DOT_CLASS,
@@ -136,7 +137,8 @@ export function UnifiedList({
     value,
     label: m.label,
   }));
-  const subjectOptions: InlineOption[] = Object.entries(TICKET_SUBJECT_META).map(([value, m]) => {
+  const subjectOptions: InlineOption[] = TASK_CATEGORY_TYPES.map((value) => {
+    const m = TICKET_SUBJECT_META[value];
     const Icon = m.icon;
     return {
       value,

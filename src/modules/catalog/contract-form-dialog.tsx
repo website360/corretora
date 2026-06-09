@@ -171,7 +171,7 @@ export function ContractFormDialog({
               description: "Lembrete automático de renovação de contrato.",
               priority: "medium",
               category: "renewal",
-              subject_type: "contract",
+              subject_type: "carrier",
               customer_id: customerId,
               carrier_id: carrierId || undefined,
               product_id: product?.id,

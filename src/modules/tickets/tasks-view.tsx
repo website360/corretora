@@ -54,7 +54,7 @@ import {
   saveTaskFilters,
   clearTaskFilters,
 } from "@/lib/task-filters-storage";
-import { TICKET_PRIORITY_META, TICKET_SUBJECT_META } from "@/config/domain";
+import { TASK_CATEGORY_TYPES, TICKET_PRIORITY_META, TICKET_SUBJECT_META } from "@/config/domain";
 import { eventCode } from "@/utils/format";
 import { cn } from "@/lib/utils";
 import type { CalendarEvent, Ticket, TicketPriority, TicketSubjectType } from "@/types/domain";
@@ -119,9 +119,9 @@ const PRIORITY_OPTIONS = Object.entries(TICKET_PRIORITY_META).map(([value, m]) =
   label: m.label,
 }));
 
-const SUBJECT_OPTIONS = Object.entries(TICKET_SUBJECT_META).map(([value, m]) => ({
+const SUBJECT_OPTIONS = TASK_CATEGORY_TYPES.map((value) => ({
   value,
-  label: m.label,
+  label: TICKET_SUBJECT_META[value].label,
 }));
 
 export function TasksView() {
@@ -468,16 +468,14 @@ export function TasksView() {
                   <Plus /> Nova tarefa
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  {(Object.keys(TICKET_SUBJECT_META) as TicketSubjectType[])
-                    .filter((type) => type !== "carrier" && type !== "product")
-                    .map((type) => {
-                      const { label, icon: Icon } = TICKET_SUBJECT_META[type];
-                      return (
-                        <DropdownMenuItem key={type} onClick={() => openNewTask(type)}>
-                          <Icon /> {label}
-                        </DropdownMenuItem>
-                      );
-                    })}
+                  {TASK_CATEGORY_TYPES.map((type) => {
+                    const { label, icon: Icon } = TICKET_SUBJECT_META[type];
+                    return (
+                      <DropdownMenuItem key={type} onClick={() => openNewTask(type)}>
+                        <Icon /> {label}
+                      </DropdownMenuItem>
+                    );
+                  })}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
               <DropdownMenuSub>
@@ -485,16 +483,14 @@ export function TasksView() {
                   <CalendarPlus /> Novo evento
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  {(Object.keys(TICKET_SUBJECT_META) as TicketSubjectType[])
-                    .filter((type) => type !== "carrier" && type !== "product")
-                    .map((type) => {
-                      const { label, icon: Icon } = TICKET_SUBJECT_META[type];
-                      return (
-                        <DropdownMenuItem key={type} onClick={() => openNewEvent(type)}>
-                          <Icon /> {label}
-                        </DropdownMenuItem>
-                      );
-                    })}
+                  {TASK_CATEGORY_TYPES.map((type) => {
+                    const { label, icon: Icon } = TICKET_SUBJECT_META[type];
+                    return (
+                      <DropdownMenuItem key={type} onClick={() => openNewEvent(type)}>
+                        <Icon /> {label}
+                      </DropdownMenuItem>
+                    );
+                  })}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
             </DropdownMenuContent>
