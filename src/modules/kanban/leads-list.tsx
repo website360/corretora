@@ -108,6 +108,7 @@ export function LeadsList({
       emptyDescription="Crie leads no kanban para vê-los aqui."
       initialSort={[{ id: "name", desc: false }]}
       storageKey="leads"
+      autoSizeColumns={["tags"]}
     />
   );
 }

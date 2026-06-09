@@ -675,6 +675,7 @@ export function CustomersView() {
         emptyDescription="Cadastre seu primeiro contato para começar."
         initialSort={[{ id: "name", desc: false }]}
         storageKey="customers"
+        autoSizeColumns={["tags"]}
         enableSelection
         getRowId={(c) => c.id}
         bulkActions={(selected, clear) => (

@@ -536,6 +536,7 @@ export function UnifiedList({
         emptyTitle="Nada por aqui"
         emptyDescription="Crie uma tarefa ou um evento para começar."
         storageKey="tasks-list"
+        autoSizeColumns={["tags"]}
         enableSelection
         getRowId={(r) => r.id}
         bulkActions={(selected, clear) => (

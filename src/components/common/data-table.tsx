@@ -106,6 +106,12 @@ interface DataTableProps<TData, TValue> {
   initialSort?: SortingState;
   /** When set, column widths (drag-to-resize) are persisted to localStorage under this key. */
   storageKey?: string;
+  /**
+   * Ids de colunas que devem nascer ajustadas ao conteúdo (auto-fit), como se o
+   * usuário tivesse dado duplo-clique no divisor. Respeitado só enquanto o
+   * usuário não redimensionou a coluna manualmente.
+   */
+  autoSizeColumns?: string[];
 }
 
 /** Reads the persisted column widths for a table, guarded for SSR. */
@@ -133,6 +139,7 @@ export function DataTable<TData, TValue>({
   bulkActions,
   initialSort,
   storageKey,
+  autoSizeColumns,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>(initialSort ?? []);
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
@@ -264,6 +271,20 @@ export function DataTable<TData, TValue>({
     },
     [],
   );
+
+  // Auto-fit inicial das colunas marcadas (ex.: etiquetas), só nas que o
+  // usuário ainda não redimensionou manualmente (sem largura persistida).
+  const didAutoSize = React.useRef(false);
+  React.useEffect(() => {
+    if (didAutoSize.current || loading || data.length === 0) return;
+    if (!autoSizeColumns?.length) return;
+    const persisted = loadColumnSizing(storageKey);
+    const pending = autoSizeColumns.filter((id) => persisted[id] == null);
+    didAutoSize.current = true;
+    if (pending.length === 0) return;
+    const raf = requestAnimationFrame(() => pending.forEach((id) => autoFitColumn(id)));
+    return () => cancelAnimationFrame(raf);
+  }, [autoSizeColumns, loading, data.length, storageKey, autoFitColumn]);
 
   if (loading) {
     return (
