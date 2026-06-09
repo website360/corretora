@@ -8,9 +8,25 @@ import { motion } from "framer-motion";
 import { NAVIGATION } from "@/config/navigation";
 import { useSession } from "@/contexts/session-context";
 import { isTrialing, trialDaysLeft } from "@/services/billing.service";
+import { usersService } from "@/services/users.service";
+import { formatRelative } from "@/utils/format";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { UserAvatar } from "@/components/common/user-avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { User } from "@/types/domain";
+
+/** Considera "online" quem foi visto nos últimos 3 minutos. */
+const ONLINE_WINDOW_MS = 3 * 60 * 1000;
+function isOnline(lastSeen?: string | null) {
+  return !!lastSeen && Date.now() - new Date(lastSeen).getTime() < ONLINE_WINDOW_MS;
+}
 
 interface SidebarProps {
   ticketBadge?: number;
@@ -20,30 +36,119 @@ export function Sidebar({ ticketBadge = 0 }: SidebarProps) {
   const pathname = usePathname();
   const { user, can } = useSession();
 
+  // Equipe online — carregada ao abrir o menu (e revalidada a cada abertura).
+  const [team, setTeam] = React.useState<User[] | null>(null);
+  const [loadingTeam, setLoadingTeam] = React.useState(false);
+
+  function loadTeam() {
+    setLoadingTeam(true);
+    usersService
+      .list()
+      .then(setTeam)
+      .catch(() => setTeam([]))
+      .finally(() => setLoadingTeam(false));
+  }
+
+  const sortedTeam = React.useMemo(() => {
+    const list = [...(team ?? [])];
+    return list.sort((a, b) => {
+      const ao = isOnline(a.last_seen_at) || a.id === user.id;
+      const bo = isOnline(b.last_seen_at) || b.id === user.id;
+      if (ao !== bo) return ao ? -1 : 1;
+      const at = a.last_seen_at ? +new Date(a.last_seen_at) : 0;
+      const bt = b.last_seen_at ? +new Date(b.last_seen_at) : 0;
+      return bt - at || a.name.localeCompare(b.name);
+    });
+  }, [team, user.id]);
+
+  const onlineCount = sortedTeam.filter(
+    (u) => isOnline(u.last_seen_at) || u.id === user.id,
+  ).length;
+
+  const logo = user.company.logo_url ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={user.company.logo_url}
+      alt={user.company.trade_name}
+      className="size-9 shrink-0 rounded-xl bg-white object-contain ring-1 ring-sidebar-border"
+    />
+  ) : (
+    <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] text-primary-foreground shadow-glow">
+      <Shield className="size-5" />
+    </div>
+  );
+
   return (
     <aside className="hidden h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
-      {/* Brand / tenant switcher */}
-      <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-4">
-        {user.company.logo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={user.company.logo_url}
-            alt={user.company.trade_name}
-            className="size-9 shrink-0 rounded-xl bg-white object-contain ring-1 ring-sidebar-border"
-          />
-        ) : (
-          <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] text-primary-foreground shadow-glow">
-            <Shield className="size-5" />
+      {/* Brand / equipe online */}
+      <DropdownMenu onOpenChange={(o) => o && loadTeam()}>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="flex h-16 w-full items-center gap-2.5 border-b border-sidebar-border px-4 text-left transition-colors hover:bg-sidebar-accent/50"
+            title="Ver equipe online"
+          >
+            {logo}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold leading-tight">
+                {user.company.trade_name}
+              </p>
+              <p className="truncate text-xs text-muted-foreground capitalize">
+                Plano {user.company.plan}
+              </p>
+            </div>
+            <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-72">
+          <DropdownMenuLabel className="flex items-center justify-between font-normal">
+            <span className="font-semibold">Equipe</span>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="size-2 rounded-full bg-emerald-500" />
+              {onlineCount} online
+            </span>
+          </DropdownMenuLabel>
+          <div className="max-h-80 overflow-y-auto px-1 pb-1">
+            {loadingTeam && !team ? (
+              <p className="px-2 py-3 text-xs text-muted-foreground">Carregando…</p>
+            ) : sortedTeam.length === 0 ? (
+              <p className="px-2 py-3 text-xs text-muted-foreground">Nenhum usuário.</p>
+            ) : (
+              sortedTeam.map((u) => {
+                const online = isOnline(u.last_seen_at) || u.id === user.id;
+                return (
+                  <div key={u.id} className="flex items-center gap-2.5 rounded-md px-2 py-1.5">
+                    <span className="relative shrink-0">
+                      <UserAvatar name={u.name} src={u.avatar_url} className="size-7" />
+                      <span
+                        className={cn(
+                          "absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-popover",
+                          online ? "bg-emerald-500" : "bg-muted-foreground/40",
+                        )}
+                      />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {u.name}
+                        {u.id === user.id && (
+                          <span className="font-normal text-muted-foreground"> (você)</span>
+                        )}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {online
+                          ? "Online agora"
+                          : u.last_seen_at
+                            ? `Visto ${formatRelative(u.last_seen_at)}`
+                            : "Nunca acessou"}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold leading-tight">{user.company.trade_name}</p>
-          <p className="truncate text-xs text-muted-foreground capitalize">
-            Plano {user.company.plan}
-          </p>
-        </div>
-        <ChevronsUpDown className="size-4 text-muted-foreground" />
-      </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* Navigation */}
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
