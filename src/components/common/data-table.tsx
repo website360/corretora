@@ -215,6 +215,56 @@ export function DataTable<TData, TValue>({
   const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
   const clearSelection = React.useCallback(() => setRowSelection({}), []);
 
+  const gridRef = React.useRef<HTMLDivElement>(null);
+
+  /**
+   * Auto-ajusta a largura de uma coluna ao seu conteúdo (duplo-clique no
+   * divisor, como no Excel). Mede o conteúdo REAL de cada célula clonando-a
+   * fora da tela sem truncamento, pega o maior e fixa essa largura.
+   */
+  const autoFitColumn = React.useCallback(
+    (columnId: string) => {
+      const root = gridRef.current;
+      if (!root) return;
+      const cells = root.querySelectorAll<HTMLElement>(
+        `[data-col-id="${CSS.escape(columnId)}"]`,
+      );
+      if (cells.length === 0) return;
+
+      const probe = document.createElement("div");
+      probe.style.cssText =
+        "position:absolute;left:-99999px;top:-99999px;visibility:hidden;white-space:nowrap;";
+      document.body.appendChild(probe);
+
+      let max = 0;
+      cells.forEach((cell) => {
+        const clone = cell.cloneNode(true) as HTMLElement;
+        clone.style.width = "auto";
+        clone.style.maxWidth = "none";
+        clone.style.display = "inline-block";
+        clone.style.whiteSpace = "nowrap";
+        // Remove o clamp/truncamento de qualquer descendente para medir tudo.
+        clone.querySelectorAll<HTMLElement>("*").forEach((el) => {
+          el.style.maxWidth = "none";
+          el.style.overflow = "visible";
+          el.style.whiteSpace = "nowrap";
+          el.style.textOverflow = "clip";
+        });
+        // Ignora a alça de redimensionar (que vive dentro do cabeçalho).
+        clone.querySelectorAll<HTMLElement>('[role="separator"]').forEach((el) => el.remove());
+        probe.appendChild(clone);
+        max = Math.max(max, clone.scrollWidth);
+        probe.removeChild(clone);
+      });
+
+      document.body.removeChild(probe);
+      // +2px de folga; limites sãos para não estourar o layout.
+      const next = Math.min(Math.max(Math.ceil(max) + 2, 56), 640);
+      setColumnSizing((s) => ({ ...s, [columnId]: next }));
+    },
+    [],
+  );
+
   if (loading) {
     return (
       <div className="rounded-xl border bg-card">
@@ -258,7 +308,7 @@ export function DataTable<TData, TValue>({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div ref={gridRef} className="overflow-hidden rounded-xl border bg-card">
         {/* table-layout fixed → cada coluna tem EXATAMENTE a largura definida
             (resize individual, sem redistribuir entre as outras). */}
         <Table style={{ width: table.getTotalSize(), tableLayout: "fixed" }}>
@@ -272,6 +322,7 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableHead
                       key={header.id}
+                      data-col-id={header.column.id}
                       className={cn("relative overflow-hidden", meta?.headClassName)}
                       style={{ width: header.getSize() }}
                     >
@@ -291,6 +342,12 @@ export function DataTable<TData, TValue>({
                           onMouseDown={header.getResizeHandler()}
                           onTouchStart={header.getResizeHandler()}
                           onClick={(e) => e.stopPropagation()}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            autoFitColumn(header.column.id);
+                          }}
+                          title="Arraste para redimensionar · duplo-clique para ajustar ao conteúdo"
                           role="separator"
                           aria-orientation="vertical"
                           className={cn(
@@ -319,6 +376,7 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableCell
                       key={cell.id}
+                      data-col-id={cell.column.id}
                       className={cn("truncate whitespace-nowrap", meta?.cellClassName)}
                       style={{ width: cell.column.getSize() }}
                     >
