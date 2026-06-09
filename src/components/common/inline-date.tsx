@@ -45,6 +45,17 @@ export function InlineDate({
 }) {
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  // Data digitada no input — só é aplicada ao confirmar (botão/Enter), nunca a
+  // cada tecla (senão anos parciais como 0002 salvam e recarregam no meio).
+  const [typed, setTyped] = React.useState("");
+
+  React.useEffect(() => {
+    if (open) setTyped("");
+  }, [open]);
+
+  function applyTyped() {
+    if (typed) run(() => onPick(new Date(`${typed}T00:00:00`)));
+  }
 
   async function run(fn: () => Promise<void> | void) {
     setSaving(true);
@@ -93,7 +104,7 @@ export function InlineDate({
           {onClear && (
             <button className={itemClass} onClick={() => run(() => onClear())}>
               <CircleSlash />
-              <span className="flex-1">Algum dia (sem prazo)</span>
+              <span className="flex-1">Remover data</span>
             </button>
           )}
           <div className="my-1 h-px bg-border" />
@@ -101,13 +112,29 @@ export function InlineDate({
             <span className="mb-1 flex items-center gap-2 text-sm">
               <CalendarDays className="size-4 text-muted-foreground" /> Escolher data
             </span>
-            <input
-              type="date"
-              className="w-full cursor-pointer rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-              onChange={(e) => {
-                if (e.target.value) run(() => onPick(new Date(`${e.target.value}T00:00:00`)));
-              }}
-            />
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={typed}
+                disabled={saving}
+                onChange={(e) => setTyped(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    applyTyped();
+                  }
+                }}
+                className="w-full cursor-pointer rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+              <button
+                type="button"
+                onClick={applyTyped}
+                disabled={!typed || saving}
+                className="shrink-0 rounded-md bg-primary px-2.5 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              >
+                Aplicar
+              </button>
+            </div>
           </div>
         </PopoverContent>
       </Popover>
