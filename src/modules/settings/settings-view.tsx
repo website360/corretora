@@ -10,6 +10,7 @@ import {
   Moon,
   Package,
   Palette,
+  Mail,
   Plug,
   SlidersHorizontal,
   Sun,
@@ -26,6 +27,7 @@ import { TagsManager } from "@/modules/settings/tags-manager";
 import { GroupsManager } from "@/modules/settings/groups-manager";
 import { PreferencesPanel } from "@/modules/settings/preferences-panel";
 import { IntegrationsPanel } from "@/modules/settings/integrations-panel";
+import { EmailTemplatesPanel } from "@/modules/settings/email-templates-panel";
 import { BrandingPanel } from "@/modules/settings/branding-panel";
 import { ProductsView } from "@/modules/catalog/products-view";
 import { plansService } from "@/services/plans.service";
@@ -172,6 +174,11 @@ export function SettingsView() {
           {canEditCompany && (
             <TabsTrigger value="integrations">
               <Plug className="size-4" /> Integrações
+            </TabsTrigger>
+          )}
+          {canEditCompany && (
+            <TabsTrigger value="emails">
+              <Mail className="size-4" /> E-mails
             </TabsTrigger>
           )}
           {showBranding && (
@@ -363,6 +370,12 @@ export function SettingsView() {
         {canEditCompany && (
           <TabsContent value="integrations">
             <IntegrationsPanel />
+          </TabsContent>
+        )}
+
+        {canEditCompany && (
+          <TabsContent value="emails">
+            <EmailTemplatesPanel />
           </TabsContent>
         )}
 

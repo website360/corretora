@@ -77,6 +77,20 @@ export interface IntegrationsSettings {
   smtp?: SmtpIntegration;
 }
 
+/** Template de e-mail ao cliente (override/custom por empresa). */
+export interface EmailTemplateRow {
+  id: UUID;
+  company_id: UUID;
+  event: string;
+  name: string;
+  subject: string;
+  body: string;
+  enabled: boolean;
+  auto_send: boolean;
+  is_custom: boolean;
+  created_at: ISODateString;
+}
+
 /** Servidor SMTP próprio da empresa para envio de e-mails (alternativa ao Resend). */
 export interface SmtpIntegration {
   host?: string;
