@@ -70,7 +70,7 @@ const COLUMN_DEFAULT_SIZE: Record<string, number> = {
   daysLeft: 120,
   premium: 140,
   value: 140,
-  tags: 180,
+  tags: 220,
   stage: 165,
   plan: 140,
   sub: 150,

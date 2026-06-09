@@ -105,7 +105,7 @@ export function MultiSelect({
                 <CommandItem value={`__all ${allLabel}`} onSelect={onAll}>
                   <span
                     className={cn(
-                      "flex size-4 items-center justify-center rounded border",
+                      "flex size-4 shrink-0 items-center justify-center rounded border",
                       allActive
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-input",
@@ -122,7 +122,7 @@ export function MultiSelect({
                   <CommandItem key={o.value} value={o.value} onSelect={() => toggle(o.value)}>
                     <span
                       className={cn(
-                        "flex size-4 items-center justify-center rounded border",
+                        "flex size-4 shrink-0 items-center justify-center rounded border",
                         checked ? "border-primary bg-primary text-primary-foreground" : "border-input",
                       )}
                     >

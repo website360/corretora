@@ -17,7 +17,7 @@ export function TagBadge({
   return (
     <Badge
       variant="outline"
-      className={cn("max-w-[10rem] gap-1 capitalize", tone.className, className)}
+      className={cn("max-w-full gap-1 whitespace-nowrap capitalize", tone.className, className)}
       style={tone.style}
     >
       <TagIcon className="size-3 shrink-0" />
