@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
+  Bookmark,
   CalendarDays,
   CalendarPlus,
   ChevronDown,
@@ -20,7 +21,9 @@ import {
   Save,
   Search,
   Shapes,
+  SlidersHorizontal,
   Tag as TagIcon,
+  Trash2,
   UserCheck,
   Users,
 } from "lucide-react";
@@ -56,6 +59,11 @@ import {
   loadTaskFilters,
   saveTaskFilters,
   clearTaskFilters,
+  loadTaskPresets,
+  addTaskPreset,
+  removeTaskPreset,
+  type FilterPreset,
+  type SavedTaskFilters,
 } from "@/lib/task-filters-storage";
 import { TASK_CATEGORY_TYPES, TICKET_PRIORITY_META, TICKET_SUBJECT_META } from "@/config/domain";
 import { eventCode } from "@/utils/format";
@@ -69,11 +77,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -157,43 +168,87 @@ export function TasksView() {
   const [newEventOpen, setNewEventOpen] = React.useState(false);
   const [newEventType, setNewEventType] = React.useState<TicketSubjectType>("internal");
 
-  // Restaura os filtros salvos pelo usuário ao abrir a tela (uma vez).
+  // Painel de filtros recolhível + presets nomeados.
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [presets, setPresets] = React.useState<FilterPreset[]>([]);
+  const [saveOpen, setSaveOpen] = React.useState(false);
+  const [presetName, setPresetName] = React.useState("");
+
+  // Snapshot dos filtros atuais (para salvar como preset ou como "último uso").
+  const currentFilters = (): SavedTaskFilters => ({
+    search,
+    priorities,
+    relations,
+    personIds,
+    tagFilter,
+    boardFilter,
+    hideClosed,
+    subjectFilter,
+    entryTypes,
+    periodMode,
+    rangeFrom,
+    rangeTo,
+  });
+
+  // Aplica um conjunto de filtros salvos a todos os controles.
+  const applyFilters = (f: Partial<SavedTaskFilters>) => {
+    setSearch(f.search ?? "");
+    setPriorities((f.priorities ?? []) as TicketPriority[]);
+    setRelations((f.relations ?? ["assignee"]) as AttributionRelation[]);
+    setPersonIds(f.personIds ?? []);
+    setTagFilter(f.tagFilter ?? []);
+    setBoardFilter(f.boardFilter ?? []);
+    setHideClosed(Boolean(f.hideClosed));
+    setSubjectFilter(f.subjectFilter ?? []);
+    setEntryTypes((f.entryTypes ?? ["tasks", "events"]) as EntryType[]);
+    setPeriodMode(f.periodMode ?? "month");
+    setRangeFrom(f.rangeFrom ?? "");
+    setRangeTo(f.rangeTo ?? "");
+  };
+
+  // Quantidade de filtros "ativos" (diferentes do padrão) — para o contador.
+  const activeFilterCount =
+    (search.trim() ? 1 : 0) +
+    priorities.length +
+    subjectFilter.length +
+    personIds.length +
+    tagFilter.length +
+    boardFilter.length +
+    (entryTypes.length === 2 ? 0 : 1) +
+    (relations.length === 1 && relations[0] === "assignee" ? 0 : 1) +
+    (hideClosed ? 1 : 0);
+
+  // Restaura os filtros do último uso + carrega os presets ao abrir (uma vez).
   const hydrated = React.useRef(false);
   React.useEffect(() => {
     if (hydrated.current || !user.id) return;
     hydrated.current = true;
+    setPresets(loadTaskPresets(user.id));
     const saved = loadTaskFilters(user.id);
-    if (!saved) return;
-    setSearch(saved.search ?? "");
-    setPriorities((saved.priorities ?? []) as TicketPriority[]);
-    setRelations((saved.relations ?? ["assignee"]) as AttributionRelation[]);
-    setPersonIds(saved.personIds ?? []);
-    setTagFilter(saved.tagFilter ?? []);
-    setBoardFilter(saved.boardFilter ?? []);
-    setHideClosed(Boolean(saved.hideClosed));
-    setSubjectFilter(saved.subjectFilter ?? []);
-    setEntryTypes((saved.entryTypes ?? ["tasks", "events"]) as EntryType[]);
-    setPeriodMode(saved.periodMode ?? "month");
-    setRangeFrom(saved.rangeFrom ?? "");
-    setRangeTo(saved.rangeTo ?? "");
+    if (saved) applyFilters(saved);
   }, [user.id]);
 
-  function handleSaveFilters() {
-    saveTaskFilters(user.id, {
-      search,
-      priorities,
-      relations,
-      personIds,
-      tagFilter,
-      boardFilter,
-      hideClosed,
-      subjectFilter,
-      entryTypes,
-      periodMode,
-      rangeFrom,
-      rangeTo,
-    });
-    toast.success("Filtros salvos — serão restaurados quando você voltar.");
+  // Aplica um preset (e lembra como "último uso") + feedback.
+  function applyPreset(preset: FilterPreset) {
+    applyFilters(preset.filters);
+    saveTaskFilters(user.id, preset.filters);
+    setCursor(new Date());
+    toast.success(`Filtro "${preset.name}" aplicado.`);
+  }
+
+  function handleDeletePreset(id: string, name: string) {
+    setPresets(removeTaskPreset(user.id, id));
+    toast.success(`Filtro "${name}" excluído.`);
+  }
+
+  function handleConfirmSavePreset() {
+    const name = presetName.trim();
+    if (!name) return;
+    setPresets(addTaskPreset(user.id, name, currentFilters()));
+    saveTaskFilters(user.id, currentFilters());
+    setSaveOpen(false);
+    setPresetName("");
+    toast.success(`Filtro "${name}" salvo.`);
   }
 
   function handleClearFilters() {
@@ -511,9 +566,9 @@ export function TasksView() {
         }
       />
 
-      {/* Filters */}
+      {/* Toolbar primária: busca + Filtros (recolhível) + Filtros salvos + visualização */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="w-full max-w-xs">
+        <div className="w-full min-w-[180px] flex-1 sm:w-auto sm:max-w-xs">
           <Input
             placeholder="Pesquisar por palavra..."
             startIcon={<Search />}
@@ -522,103 +577,91 @@ export function TasksView() {
           />
         </div>
 
-        <MultiSelect
-          icon={<Shapes />}
-          options={TYPE_OPTIONS}
-          values={entryTypes}
-          onChange={(v) => setEntryTypes(v as EntryType[])}
-          placeholder="Tarefas e eventos"
-          searchPlaceholder="Tipo..."
-        />
-
-        <MultiSelect
-          icon={<Flag />}
-          options={PRIORITY_OPTIONS}
-          values={priorities}
-          onChange={(v) => setPriorities(v as TicketPriority[])}
-          placeholder="Toda prioridade"
-          searchPlaceholder="Buscar prioridade..."
-        />
-
-        <MultiSelect
-          icon={<Link2 />}
-          options={SUBJECT_OPTIONS}
-          values={subjectFilter}
-          onChange={setSubjectFilter}
-          placeholder="Toda categoria"
-          searchPlaceholder="Buscar categoria..."
-        />
-
-        {/* Attribution dimension (multiple) + people */}
-        <MultiSelect
-          icon={<UserCheck />}
-          options={RELATION_OPTIONS}
-          values={relations}
-          onChange={(v) => setRelations(v as AttributionRelation[])}
-          placeholder="Atribuição"
-          searchPlaceholder="Atribuição..."
-        />
-
-        <MultiSelect
-          icon={<Users />}
-          options={(users ?? []).map((u) => ({ value: u.id, label: u.name }))}
-          values={personIds}
-          onChange={setPersonIds}
-          placeholder="Todas as pessoas"
-          searchPlaceholder="Buscar pessoa..."
-          allLabel="Todos"
-        />
-
-        <MultiSelect
-          icon={<TagIcon />}
-          options={(tags ?? []).map((t) => ({ value: t.name, label: t.name }))}
-          values={tagFilter}
-          onChange={setTagFilter}
-          placeholder="Todas as etiquetas"
-          searchPlaceholder="Buscar etiqueta..."
-          emptyText="Nenhuma etiqueta."
-          allLabel="Todas"
-        />
-
-        <MultiSelect
-          icon={<Layers />}
-          options={taskBoards.map((b) => ({ value: b.id, label: b.name }))}
-          values={boardFilter}
-          onChange={setBoardFilter}
-          placeholder="Todos os kanbans"
-          searchPlaceholder="Buscar kanban..."
-          allLabel="Todos"
-          allMode="selectAll"
-        />
-
         <Button
-          variant={hideClosed ? "default" : "outline"}
+          variant={filtersOpen ? "default" : "outline"}
           size="sm"
           className="h-9"
-          onClick={() => setHideClosed((v) => !v)}
+          onClick={() => setFiltersOpen((v) => !v)}
         >
-          <EyeOff /> Ocultar concluídos
+          <SlidersHorizontal /> Filtros
+          {activeFilterCount > 0 && (
+            <Badge
+              variant={filtersOpen ? "secondary" : "default"}
+              className="ml-1 h-5 min-w-5 justify-center rounded-full px-1 text-[0.7rem]"
+            >
+              {activeFilterCount}
+            </Badge>
+          )}
+          <ChevronDown className={cn("transition-transform", filtersOpen && "rotate-180")} />
         </Button>
 
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9"
-          onClick={handleSaveFilters}
-          title="Salvar os filtros atuais para esta tela"
-        >
-          <Save /> Salvar filtros
-        </Button>
+        {/* Filtros salvos (presets nomeados) */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9">
+              <Bookmark /> Filtros salvos
+              {presets.length > 0 && (
+                <span className="text-xs text-muted-foreground">({presets.length})</span>
+              )}
+              <ChevronDown className="opacity-70" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64">
+            <DropdownMenuLabel>Filtros salvos</DropdownMenuLabel>
+            {presets.length === 0 ? (
+              <p className="px-2 py-1.5 text-xs text-muted-foreground">
+                Configure os filtros e salve para reutilizar com um clique.
+              </p>
+            ) : (
+              presets.map((p) => (
+                <DropdownMenuItem
+                  key={p.id}
+                  onSelect={() => applyPreset(p)}
+                  className="flex items-center justify-between gap-2"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Bookmark className="size-3.5 shrink-0" />
+                    <span className="truncate">{p.name}</span>
+                  </span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    title="Excluir filtro"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeletePreset(p.id, p.name);
+                    }}
+                    className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </span>
+                </DropdownMenuItem>
+              ))
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => {
+                setPresetName("");
+                setSaveOpen(true);
+              }}
+            >
+              <Save /> Salvar filtro atual…
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-9"
-          onClick={handleClearFilters}
-          title="Limpar a seleção de filtros"
-        >
-          <RotateCcw /> Limpar
-        </Button>
+        {activeFilterCount > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9"
+            onClick={handleClearFilters}
+            title="Limpar a seleção de filtros"
+          >
+            <RotateCcw /> Limpar
+          </Button>
+        )}
 
         {/* View switcher — Lista, Quadro, Calendário */}
         <div className="ml-auto inline-flex items-center rounded-lg border bg-muted/40 p-0.5">
@@ -627,6 +670,81 @@ export function TasksView() {
           <ViewButton active={isCalendar} onClick={() => setTaskView("calendar")} icon={CalendarDays} label="Calendário" />
         </div>
       </div>
+
+      {/* Painel de filtros (recolhível) */}
+      {filtersOpen && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 p-2">
+          <MultiSelect
+            icon={<Shapes />}
+            options={TYPE_OPTIONS}
+            values={entryTypes}
+            onChange={(v) => setEntryTypes(v as EntryType[])}
+            placeholder="Tarefas e eventos"
+            searchPlaceholder="Tipo..."
+          />
+          <MultiSelect
+            icon={<Flag />}
+            options={PRIORITY_OPTIONS}
+            values={priorities}
+            onChange={(v) => setPriorities(v as TicketPriority[])}
+            placeholder="Toda prioridade"
+            searchPlaceholder="Buscar prioridade..."
+          />
+          <MultiSelect
+            icon={<Link2 />}
+            options={SUBJECT_OPTIONS}
+            values={subjectFilter}
+            onChange={setSubjectFilter}
+            placeholder="Toda categoria"
+            searchPlaceholder="Buscar categoria..."
+          />
+          <MultiSelect
+            icon={<UserCheck />}
+            options={RELATION_OPTIONS}
+            values={relations}
+            onChange={(v) => setRelations(v as AttributionRelation[])}
+            placeholder="Atribuição"
+            searchPlaceholder="Atribuição..."
+          />
+          <MultiSelect
+            icon={<Users />}
+            options={(users ?? []).map((u) => ({ value: u.id, label: u.name }))}
+            values={personIds}
+            onChange={setPersonIds}
+            placeholder="Todas as pessoas"
+            searchPlaceholder="Buscar pessoa..."
+            allLabel="Todos"
+          />
+          <MultiSelect
+            icon={<TagIcon />}
+            options={(tags ?? []).map((t) => ({ value: t.name, label: t.name }))}
+            values={tagFilter}
+            onChange={setTagFilter}
+            placeholder="Todas as etiquetas"
+            searchPlaceholder="Buscar etiqueta..."
+            emptyText="Nenhuma etiqueta."
+            allLabel="Todas"
+          />
+          <MultiSelect
+            icon={<Layers />}
+            options={taskBoards.map((b) => ({ value: b.id, label: b.name }))}
+            values={boardFilter}
+            onChange={setBoardFilter}
+            placeholder="Todos os kanbans"
+            searchPlaceholder="Buscar kanban..."
+            allLabel="Todos"
+            allMode="selectAll"
+          />
+          <Button
+            variant={hideClosed ? "default" : "outline"}
+            size="sm"
+            className="h-9"
+            onClick={() => setHideClosed((v) => !v)}
+          >
+            <EyeOff /> Ocultar concluídos
+          </Button>
+        </div>
+      )}
 
       {/* Period control — shared by Lista, Quadro and Calendário */}
       <div className="flex flex-wrap items-center gap-2">
@@ -727,6 +845,34 @@ export function TasksView() {
           />
         )}
       </div>
+
+      {/* Salvar filtro atual como preset nomeado */}
+      <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Salvar filtro</DialogTitle>
+            <DialogDescription>
+              Dê um nome para reaplicar esta combinação de filtros com um clique.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            value={presetName}
+            onChange={(e) => setPresetName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleConfirmSavePreset()}
+            placeholder="Ex.: Minhas renovações do mês"
+            maxLength={40}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmSavePreset} disabled={!presetName.trim()}>
+              <Save /> Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <TicketFormDialog
         open={newTaskOpen}
