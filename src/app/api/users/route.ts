@@ -92,12 +92,13 @@ export async function POST(req: NextRequest) {
       .eq("id", companyId)
       .single();
 
+    // Convite de equipe é onboarding/sistema → Resend (não o SMTP da corretora,
+    // que é reservado para e-mails aos CLIENTES dela).
     await sendTeamInviteEmail({
       to: email,
       name,
       inviterName: (profile as { name?: string }).name,
       companyName: (company as { trade_name?: string } | null)?.trade_name,
-      companyId,
       setPasswordUrl,
       replyTo: user.email ?? undefined,
     });

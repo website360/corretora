@@ -15,17 +15,16 @@ function send(
   return companyId ? sendEmailForCompany(companyId, args) : sendEmail(args);
 }
 
-/** Convite de equipe: novo membro define a própria senha e entra. */
+/** Convite de equipe (onboarding/sistema) → sempre pelo Resend da plataforma. */
 export function sendTeamInviteEmail(args: {
   to: string;
   name: string;
   setPasswordUrl: string;
   inviterName?: string;
   companyName?: string;
-  companyId?: string;
   replyTo?: string;
 }): Promise<SendEmailResult> {
-  return send(args.companyId, {
+  return sendEmail({
     to: args.to,
     subject: `Você foi convidado para a equipe${args.companyName ? ` da ${args.companyName}` : ""}`,
     replyTo: args.replyTo,

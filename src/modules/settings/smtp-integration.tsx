@@ -86,8 +86,9 @@ export function SmtpIntegration({ onBack }: { onBack: () => void }) {
             <Mail className="size-5 text-primary" /> E-mail (SMTP)
           </CardTitle>
           <CardDescription>
-            Envie os e-mails do sistema pelo seu próprio servidor SMTP (do seu domínio). Se não
-            configurado, usamos o envio padrão da plataforma.
+            E-mails enviados aos seus <strong>clientes</strong> (ex.: convite do portal) saem pelo
+            seu próprio servidor SMTP, do seu domínio. E-mails do sistema (cobrança, recuperação de
+            senha) continuam pela plataforma. Sem SMTP, tudo usa o envio padrão.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

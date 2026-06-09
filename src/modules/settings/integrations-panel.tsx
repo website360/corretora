@@ -73,7 +73,7 @@ const INTEGRATIONS: IntegrationMeta[] = [
   {
     id: "email",
     title: "E-mail (SMTP)",
-    description: "Envie os e-mails do sistema pelo seu próprio servidor SMTP.",
+    description: "E-mails aos seus clientes pelo seu próprio servidor SMTP, do seu domínio.",
     icon: Mail,
     iconClass: "bg-amber-500/10 text-amber-600",
   },
