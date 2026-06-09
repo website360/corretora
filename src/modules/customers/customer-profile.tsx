@@ -60,8 +60,8 @@ export function CustomerProfile({ id }: { id: string }) {
   const [editOpen, setEditOpen] = React.useState(false);
 
   const tagColor = React.useMemo(() => {
-    const map = new Map<string, StageColor>((tags ?? []).map((t) => [t.name, t.color]));
-    return (name: string): StageColor => map.get(name) ?? "neutral";
+    const map = new Map<string, string>((tags ?? []).map((t) => [t.name, t.color]));
+    return (name: string): string => map.get(name) ?? "neutral";
   }, [tags]);
 
   if (loading) {

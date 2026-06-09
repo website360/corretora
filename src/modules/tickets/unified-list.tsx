@@ -87,7 +87,7 @@ export function UnifiedList({
 
   const { data: tagCatalog } = useAsyncData(() => tagsService.list());
   const tagColor = React.useMemo(() => {
-    const map = new Map<string, StageColor>((tagCatalog ?? []).map((t) => [t.name, t.color]));
+    const map = new Map<string, string>((tagCatalog ?? []).map((t) => [t.name, t.color]));
     return (name: string) => map.get(name) ?? "neutral";
   }, [tagCatalog]);
   const tagOptions = React.useMemo(() => (tagCatalog ?? []).map((t) => t.name), [tagCatalog]);

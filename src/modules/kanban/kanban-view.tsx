@@ -84,7 +84,7 @@ export function KanbanView() {
   const [dragLeadId, setDragLeadId] = React.useState<string | null>(null);
   const [overCol, setOverCol] = React.useState<string | null>(null);
 
-  const tagColor = (name: string): StageColor =>
+  const tagColor = (name: string): string =>
     (tags ?? []).find((t) => t.name === name)?.color ?? "neutral";
 
   // Pick a default/active board.
@@ -452,7 +452,7 @@ function LeadCard({
   onDragEnd,
 }: {
   lead: Customer;
-  tagColor: (name: string) => StageColor;
+  tagColor: (name: string) => string;
   onOpen: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;

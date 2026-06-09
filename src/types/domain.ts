@@ -416,7 +416,8 @@ export interface Tag {
   id: UUID;
   company_id: UUID;
   name: string;
-  color: StageColor;
+  /** Tom predefinido (StageColor) OU código HEX livre (#rrggbb). */
+  color: string;
   modules: TagModule[];
   /** Tag padrão do sistema (semeada do catálogo) — não editável pela corretora. */
   is_system?: boolean;
@@ -455,7 +456,8 @@ export interface DefaultProduct {
 export interface DefaultTag {
   id: UUID;
   name: string;
-  color: StageColor;
+  /** Tom predefinido (StageColor) OU código HEX livre (#rrggbb). */
+  color: string;
   modules: TagModule[];
   position: number;
   created_at: ISODateString;

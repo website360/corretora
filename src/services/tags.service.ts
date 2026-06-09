@@ -2,7 +2,7 @@ import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getCurrentCompanyId, getViewCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
-import type { StageColor, Tag, TagModule } from "@/types/domain";
+import type { Tag, TagModule } from "@/types/domain";
 
 // In-memory tag store for mock mode.
 const mockTags: Tag[] = [
@@ -33,7 +33,7 @@ export const tagsService = {
     return ((data as Tag[]) ?? []).filter((t) => appliesTo(t, module));
   },
 
-  async create(input: { name: string; color: StageColor; modules: TagModule[] }): Promise<Tag> {
+  async create(input: { name: string; color: string; modules: TagModule[] }): Promise<Tag> {
     if (env.useMocks) {
       await sleep(200);
       const tag: Tag = {

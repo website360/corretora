@@ -5,8 +5,7 @@ import Link from "next/link";
 import { Settings2, Tag as TagIcon } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { TONE_TEXT_CLASS } from "@/config/domain";
-import type { StageColor } from "@/types/domain";
+import { tagIconStyle } from "@/lib/tag-color";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -36,8 +35,8 @@ export function InlineTags({
   children: React.ReactNode;
   title?: string;
   align?: "start" | "end";
-  /** Cor de cada etiqueta (para o ponto colorido no menu). */
-  colorOf?: (name: string) => StageColor;
+  /** Cor de cada etiqueta (tom ou hex; para o ícone colorido no menu). */
+  colorOf?: (name: string) => string;
 }) {
   const [open, setOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<string[]>(value);
@@ -85,9 +84,15 @@ export function InlineTags({
                 onSelect={(e) => e.preventDefault()}
               >
                 <span className="flex items-center gap-2">
-                  <TagIcon
-                    className={cn("size-3.5 shrink-0", TONE_TEXT_CLASS[colorOf?.(name) ?? "neutral"])}
-                  />
+                  {(() => {
+                    const ico = tagIconStyle(colorOf?.(name));
+                    return (
+                      <TagIcon
+                        className={cn("size-3.5 shrink-0", ico.className)}
+                        style={ico.style}
+                      />
+                    );
+                  })()}
                   <span className="capitalize">{name}</span>
                 </span>
               </DropdownMenuCheckboxItem>

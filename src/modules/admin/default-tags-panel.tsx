@@ -7,6 +7,7 @@ import { defaultTagsService } from "@/services/default-tags.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { TAG_MODULE_META, TONE_TEXT_CLASS } from "@/config/domain";
 import { cn } from "@/lib/utils";
+import { isHexColor, tagIconStyle } from "@/lib/tag-color";
 import type { DefaultTag, StageColor, TagModule } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -121,7 +122,12 @@ export function DefaultTagsPanel() {
             <ul className="divide-y divide-border">
               {(data ?? []).map((tag) => (
                 <li key={tag.id} className="flex items-center gap-3 py-3">
-                  <TagIcon className={cn("size-4 shrink-0", TONE_TEXT_CLASS[tag.color])} />
+                  {(() => {
+                    const ico = tagIconStyle(tag.color);
+                    return (
+                      <TagIcon className={cn("size-4 shrink-0", ico.className)} style={ico.style} />
+                    );
+                  })()}
                   <span className="font-medium">{tag.name}</span>
                   <div className="ml-2 flex flex-wrap gap-1">
                     {tag.modules.length === 0 ? (
@@ -187,7 +193,8 @@ function DefaultTagDialog({
 }) {
   const editing = Boolean(tag);
   const [name, setName] = React.useState("");
-  const [color, setColor] = React.useState<StageColor>("primary");
+  const [color, setColor] = React.useState<string>("primary");
+  const [hexDraft, setHexDraft] = React.useState("");
   const [modules, setModules] = React.useState<TagModule[]>([]);
   const [saving, setSaving] = React.useState(false);
 
@@ -195,6 +202,7 @@ function DefaultTagDialog({
     if (open) {
       setName(tag?.name ?? "");
       setColor(tag?.color ?? "primary");
+      setHexDraft(isHexColor(tag?.color) ? (tag?.color ?? "") : "");
       setModules(tag?.modules ?? []);
     }
   }, [open, tag]);
@@ -241,7 +249,7 @@ function DefaultTagDialog({
           </div>
           <div className="space-y-2">
             <Label>Cor</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {COLORS.map((c) => (
                 <button
                   key={c.value}
@@ -258,6 +266,41 @@ function DefaultTagDialog({
                   <TagIcon className={cn("size-4", TONE_TEXT_CLASS[c.value])} />
                 </button>
               ))}
+              <div className="mx-1 h-6 w-px bg-border" />
+              <label
+                title="Cor personalizada (hex)"
+                className={cn(
+                  "relative flex size-9 cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 transition-colors",
+                  isHexColor(color) ? "border-foreground" : "border-transparent hover:border-border",
+                )}
+              >
+                <TagIcon
+                  className="size-4"
+                  style={{ color: isHexColor(color) ? color : "currentColor" }}
+                />
+                <input
+                  type="color"
+                  value={isHexColor(color) ? color : "#64748b"}
+                  onChange={(e) => {
+                    setColor(e.target.value);
+                    setHexDraft(e.target.value);
+                  }}
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                />
+              </label>
+              <Input
+                value={hexDraft}
+                onChange={(e) => {
+                  const raw = e.target.value.trim();
+                  const v = raw && !raw.startsWith("#") ? `#${raw}` : raw;
+                  setHexDraft(v);
+                  if (isHexColor(v)) setColor(v);
+                  else if (v === "") setColor("primary");
+                }}
+                placeholder="#RRGGBB"
+                className="h-9 w-28 font-mono text-sm"
+                maxLength={7}
+              />
             </div>
           </div>
           <div className="space-y-2">

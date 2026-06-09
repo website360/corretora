@@ -24,7 +24,7 @@ export function LeadsList({
 }: {
   leads: Customer[];
   loading?: boolean;
-  tagColor: (name: string) => StageColor;
+  tagColor: (name: string) => string;
 }) {
   const router = useRouter();
 

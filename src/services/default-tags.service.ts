@@ -1,7 +1,7 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { sleep, uid } from "@/lib/utils";
-import type { DefaultTag, StageColor, TagModule } from "@/types/domain";
+import type { DefaultTag, TagModule } from "@/types/domain";
 
 // Tags padrão do sistema (geridas pelo super admin). Global — sem company_id.
 const mockTags: DefaultTag[] = [];
@@ -24,7 +24,7 @@ export const defaultTagsService = {
 
   async create(input: {
     name: string;
-    color: StageColor;
+    color: string;
     modules: TagModule[];
   }): Promise<DefaultTag> {
     if (env.useMocks) {

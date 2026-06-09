@@ -35,7 +35,7 @@ export function CustomerDrawer({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChanged?: () => void;
-  tagColor: (name: string) => StageColor;
+  tagColor: (name: string) => string;
 }) {
   const [shown, setShown] = React.useState<Customer | null>(customer);
   const [editOpen, setEditOpen] = React.useState(false);
