@@ -70,6 +70,9 @@ export function MultiSelect({
   const allActive = allMode === "selectAll" ? allSelected : values.length === 0;
   const onAll = () => onChange(allMode === "selectAll" ? options.map((o) => o.value) : []);
 
+  // "Ativo" = há uma seleção que filtra de fato (em selectAll, tudo marcado = sem filtro).
+  const active = values.length > 0 && (allMode !== "selectAll" || values.length < options.length);
+
   const label =
     values.length === 0
       ? placeholder
@@ -92,13 +95,23 @@ export function MultiSelect({
           type="button"
           variant="outline"
           size="sm"
-          className={cn("h-9 justify-between gap-2 font-normal", triggerClassName)}
+          className={cn(
+            "h-9 justify-between gap-2 font-normal",
+            // Filtro ativo (com seleção) ganha destaque de cor para o usuário ver.
+            active && "border-primary bg-accent text-accent-foreground",
+            triggerClassName,
+          )}
         >
-          <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground [&_svg]:size-4">
+          <span
+            className={cn(
+              "flex min-w-0 items-center gap-1.5 [&_svg]:size-4",
+              active ? "text-foreground" : "text-muted-foreground",
+            )}
+          >
             {icon}
             <span className={cn("truncate", values.length > 0 && "text-foreground")}>{label}</span>
           </span>
-          <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className={cn("size-4 shrink-0", active ? "opacity-70" : "opacity-50")} />
         </Button>
       </PopoverTrigger>
       <PopoverContent className={cn("w-60 p-0", className)} align="start" portal={portal}>
