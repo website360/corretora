@@ -11,7 +11,7 @@ const PUBLIC_ROUTES = ["/login", "/cadastro", "/recuperar-senha", "/convite", "/
 const MARKETING_ROUTES = ["/lp"];
 
 // Server-to-server / token-auth endpoints (no user session).
-const PUBLIC_API_ROUTES = ["/api/billing/webhook", "/api/calendar/feed"];
+const PUBLIC_API_ROUTES = ["/api/billing/webhook", "/api/calendar/feed", "/api/leads"];
 
 function isMarketing(pathname: string) {
   return MARKETING_ROUTES.some((route) => pathname.startsWith(route));

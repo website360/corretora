@@ -16,14 +16,16 @@ import { useSession } from "@/contexts/session-context";
 import type {
   ClickSignIntegration as ClickSignConfig,
   WhatsAppIntegration as WhatsAppConfig,
+  WordPressIntegration as WordPressConfig,
 } from "@/types/domain";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { WhatsAppIntegration } from "@/modules/settings/whatsapp-integration";
 import { ClickSignIntegration } from "@/modules/settings/clicksign-integration";
+import { WordPressIntegration } from "@/modules/settings/wordpress-integration";
 
-type IntegrationId = "whatsapp" | "clicksign";
+type IntegrationId = "whatsapp" | "clicksign" | "wordpress";
 
 interface IntegrationMeta {
   id: IntegrationId | string;
@@ -74,20 +76,11 @@ const INTEGRATIONS: IntegrationMeta[] = [
     soon: true,
   },
   {
-    id: "site",
-    title: "Site",
-    description: "Capture leads dos formulários do seu site direto no funil.",
-    icon: Globe,
-    iconClass: "bg-indigo-500/10 text-indigo-600",
-    soon: true,
-  },
-  {
     id: "wordpress",
-    title: "WordPress",
-    description: "Plugin para enviar contatos e cotações do WordPress para o CRM.",
+    title: "Site / WordPress",
+    description: "Capture leads dos formulários do seu site (WordPress ou HTML) direto no funil.",
     icon: LayoutTemplate,
-    iconClass: "bg-slate-500/10 text-slate-600",
-    soon: true,
+    iconClass: "bg-indigo-500/10 text-indigo-600",
   },
 ];
 
@@ -108,11 +101,19 @@ export function IntegrationsPanel() {
     ? { label: "Configurado", variant: "secondary" as const }
     : null;
 
+  const wordpress = (user.company.settings?.integrations?.wordpress ?? {}) as WordPressConfig;
+  const wordpressStatus = wordpress.apiKey
+    ? { label: "Configurado", variant: "secondary" as const }
+    : null;
+
   if (open === "whatsapp") {
     return <WhatsAppIntegration onBack={() => setOpen(null)} />;
   }
   if (open === "clicksign") {
     return <ClickSignIntegration onBack={() => setOpen(null)} />;
+  }
+  if (open === "wordpress") {
+    return <WordPressIntegration onBack={() => setOpen(null)} />;
   }
 
   return (
@@ -128,7 +129,13 @@ export function IntegrationsPanel() {
         {INTEGRATIONS.map((it) => {
           const Icon = it.icon;
           const status =
-            it.id === "whatsapp" ? whatsappStatus : it.id === "clicksign" ? clicksignStatus : null;
+            it.id === "whatsapp"
+              ? whatsappStatus
+              : it.id === "clicksign"
+                ? clicksignStatus
+                : it.id === "wordpress"
+                  ? wordpressStatus
+                  : null;
           return (
             <Card
               key={it.id}

@@ -73,6 +73,14 @@ export interface BrandingSettings {
 export interface IntegrationsSettings {
   whatsapp?: WhatsAppIntegration;
   clicksign?: ClickSignIntegration;
+  wordpress?: WordPressIntegration;
+}
+
+/** Captura de leads do site/WordPress — chave de API por empresa. */
+export interface WordPressIntegration {
+  /** Chave usada pelo plugin (header X-API-Key) para identificar a empresa. */
+  apiKey?: string;
+  connectedAt?: string | null;
 }
 
 /** ClickSign (digital signature) — per-company credentials. */
