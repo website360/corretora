@@ -28,10 +28,11 @@ import {
   TICKET_SUBJECT_META,
   TONE_BADGE_CLASS,
   TONE_DOT_CLASS,
+  TONE_TEXT_CLASS,
 } from "@/config/domain";
 import { eventCode, formatShortDate, formatTime, taskCode } from "@/utils/format";
 import { cn } from "@/lib/utils";
-import type { CalendarEvent, StageColor, Ticket } from "@/types/domain";
+import type { CalendarEvent, StageColor, Ticket, TicketSubjectType } from "@/types/domain";
 import {
   LIST_COLUMNS,
   isLockedColumn,
@@ -135,6 +136,14 @@ export function UnifiedList({
     value,
     label: m.label,
   }));
+  const subjectOptions: InlineOption[] = Object.entries(TICKET_SUBJECT_META).map(([value, m]) => {
+    const Icon = m.icon;
+    return {
+      value,
+      label: m.label,
+      leading: <Icon className={cn("size-3.5", TONE_TEXT_CLASS[m.tone])} />,
+    };
+  });
   const userOptions: InlineOption[] = users.map((u) => ({
     value: u.id,
     label: u.name,
@@ -335,12 +344,27 @@ export function UnifiedList({
         const r = row.original;
         const st = r.kind === "task" ? r.task.subject_type : r.event.subject_type;
         const meta = TICKET_SUBJECT_META[st];
-        if (!meta) return <span className="text-sm text-muted-foreground">—</span>;
-        const Icon = meta.icon;
+        const Icon = meta?.icon;
         return (
-          <Badge variant="outline" className={cn("gap-1", TONE_BADGE_CLASS[meta.tone])}>
-            <Icon className="size-3" /> {meta.label}
-          </Badge>
+          <InlineSelect
+            value={st ?? ""}
+            options={subjectOptions}
+            title="Trocar categoria"
+            onChange={async (v) => {
+              const subject_type = v as TicketSubjectType;
+              if (r.kind === "task") await ticketsService.update(r.task.id, { subject_type });
+              else await calendarService.update(r.event.id, { subject_type });
+              onChanged?.();
+            }}
+          >
+            {meta && Icon ? (
+              <Badge variant="outline" className={cn("gap-1", TONE_BADGE_CLASS[meta.tone])}>
+                <Icon className="size-3" /> {meta.label}
+              </Badge>
+            ) : (
+              <span className="text-sm text-muted-foreground">Definir categoria</span>
+            )}
+          </InlineSelect>
         );
       },
     },

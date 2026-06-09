@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git -c commit.gpgsign=false commit -q -m \"feat\\(listas\\): coluna de etiquetas nasce ajustada ao conteúdo \\(nome completo\\)\" -m \"DataTable ganha prop autoSizeColumns: faz auto-fit inicial das colunas indicadas \\(mesma medição do duplo-clique\\), respeitando larguras já redimensionadas pelo usuário. Aplicado a 'tags' em tarefas/eventos, contatos e leads — o nome da etiqueta aparece inteiro, sem reticências.\" -m \"Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>\")"
+      "Bash(git -c commit.gpgsign=false commit -q -m \"feat\\(listas\\): coluna de etiquetas nasce ajustada ao conteúdo \\(nome completo\\)\" -m \"DataTable ganha prop autoSizeColumns: faz auto-fit inicial das colunas indicadas \\(mesma medição do duplo-clique\\), respeitando larguras já redimensionadas pelo usuário. Aplicado a 'tags' em tarefas/eventos, contatos e leads — o nome da etiqueta aparece inteiro, sem reticências.\" -m \"Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>\")",
+      "Bash(git -c commit.gpgsign=false commit -q -m \"feat\\(tarefas\\): trocar a categoria \\(subject_type\\) direto na lista via select inline\" -m \"Coluna 'Categorias' deixa de ser badge estático e vira InlineSelect com ícone por categoria; persiste em tickets/eventos. O filtro de categoria já existe no topo de Tarefas & Agenda.\" -m \"Co-Authored-By: Claude Opus 4.8 \\(1M context\\) <noreply@anthropic.com>\")"
     ]
   }
 }
