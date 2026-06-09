@@ -2,16 +2,25 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Copy, Download, KeyRound, LayoutTemplate, RefreshCw } from "lucide-react";
+import { ArrowLeft, Code2, Copy, Download, KeyRound, LayoutTemplate, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/contexts/session-context";
 import { companySettingsService } from "@/services/company-settings.service";
+import { kanbanService } from "@/services/kanban.service";
+import { useAsyncData } from "@/hooks/use-async-data";
 import { env } from "@/config/env";
 import type { WordPressIntegration as WordPressConfig } from "@/types/domain";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function newApiKey() {
   const rnd = () =>
@@ -21,6 +30,23 @@ function newApiKey() {
   return `wp_sk_${rnd()}${rnd()}`;
 }
 
+/** Snippet JS para capturar formulários em qualquer site (não-WordPress). */
+function buildSnippet(apiUrl: string, apiKey: string) {
+  return `<script>
+(function(){
+  var URL_=${JSON.stringify(apiUrl)}, KEY_=${JSON.stringify(apiKey)};
+  function v(f,ns){for(var i=0;i<ns.length;i++){var e=f.querySelector('[name="'+ns[i]+'"]');if(e&&e.value)return e.value;}return "";}
+  document.addEventListener("submit",function(ev){
+    var f=ev.target;
+    if(!(f.classList&&(f.classList.contains("crm-lead-capture")||f.getAttribute("data-crm-lead")==="true")))return;
+    var d={name:v(f,["name","nome","seu-nome","fullname"]),email:v(f,["email","e-mail","seu-email"]),phone:v(f,["phone","telefone","whatsapp","tel"]),source:"site",metadata:{page:location.href}};
+    if(!d.name||!d.email)return;
+    fetch(URL_,{method:"POST",headers:{"Content-Type":"application/json","X-API-Key":KEY_},body:JSON.stringify(d)}).catch(function(){});
+  });
+})();
+</script>`;
+}
+
 export function WordPressIntegration({ onBack }: { onBack: () => void }) {
   const { user, can } = useSession();
   const router = useRouter();
@@ -28,21 +54,27 @@ export function WordPressIntegration({ onBack }: { onBack: () => void }) {
   const initial = (user.company.settings?.integrations?.wordpress ?? {}) as WordPressConfig;
 
   const [apiKey, setApiKey] = React.useState(initial.apiKey ?? "");
+  const [boardId, setBoardId] = React.useState<string>(initial.boardId ?? "");
   const [saving, setSaving] = React.useState(false);
+  const { data: boards } = useAsyncData(() => kanbanService.listBoards());
 
   const apiUrl = `${env.appUrl.replace(/\/+$/, "")}/api/leads`;
 
-  async function persist(key: string) {
+  async function persist(patch: { apiKey?: string; boardId?: string }) {
     setSaving(true);
     try {
+      const key = patch.apiKey !== undefined ? patch.apiKey : apiKey;
+      const board = patch.boardId !== undefined ? patch.boardId : boardId;
       const wordpress: WordPressConfig = {
         apiKey: key || undefined,
+        boardId: board || null,
         connectedAt: key ? new Date().toISOString() : null,
       };
       await companySettingsService.update(user.company.id, {
         integrations: { ...user.company.settings?.integrations, wordpress },
       });
-      setApiKey(key);
+      if (patch.apiKey !== undefined) setApiKey(key);
+      if (patch.boardId !== undefined) setBoardId(board);
       router.refresh();
       return true;
     } catch {
@@ -54,8 +86,7 @@ export function WordPressIntegration({ onBack }: { onBack: () => void }) {
   }
 
   async function generate() {
-    const key = newApiKey();
-    if (await persist(key)) toast.success("Chave gerada e salva.");
+    if (await persist({ apiKey: newApiKey() })) toast.success("Chave gerada e salva.");
   }
 
   async function regenerate() {
@@ -65,8 +96,8 @@ export function WordPressIntegration({ onBack }: { onBack: () => void }) {
       )
     )
       return;
-    const key = newApiKey();
-    if (await persist(key)) toast.success("Nova chave gerada. Atualize-a no plugin do site.");
+    if (await persist({ apiKey: newApiKey() }))
+      toast.success("Nova chave gerada. Atualize-a no plugin/script do site.");
   }
 
   function copy(text: string, label: string) {
@@ -86,8 +117,7 @@ export function WordPressIntegration({ onBack }: { onBack: () => void }) {
             <LayoutTemplate className="size-5 text-primary" /> Site / WordPress — Captura de leads
           </CardTitle>
           <CardDescription>
-            Instale o plugin no seu WordPress para enviar os leads dos formulários (Contact Form 7,
-            WPForms, Gravity, Elementor e formulários HTML) direto para o funil.
+            Receba os leads dos formulários do seu site (WordPress ou qualquer HTML) direto no funil.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -135,6 +165,31 @@ export function WordPressIntegration({ onBack }: { onBack: () => void }) {
             )}
           </div>
 
+          {/* Kanban de destino */}
+          <div className="space-y-2">
+            <Label>Kanban de destino dos leads</Label>
+            <Select
+              value={boardId || "__none"}
+              onValueChange={(v) => persist({ boardId: v === "__none" ? "" : v })}
+              disabled={!isAdmin}
+            >
+              <SelectTrigger className="max-w-sm">
+                <SelectValue placeholder="Funil padrão (primeiro kanban)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">Funil padrão (primeiro kanban)</SelectItem>
+                {(boards ?? []).map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Os leads capturados entram na primeira etapa deste kanban.
+            </p>
+          </div>
+
           {/* URL da API */}
           <div className="space-y-2">
             <Label>URL da API</Label>
@@ -150,15 +205,13 @@ export function WordPressIntegration({ onBack }: { onBack: () => void }) {
                 <Copy className="size-4" />
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              O plugin já vem com a URL e a chave preenchidas — você não precisa configurar nada no
-              WordPress.
-            </p>
           </div>
 
           {/* Download do plugin */}
           <div className="rounded-lg border bg-muted/20 p-4">
-            <p className="mb-2 font-medium">Plugin do WordPress</p>
+            <p className="mb-2 flex items-center gap-2 font-medium">
+              <Download className="size-4" /> WordPress (plugin)
+            </p>
             {apiKey ? (
               <Button asChild variant="default">
                 <a href="/api/integrations/wordpress/plugin" download>
@@ -174,16 +227,51 @@ export function WordPressIntegration({ onBack }: { onBack: () => void }) {
               <li>Gere a chave acima e baixe o .zip do plugin.</li>
               <li>
                 No WordPress: <strong>Plugins → Adicionar novo → Enviar plugin</strong>, escolha o
-                .zip e clique em <strong>Instalar agora</strong>.
+                .zip e <strong>Instalar agora</strong>.
               </li>
               <li>
-                Clique em <strong>Ativar</strong>. Pronto — a URL e a chave já vêm configuradas.
+                Clique em <strong>Ativar</strong>. A URL e a chave já vêm configuradas.
               </li>
               <li>
-                Para formulários HTML próprios (sem plugin de formulário), adicione a classe{" "}
-                <code>crm-lead-capture</code> à tag <code>&lt;form&gt;</code>.
+                Captura automática de Contact Form 7, WPForms, Gravity e Elementor. Para formulários
+                HTML, adicione a classe <code>crm-lead-capture</code> ao <code>&lt;form&gt;</code>.
               </li>
             </ol>
+          </div>
+
+          {/* Script genérico (qualquer site) */}
+          <div className="rounded-lg border bg-muted/20 p-4">
+            <p className="mb-2 flex items-center gap-2 font-medium">
+              <Code2 className="size-4" /> Qualquer site (script)
+            </p>
+            {apiKey ? (
+              <>
+                <p className="mb-2 text-sm text-muted-foreground">
+                  Cole este script antes de <code>&lt;/body&gt;</code> e adicione a classe{" "}
+                  <code>crm-lead-capture</code> ao seu <code>&lt;form&gt;</code>. Os campos{" "}
+                  <code>name</code>/<code>nome</code> e <code>email</code> são detectados
+                  automaticamente.
+                </p>
+                <div className="relative">
+                  <pre className="max-h-48 overflow-auto rounded-md border bg-background p-3 text-[11px] leading-relaxed">
+                    {buildSnippet(apiUrl, apiKey)}
+                  </pre>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="absolute right-2 top-2"
+                    onClick={() => copy(buildSnippet(apiUrl, apiKey), "Script")}
+                  >
+                    <Copy className="size-3.5" /> Copiar
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Gere a chave de API para ver o script.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

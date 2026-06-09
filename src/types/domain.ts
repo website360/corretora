@@ -80,6 +80,8 @@ export interface IntegrationsSettings {
 export interface WordPressIntegration {
   /** Chave usada pelo plugin (header X-API-Key) para identificar a empresa. */
   apiKey?: string;
+  /** Kanban (board de leads) onde os leads capturados devem chegar. */
+  boardId?: string | null;
   connectedAt?: string | null;
 }
 
