@@ -21,6 +21,21 @@ function generatePassword(): string {
   return [...required, ...rest].join("");
 }
 
+type AdminClient = ReturnType<typeof getSupabaseAdminClient>;
+
+/** Localiza um auth user pelo e-mail (varre as páginas do admin). */
+async function findAuthUserByEmail(admin: AdminClient, email: string) {
+  const target = email.trim().toLowerCase();
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error || !data) break;
+    const found = data.users.find((u) => (u.email ?? "").toLowerCase() === target);
+    if (found) return found;
+    if (data.users.length < 1000) break;
+  }
+  return null;
+}
+
 async function brokerContext(req: NextRequest, customerId: string) {
   const sb = await getSupabaseServerClient();
   const {
@@ -81,30 +96,69 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const password = generatePassword();
+  const customerMeta = {
+    user_type: "customer",
+    customer_id: customer.id,
+    company_id: customer.company_id,
+    name: customer.name,
+  };
 
   try {
-    if (customer.auth_user_id) {
-      // Já existe: apenas redefine a senha e exige troca no próximo acesso.
-      const { error } = await admin.auth.admin.updateUserById(customer.auth_user_id, { password });
-      if (error) throw error;
-    } else {
+    let authUserId = customer.auth_user_id;
+
+    if (!authUserId) {
       const { data, error } = await admin.auth.admin.createUser({
         email: customer.email,
         password,
         email_confirm: true,
         app_metadata: { user_type: "customer" },
-        user_metadata: {
-          user_type: "customer",
-          customer_id: customer.id,
-          company_id: customer.company_id,
-          name: customer.name,
-        },
+        user_metadata: customerMeta,
       });
+
+      if (error) {
+        // E-mail já tem um auth user: recupera e relinca se for elegível.
+        const existing = await findAuthUserByEmail(admin, customer.email);
+        if (!existing) throw error;
+
+        const { data: brokerRow } = await admin
+          .from("users")
+          .select("id")
+          .eq("id", existing.id)
+          .maybeSingle();
+        if (brokerRow) {
+          return NextResponse.json(
+            { error: "Este e-mail já é usado por um usuário do sistema. Cadastre outro e-mail no cliente." },
+            { status: 400 },
+          );
+        }
+        const { data: otherCustomer } = await admin
+          .from("customers")
+          .select("id")
+          .eq("auth_user_id", existing.id)
+          .neq("id", customer.id)
+          .maybeSingle();
+        if (otherCustomer) {
+          return NextResponse.json(
+            { error: "Este e-mail já está vinculado a outro cliente." },
+            { status: 400 },
+          );
+        }
+
+        // Acesso órfão (de uma tentativa anterior): adota e redefine a senha.
+        await admin.auth.admin.updateUserById(existing.id, {
+          password,
+          app_metadata: { user_type: "customer" },
+          user_metadata: customerMeta,
+        });
+        authUserId = existing.id;
+      } else {
+        authUserId = data.user?.id ?? null;
+      }
+      await admin.from("customers").update({ auth_user_id: authUserId }).eq("id", customer.id);
+    } else {
+      // Já vinculado: apenas redefine a senha e exige troca no próximo acesso.
+      const { error } = await admin.auth.admin.updateUserById(authUserId, { password });
       if (error) throw error;
-      await admin
-        .from("customers")
-        .update({ auth_user_id: data.user?.id })
-        .eq("id", customer.id);
     }
 
     await admin
