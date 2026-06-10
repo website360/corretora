@@ -28,11 +28,29 @@ async function effectiveTemplate(companyId: string, event: EmailEvent, channel: 
       .eq("is_custom", false)
       .maybeSingle();
     const row = data as EmailTemplateRow | null;
-    if (row) return { subject: row.subject, body: row.body, enabled: row.enabled };
+    if (row) {
+      return { subject: row.subject, body: row.body, enabled: row.enabled, auto_send: row.auto_send };
+    }
   } catch {
     /* usa o padrão */
   }
-  return { ...base, enabled: true };
+  // Padrão de fábrica: ativo, mas NÃO envia por padrão (admin precisa marcar).
+  return { ...base, enabled: true, auto_send: false };
+}
+
+/** Canais que o admin marcou para enviar AUTOMATICAMENTE neste evento. */
+export async function getAutoChannels(
+  companyId: string,
+  event: EmailEvent,
+): Promise<{ email: boolean; whatsapp: boolean }> {
+  const [email, whatsapp] = await Promise.all([
+    effectiveTemplate(companyId, event, "email"),
+    effectiveTemplate(companyId, event, "whatsapp"),
+  ]);
+  return {
+    email: email.enabled && email.auto_send,
+    whatsapp: whatsapp.enabled && whatsapp.auto_send,
+  };
 }
 
 /** Envia o e-mail (HTML) de um evento ao cliente. Best-effort. */

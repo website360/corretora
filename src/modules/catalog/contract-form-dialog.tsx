@@ -159,6 +159,13 @@ export function ContractFormDialog({
       } else {
         const created = await contractsService.create(payload);
         contractId = created.id;
+        // Mensagens automáticas ao cliente (canais que o admin marcou como
+        // padrão) — fire-and-forget, não bloqueia o salvamento.
+        fetch("/api/messages/dispatch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ event: "contract_created", customerId, contractId }),
+        }).catch(() => {});
         // Renewal reminder: task due 30 days before the policy ends.
         if (reminder && endsAt) {
           const due = new Date(`${endsAt}T09:00:00`);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { dispatchEvent } from "@/lib/email/dispatch.server";
 
 const BASE_CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
 
   const { data: company } = await admin
     .from("companies")
-    .select("id, settings")
+    .select("id, settings, trade_name, phone")
     .eq("settings->integrations->wordpress->>apiKey", apiKey)
     .maybeSingle();
   if (!company) {
@@ -153,6 +154,22 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: "Falha ao salvar o lead" }, { status: 500, headers: cors });
   }
+
+  // Mensagens automáticas de boas-vindas (canais marcados como padrão).
+  const comp = company as { id: string; trade_name?: string; phone?: string };
+  dispatchEvent(
+    comp.id,
+    "lead_created",
+    { email, phone: phone || null },
+    {
+      "cliente.nome": name,
+      "cliente.primeiro_nome": name.trim().split(/\s+/)[0] ?? "",
+      "cliente.email": email,
+      "cliente.telefone": phone,
+      "corretora.nome": comp.trade_name ?? "",
+      "corretora.telefone": comp.phone ?? "",
+    },
+  ).catch(() => {});
 
   return NextResponse.json({ ok: true }, { status: 201, headers: cors });
 }
