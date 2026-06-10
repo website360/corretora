@@ -178,7 +178,7 @@ export function SettingsView() {
           )}
           {canEditCompany && (
             <TabsTrigger value="emails">
-              <Mail className="size-4" /> E-mails
+              <Mail className="size-4" /> Mensagens
             </TabsTrigger>
           )}
           {showBranding && (

@@ -82,6 +82,8 @@ export interface EmailTemplateRow {
   id: UUID;
   company_id: UUID;
   event: string;
+  /** Canal: "email" | "whatsapp". */
+  channel: string;
   name: string;
   subject: string;
   body: string;

@@ -4,13 +4,19 @@ import {
   defaultTemplate,
   renderTemplateText,
   type EmailEvent,
+  type MessageChannel,
 } from "@/config/email-templates";
 import type { EmailTemplateRow } from "@/types/domain";
 import { sendEmailForCompany } from "./smtp";
+import { sendWhatsappText } from "@/lib/whatsapp/send";
 import { GenericEmail } from "./templates/generic";
 
-async function effectiveTemplate(companyId: string, event: EmailEvent) {
+async function effectiveTemplate(companyId: string, event: EmailEvent, channel: MessageChannel) {
   const def = defaultTemplate(event);
+  const base =
+    channel === "email"
+      ? { subject: def.email.subject, body: def.email.html }
+      : { subject: "", body: def.whatsapp.text };
   try {
     const admin = getSupabaseAdminClient();
     const { data } = await admin
@@ -18,6 +24,7 @@ async function effectiveTemplate(companyId: string, event: EmailEvent) {
       .select("*")
       .eq("company_id", companyId)
       .eq("event", event)
+      .eq("channel", channel)
       .eq("is_custom", false)
       .maybeSingle();
     const row = data as EmailTemplateRow | null;
@@ -25,14 +32,10 @@ async function effectiveTemplate(companyId: string, event: EmailEvent) {
   } catch {
     /* usa o padrão */
   }
-  return { subject: def.subject, body: def.body, enabled: true };
+  return { ...base, enabled: true };
 }
 
-/**
- * Envia o e-mail de um EVENTO ao cliente, usando o template efetivo da empresa
- * (override no banco ou o padrão em código) e o SMTP da corretora (fallback
- * Resend). Best-effort — nunca lança. `to` é o e-mail do cliente.
- */
+/** Envia o e-mail (HTML) de um evento ao cliente. Best-effort. */
 export async function sendEventEmail(
   companyId: string,
   event: EmailEvent,
@@ -41,18 +44,37 @@ export async function sendEventEmail(
 ): Promise<{ sent: boolean }> {
   if (!to) return { sent: false };
   try {
-    const t = await effectiveTemplate(companyId, event);
+    const t = await effectiveTemplate(companyId, event, "email");
     if (!t.enabled) return { sent: false };
     const subject = renderTemplateText(t.subject, vars);
-    const bodyText = renderTemplateText(t.body, vars);
+    const html = renderTemplateText(t.body, vars);
     const res = await sendEmailForCompany(companyId, {
       to,
       subject,
-      react: GenericEmail({ bodyText }),
+      react: GenericEmail({ html, preview: subject }),
     });
     return { sent: res.sent === true };
   } catch (e) {
-    console.error("[email] sendEventEmail falhou:", e);
+    console.error("[msg] sendEventEmail falhou:", e);
+    return { sent: false };
+  }
+}
+
+/** Envia o WhatsApp (texto) de um evento ao cliente. Best-effort. */
+export async function sendEventWhatsapp(
+  companyId: string,
+  event: EmailEvent,
+  toPhone: string,
+  vars: Record<string, string | undefined>,
+): Promise<{ sent: boolean }> {
+  if (!toPhone) return { sent: false };
+  try {
+    const t = await effectiveTemplate(companyId, event, "whatsapp");
+    if (!t.enabled) return { sent: false };
+    const text = renderTemplateText(t.body, vars);
+    return await sendWhatsappText(companyId, toPhone, text);
+  } catch (e) {
+    console.error("[msg] sendEventWhatsapp falhou:", e);
     return { sent: false };
   }
 }

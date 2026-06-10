@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Mail, Pencil, Plus, Trash2 } from "lucide-react";
+import { Mail, MessageCircle, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { emailTemplatesService } from "@/services/email-templates.service";
 import { useAsyncData } from "@/hooks/use-async-data";
@@ -10,6 +10,7 @@ import {
   EMAIL_EVENT_META,
   defaultTemplate,
   type EmailEvent,
+  type MessageChannel,
 } from "@/config/email-templates";
 import type { EmailTemplateRow } from "@/types/domain";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +33,7 @@ import {
 
 interface EditorState {
   event: string;
+  channel: MessageChannel;
   isCustom: boolean;
   id: string | null;
   name: string;
@@ -48,29 +50,37 @@ export function EmailTemplatesPanel() {
   const [deleting, setDeleting] = React.useState<EmailTemplateRow | null>(null);
   const [saving, setSaving] = React.useState(false);
 
-  const rowFor = (event: string) =>
-    (rows ?? []).find((r) => !r.is_custom && r.event === event) ?? null;
+  const rowFor = (event: string, channel: MessageChannel) =>
+    (rows ?? []).find((r) => !r.is_custom && r.event === event && r.channel === channel) ?? null;
   const customs = (rows ?? []).filter((r) => r.is_custom);
 
-  function openSystem(event: EmailEvent) {
+  function effective(event: EmailEvent, channel: MessageChannel) {
     const def = defaultTemplate(event);
-    const row = rowFor(event);
-    setEditor({
-      event,
-      isCustom: false,
+    const row = rowFor(event, channel);
+    const base =
+      channel === "email"
+        ? { subject: def.email.subject, body: def.email.html }
+        : { subject: "", body: def.whatsapp.text };
+    return {
       id: row?.id ?? null,
       name: row?.name ?? def.name,
-      subject: row?.subject ?? def.subject,
-      body: row?.body ?? def.body,
+      subject: row?.subject ?? base.subject,
+      body: row?.body ?? base.body,
       enabled: row?.enabled ?? true,
       auto_send: row?.auto_send ?? false,
       vars: def.vars,
-    });
+    };
+  }
+
+  function openSystem(event: EmailEvent, channel: MessageChannel) {
+    const e = effective(event, channel);
+    setEditor({ event, channel, isCustom: false, ...e });
   }
 
   function openCustom(row?: EmailTemplateRow) {
     setEditor({
       event: "custom",
+      channel: "email",
       isCustom: true,
       id: row?.id ?? null,
       name: row?.name ?? "",
@@ -82,17 +92,20 @@ export function EmailTemplatesPanel() {
     });
   }
 
-  /** Liga/desliga um flag direto no card (sem abrir o editor). */
-  async function toggleFlag(event: EmailEvent, field: "enabled" | "auto_send", value: boolean) {
-    const def = defaultTemplate(event);
-    const row = rowFor(event);
+  async function toggleFlag(
+    event: EmailEvent,
+    channel: MessageChannel,
+    field: "enabled" | "auto_send",
+    value: boolean,
+  ) {
+    const e = effective(event, channel);
     try {
-      await emailTemplatesService.saveSystem(event, row?.id ?? null, {
-        name: row?.name ?? def.name,
-        subject: row?.subject ?? def.subject,
-        body: row?.body ?? def.body,
-        enabled: field === "enabled" ? value : (row?.enabled ?? true),
-        auto_send: field === "auto_send" ? value : (row?.auto_send ?? false),
+      await emailTemplatesService.saveSystem(event, channel, e.id, {
+        name: e.name,
+        subject: e.subject,
+        body: e.body,
+        enabled: field === "enabled" ? value : e.enabled,
+        auto_send: field === "auto_send" ? value : e.auto_send,
       });
       refetch();
     } catch {
@@ -102,7 +115,8 @@ export function EmailTemplatesPanel() {
 
   async function save() {
     if (!editor) return;
-    if (!editor.name.trim() || !editor.subject.trim() || !editor.body.trim()) return;
+    const needsSubject = editor.channel === "email";
+    if (!editor.body.trim() || (needsSubject && !editor.subject.trim())) return;
     setSaving(true);
     try {
       if (editor.isCustom) {
@@ -120,7 +134,7 @@ export function EmailTemplatesPanel() {
           });
         }
       } else {
-        await emailTemplatesService.saveSystem(editor.event, editor.id, {
+        await emailTemplatesService.saveSystem(editor.event, editor.channel, editor.id, {
           name: editor.name,
           subject: editor.subject,
           body: editor.body,
@@ -150,65 +164,72 @@ export function EmailTemplatesPanel() {
     setEditor((e) => (e ? { ...e, body: `${e.body}{{${v}}}` } : e));
   }
 
+  const channelRow = (event: EmailEvent, channel: MessageChannel) => {
+    const e = effective(event, channel);
+    const Icon = channel === "email" ? Mail : MessageCircle;
+    return (
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/20 px-3 py-2">
+        <span className="flex items-center gap-1.5 text-sm font-medium">
+          <Icon className="size-4 text-muted-foreground" />
+          {channel === "email" ? "E-mail" : "WhatsApp"}
+          {e.auto_send && e.enabled && <Badge variant="secondary">Por padrão</Badge>}
+        </span>
+        <div className="ml-auto flex items-center gap-4">
+          <label className="flex items-center gap-2 text-xs">
+            <Switch checked={e.enabled} onCheckedChange={(v) => toggleFlag(event, channel, "enabled", v)} />
+            Ativo
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <Switch
+              checked={e.auto_send}
+              disabled={!e.enabled}
+              onCheckedChange={(v) => toggleFlag(event, channel, "auto_send", v)}
+            />
+            Enviar por padrão
+          </label>
+          <Button variant="outline" size="sm" onClick={() => openSystem(event, channel)}>
+            <Pencil /> Editar
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div>
-        <p className="font-medium">E-mails ao cliente</p>
+        <p className="font-medium">Mensagens ao cliente</p>
         <p className="text-sm text-muted-foreground">
-          Templates por evento. Edite o texto, ative e defina se envia por padrão — na ação, o
-          usuário confirma com um toggle. Saem pelo SMTP da corretora (Integrações).
+          Por ação, escolha enviar <strong>e-mail</strong> e/ou <strong>WhatsApp</strong> e edite o
+          template de cada canal. &quot;Enviar por padrão&quot; deixa o toggle da ação pré-marcado.
+          E-mail sai pelo SMTP da corretora; WhatsApp pelo provedor conectado (Integrações).
         </p>
       </div>
 
-      {/* Eventos do sistema */}
       <div className="space-y-3">
         {DEFAULT_EMAIL_TEMPLATES.map((def) => {
-          const event = def.event;
-          const row = rowFor(event);
-          const enabled = row?.enabled ?? true;
-          const auto = row?.auto_send ?? false;
-          const meta = EMAIL_EVENT_META[event];
+          const meta = EMAIL_EVENT_META[def.event];
           return (
-            <Card key={event} className={enabled ? "" : "opacity-70"}>
-              <CardContent className="flex flex-wrap items-center gap-4 p-4">
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-2 font-medium">
-                    <Mail className="size-4 text-muted-foreground" /> {row?.name ?? def.name}
-                    {auto && <Badge variant="secondary">Envia por padrão</Badge>}
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{meta.description}</p>
+            <Card key={def.event}>
+              <CardContent className="space-y-2 p-4">
+                <div>
+                  <p className="font-medium">{meta.label}</p>
+                  <p className="text-xs text-muted-foreground">{meta.description}</p>
                 </div>
-                <label className="flex items-center gap-2 text-xs">
-                  <Switch
-                    checked={enabled}
-                    onCheckedChange={(v) => toggleFlag(event, "enabled", v)}
-                  />
-                  Ativo
-                </label>
-                <label className="flex items-center gap-2 text-xs">
-                  <Switch
-                    checked={auto}
-                    disabled={!enabled}
-                    onCheckedChange={(v) => toggleFlag(event, "auto_send", v)}
-                  />
-                  Enviar por padrão
-                </label>
-                <Button variant="outline" size="sm" onClick={() => openSystem(event)}>
-                  <Pencil /> Editar
-                </Button>
+                {channelRow(def.event, "email")}
+                {channelRow(def.event, "whatsapp")}
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      {/* Templates personalizados */}
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-base">Templates personalizados</CardTitle>
+            <CardTitle className="text-base">Templates personalizados (e-mail)</CardTitle>
             <CardDescription>
-              Crie modelos para enviar manualmente ao cliente quando quiser.
+              Modelos para enviar manualmente ao cliente quando quiser.
             </CardDescription>
           </div>
           <Button onClick={() => openCustom()}>
@@ -251,38 +272,47 @@ export function EmailTemplatesPanel() {
         </CardContent>
       </Card>
 
-      {/* Editor */}
       <Dialog open={editor !== null} onOpenChange={(o) => !o && setEditor(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editor?.isCustom ? "Template personalizado" : "Editar template"}</DialogTitle>
+            <DialogTitle>
+              {editor?.isCustom
+                ? "Template personalizado"
+                : `Editar ${editor?.channel === "email" ? "e-mail" : "WhatsApp"}`}
+            </DialogTitle>
             <DialogDescription>
-              Use variáveis como <code>{"{{cliente.primeiro_nome}}"}</code> — clique nas etiquetas
-              para inserir.
+              Use variáveis como <code>{"{{cliente.primeiro_nome}}"}</code> — clique para inserir.
+              {editor?.channel === "email" && " O corpo é HTML."}
             </DialogDescription>
           </DialogHeader>
           {editor && (
             <div className="space-y-3">
+              {(editor.isCustom || editor.channel === "email") && (
+                <>
+                  {editor.isCustom && (
+                    <div className="space-y-1.5">
+                      <Label>Nome do template</Label>
+                      <Input
+                        value={editor.name}
+                        onChange={(e) => setEditor({ ...editor, name: e.target.value })}
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    <Label>Assunto</Label>
+                    <Input
+                      value={editor.subject}
+                      onChange={(e) => setEditor({ ...editor, subject: e.target.value })}
+                    />
+                  </div>
+                </>
+              )}
               <div className="space-y-1.5">
-                <Label>Nome do template</Label>
-                <Input
-                  value={editor.name}
-                  onChange={(e) => setEditor({ ...editor, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Assunto</Label>
-                <Input
-                  value={editor.subject}
-                  onChange={(e) => setEditor({ ...editor, subject: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Mensagem</Label>
+                <Label>{editor.channel === "email" ? "Corpo (HTML)" : "Mensagem"}</Label>
                 <Textarea
                   value={editor.body}
                   onChange={(e) => setEditor({ ...editor, body: e.target.value })}
-                  rows={9}
+                  rows={editor.channel === "email" ? 10 : 6}
                   className="font-mono text-xs"
                 />
                 <div className="flex flex-wrap gap-1 pt-1">

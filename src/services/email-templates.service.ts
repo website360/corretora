@@ -21,9 +21,10 @@ export const emailTemplatesService = {
     return (data as EmailTemplateRow[]) ?? [];
   },
 
-  /** Cria ou atualiza a linha (única) de um evento de sistema. */
+  /** Cria ou atualiza a linha (única) de um evento de sistema, por canal. */
   async saveSystem(
     event: string,
+    channel: string,
     existingId: string | null,
     patch: Pick<EmailTemplateRow, "name" | "subject" | "body" | "enabled" | "auto_send">,
   ): Promise<void> {
@@ -37,6 +38,7 @@ export const emailTemplatesService = {
           id: uid("et"),
           company_id: getCurrentCompanyId() || "co_apex",
           event,
+          channel,
           is_custom: false,
           created_at: new Date().toISOString(),
           ...patch,
@@ -51,7 +53,7 @@ export const emailTemplatesService = {
     } else {
       const { error } = await sb
         .from("email_templates")
-        .insert({ ...patch, event, is_custom: false, company_id: getCurrentCompanyId() });
+        .insert({ ...patch, event, channel, is_custom: false, company_id: getCurrentCompanyId() });
       if (error) throw error;
     }
   },
@@ -67,6 +69,7 @@ export const emailTemplatesService = {
         id: uid("et"),
         company_id: getCurrentCompanyId() || "co_apex",
         event: "custom",
+        channel: "email",
         is_custom: true,
         enabled: true,
         auto_send: false,
@@ -82,6 +85,7 @@ export const emailTemplatesService = {
       .insert({
         ...patch,
         event: "custom",
+        channel: "email",
         is_custom: true,
         enabled: true,
         auto_send: false,
