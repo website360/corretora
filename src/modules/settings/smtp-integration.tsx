@@ -92,6 +92,15 @@ export function SmtpIntegration({ onBack }: { onBack: () => void }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-foreground/80">
+            <p>
+              Alguns provedores de hospedagem (ex.: <strong>DigitalOcean App Platform</strong>)
+              bloqueiam as portas de saída SMTP <strong>465/587</strong>. Se o teste falhar por
+              tempo esgotado, tente a porta <strong>2525</strong> (Brevo, SendGrid, Mailgun e outros
+              aceitam) com segurança <strong>STARTTLS</strong>.
+            </p>
+          </div>
+
           <fieldset disabled={!isAdmin} className="space-y-4 disabled:opacity-70">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">

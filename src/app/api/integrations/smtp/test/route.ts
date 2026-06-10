@@ -56,6 +56,14 @@ export async function POST() {
     });
     return NextResponse.json({ ok: true, to: p.email }, { status: 200 });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 200 });
+    const msg = (e as Error).message || "Falha no envio";
+    // Bloqueio de porta de saída (comum no DigitalOcean App Platform).
+    const blocked = /ETIMEDOUT|ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|timeout|greeting|ECONNRESET/i.test(
+      msg,
+    );
+    const hint = blocked
+      ? " — A saída SMTP parece bloqueada no servidor (comum no DigitalOcean App Platform). Tente a porta 2525 (se o provedor suportar) ou um provedor de envio por API."
+      : "";
+    return NextResponse.json({ ok: false, error: msg + hint }, { status: 200 });
   }
 }

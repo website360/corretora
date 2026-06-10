@@ -21,6 +21,10 @@ export async function sendViaSmtp(
     port: Number(smtp.port),
     secure: !!smtp.secure,
     auth: { user: smtp.username, pass: smtp.password },
+    // Falha rápido em vez de pendurar quando a porta de saída está bloqueada.
+    connectionTimeout: 12000,
+    greetingTimeout: 8000,
+    socketTimeout: 12000,
   });
   const from = smtp.fromName ? `"${smtp.fromName}" <${smtp.fromEmail}>` : smtp.fromEmail!;
   await transporter.sendMail({
