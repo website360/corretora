@@ -328,13 +328,33 @@ function crmlead_map_fields(array $form_data): array {
     }
 
     $metadata = [];
+    $used = [];
+    // Campos personalizados configurados → metadata com rótulo amigável.
     foreach ($custom_fields as $cf) {
         $label = $cf['label']; $field = $cf['field'];
         if (!empty($field) && isset($form_data[$field])) {
             $value = $form_data[$field];
             $metadata[$label] = is_array($value) ? implode(', ', $value) : $value;
+            $used[$field] = true;
         }
     }
+
+    // AUTOMÁTICO: qualquer outro campo do formulário também vai (metadata),
+    // sem precisar configurar. Ignora internos e valores já usados nos campos
+    // principais (nome/e-mail/telefone/notas).
+    $skip_keys = ['action', '_crmlead_nonce', '_crmlead_page'];
+    $skip_vals = array_filter([
+        $mapped['name'] ?? '', $mapped['email'] ?? '', $mapped['phone'] ?? '', $mapped['notes'] ?? '',
+    ], function ($v) { return $v !== ''; });
+    foreach ($form_data as $k => $val) {
+        $k = (string) $k;
+        if ($k === '' || $k[0] === '_' || in_array($k, $skip_keys, true)) continue;
+        if (isset($used[$k]) || isset($metadata[$k])) continue;
+        $sv = is_array($val) ? implode(', ', $val) : (string) $val;
+        if (trim($sv) === '' || in_array($sv, $skip_vals, true)) continue;
+        $metadata[$k] = $sv;
+    }
+
     if (!empty($metadata)) $mapped['metadata'] = $metadata;
 
     // Guarda os nomes dos campos recebidos, para o admin ver e mapear depois.
