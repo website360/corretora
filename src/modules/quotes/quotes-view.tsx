@@ -745,6 +745,14 @@ function SendSignatureDialog({
   const customer = quote ? customers.find((c) => c.id === quote.customer_id) : undefined;
   const owner = quote?.owner_id ? users.find((u) => u.id === quote.owner_id) : undefined;
 
+  // Nomes dos signatários — editáveis aqui (ClickSign exige nome e sobrenome),
+  // sem precisar mexer no cadastro do cliente.
+  const [custName, setCustName] = React.useState("");
+  const [ownerName, setOwnerName] = React.useState("");
+  React.useEffect(() => setCustName(customer?.name ?? ""), [customer?.id, customer?.name]);
+  React.useEffect(() => setOwnerName(owner?.name ?? ""), [owner?.id, owner?.name]);
+  const needsSurname = (n: string) => n.trim().split(/\s+/).filter(Boolean).length < 2;
+
   async function send() {
     if (!quote) return;
     if (!file) {
@@ -759,9 +767,9 @@ function SendSignatureDialog({
     try {
       const dataUrl = await readDataUrl(file);
       const signers: { name: string; email: string; document?: string | null }[] = [
-        { name: customer.name, email: customer.email, document: customer.document },
+        { name: custName.trim(), email: customer.email, document: customer.document },
       ];
-      if (owner?.email) signers.push({ name: owner.name, email: owner.email, document: null });
+      if (owner?.email) signers.push({ name: ownerName.trim(), email: owner.email, document: null });
       await quotesService.sendForSignature(quote.id, {
         fileName: file.name,
         fileBase64: dataUrl,
@@ -803,19 +811,49 @@ function SendSignatureDialog({
 
           <div className="space-y-2">
             <Label>Signatários</Label>
-            <div className="space-y-1.5 rounded-lg border p-3 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <span>Cliente · {customer?.name ?? "—"}</span>
-                <span className={cn("text-xs", customer?.email ? "text-muted-foreground" : "text-destructive")}>
-                  {customer?.email ?? "sem e-mail"}
-                </span>
+            <p className="text-xs text-muted-foreground">
+              O ClickSign exige <strong>nome e sobrenome</strong>. Ajuste aqui se precisar.
+            </p>
+            <div className="space-y-3 rounded-lg border p-3">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">Cliente</span>
+                  <span
+                    className={cn(
+                      "text-xs",
+                      customer?.email ? "text-muted-foreground" : "text-destructive",
+                    )}
+                  >
+                    {customer?.email ?? "sem e-mail"}
+                  </span>
+                </div>
+                <Input
+                  value={custName}
+                  onChange={(e) => setCustName(e.target.value)}
+                  placeholder="Nome e sobrenome"
+                />
+                {custName.trim() && needsSurname(custName) && (
+                  <p className="text-xs text-destructive">Inclua o sobrenome do cliente.</p>
+                )}
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <span>Corretora · {owner?.name ?? "—"}</span>
-                <span className="text-xs text-muted-foreground">
-                  {owner?.email ?? "sem responsável"}
-                </span>
-              </div>
+              {owner?.email && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Corretora (responsável)
+                    </span>
+                    <span className="text-xs text-muted-foreground">{owner.email}</span>
+                  </div>
+                  <Input
+                    value={ownerName}
+                    onChange={(e) => setOwnerName(e.target.value)}
+                    placeholder="Nome e sobrenome"
+                  />
+                  {ownerName.trim() && needsSurname(ownerName) && (
+                    <p className="text-xs text-destructive">Inclua o sobrenome do responsável.</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -823,7 +861,16 @@ function SendSignatureDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={send} loading={saving} disabled={!file || !customer?.email}>
+          <Button
+            onClick={send}
+            loading={saving}
+            disabled={
+              !file ||
+              !customer?.email ||
+              needsSurname(custName) ||
+              Boolean(owner?.email && needsSurname(ownerName))
+            }
+          >
             <Send className="size-4" /> Enviar
           </Button>
         </DialogFooter>
