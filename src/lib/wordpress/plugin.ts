@@ -524,9 +524,21 @@ function crmlead_frontend_scripts() {
             fd.append('action', 'crmlead_generic_form');
             fd.append('_crmlead_nonce', NONCE);
             fd.append('_crmlead_page', window.location.href);
-            fd.append('name', name);
-            fd.append('email', email);
-            if (phone) fd.append('phone', phone);
+            // Envia TODOS os campos do formulário (preserva os nomes), para o
+            // mapeamento de Notas e campos personalizados funcionar.
+            var els = form.elements || [];
+            for (var x = 0; x < els.length; x++) {
+                var el = els[x];
+                if (!el.name) continue;
+                var type = (el.type || '').toLowerCase();
+                if (type === 'password' || type === 'file' || type === 'submit' || type === 'button' || type === 'hidden') continue;
+                if ((type === 'checkbox' || type === 'radio') && !el.checked) continue;
+                if (el.value) fd.append(el.name, el.value);
+            }
+            // Sobrescreve com os detectados (caso os nomes não batam).
+            fd.set('name', name);
+            fd.set('email', email);
+            if (phone) fd.set('phone', phone);
             try {
                 fetch(ajaxUrl, { method: 'POST', body: fd, keepalive: true }).catch(function() {});
             } catch (_) {}
