@@ -260,8 +260,8 @@ export function WordPressIntegration({ onBack }: { onBack: () => void }) {
                 Clique em <strong>Ativar</strong>. A URL e a chave já vêm configuradas.
               </li>
               <li>
-                Captura automática de Contact Form 7, WPForms, Gravity e Elementor. Para formulários
-                HTML, adicione a classe <code>crm-lead-capture</code> ao <code>&lt;form&gt;</code>.
+                <strong>Captura automática</strong>: Contact Form 7, WPForms, Gravity, Elementor e
+                qualquer formulário HTML que tenha um campo de e-mail. Não precisa configurar nada.
               </li>
             </ol>
           </div>

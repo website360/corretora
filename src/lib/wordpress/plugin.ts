@@ -146,10 +146,6 @@ function crmlead_settings_page() {
                         <button type="button" id="crmlead-add-field" class="button button-secondary" style="margin-top:4px;">+ Adicionar campo</button>
                     </td>
                 </tr>
-                <tr>
-                    <th scope="row"><label for="crmlead_enable_log">Log de envios</label></th>
-                    <td><label><input type="checkbox" id="crmlead_enable_log" name="crmlead_enable_log" value="1" <?php checked($enable_log, 1); ?> /> Ativar log dos últimos envios (debug)</label></td>
-                </tr>
             </table>
 
             <?php $last_fields = get_option('crmlead_last_fields', []); ?>
@@ -215,7 +211,7 @@ function crmlead_settings_page() {
         });
         </script>
 
-        <?php if ($enable_log && !empty($logs)) : ?>
+        <?php if (!empty($logs)) : ?>
         <hr />
         <h2>Log de envios (últimos 20)</h2>
         <table class="widefat striped" style="max-width:820px;">
@@ -291,11 +287,11 @@ function crmlead_send_lead(array $data, string $source_override = '') {
         else { $body = json_decode(wp_remote_retrieve_body($response), true); $error = $body['error'] ?? ('HTTP ' . $code); }
     }
 
-    if (get_option('crmlead_enable_log', 0)) {
-        $logs = get_option('crmlead_logs', []);
-        $logs[] = ['date' => current_time('d/m/Y H:i:s'), 'name' => $payload['name'], 'email' => $payload['email'], 'source' => $payload['source'], 'success' => $success, 'error' => $error];
-        update_option('crmlead_logs', array_slice($logs, -50));
-    }
+    // Log sempre ativo (diagnóstico) — últimos 50 envios.
+    $logs = get_option('crmlead_logs', []);
+    $logs[] = ['date' => current_time('d/m/Y H:i:s'), 'name' => $payload['name'], 'email' => $payload['email'], 'source' => $payload['source'], 'success' => $success, 'error' => $error];
+    update_option('crmlead_logs', array_slice($logs, -50));
+
     return ['success' => $success, 'error' => $error];
 }
 
@@ -469,15 +465,72 @@ function crmlead_frontend_scripts() {
     <script>
     (function() {
         var ajaxUrl = '<?php echo esc_url(admin_url("admin-ajax.php")); ?>';
+        var NONCE = '<?php echo wp_create_nonce("crmlead_generic"); ?>';
+        var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        function val(el) { return el && el.value ? String(el.value).trim() : ''; }
+
+        function findEmail(form) {
+            var e = form.querySelector('input[type=email]');
+            if (EMAIL_RE.test(val(e))) return val(e);
+            var inputs = form.querySelectorAll('input, textarea');
+            var i;
+            for (i = 0; i < inputs.length; i++) {
+                var n = (inputs[i].name || '').toLowerCase();
+                if (n.indexOf('email') !== -1 && EMAIL_RE.test(val(inputs[i]))) return val(inputs[i]);
+            }
+            for (i = 0; i < inputs.length; i++) {
+                if (EMAIL_RE.test(val(inputs[i]))) return val(inputs[i]);
+            }
+            return '';
+        }
+
+        function byNames(form, names, types) {
+            var i, n, el, inputs;
+            if (types) {
+                for (i = 0; i < types.length; i++) {
+                    el = form.querySelector('input[type=' + types[i] + ']');
+                    if (val(el)) return val(el);
+                }
+            }
+            inputs = form.querySelectorAll('input, textarea');
+            for (i = 0; i < inputs.length; i++) {
+                n = (inputs[i].name || '').toLowerCase();
+                for (var k = 0; k < names.length; k++) {
+                    if (n.indexOf(names[k]) !== -1 && val(inputs[i])) return val(inputs[i]);
+                }
+            }
+            return '';
+        }
+
+        function firstText(form) {
+            var inputs = form.querySelectorAll('input[type=text]');
+            for (var i = 0; i < inputs.length; i++) { if (val(inputs[i])) return val(inputs[i]); }
+            return '';
+        }
+
+        // Captura AUTOMÁTICA: qualquer formulário com e-mail (exceto login).
         document.addEventListener('submit', function(e) {
             var form = e.target;
-            if (!form.classList.contains('crm-lead-capture') && form.getAttribute('data-crm-lead') !== 'true') return;
-            var formData = new FormData(form);
-            formData.append('action', 'crmlead_generic_form');
-            formData.append('_crmlead_nonce', '<?php echo wp_create_nonce("crmlead_generic"); ?>');
-            formData.append('_crmlead_page', window.location.href);
-            fetch(ajaxUrl, { method: 'POST', body: formData }).catch(function() {});
-        });
+            if (!form || form.tagName !== 'FORM') return;
+            if (form.querySelector('input[type=password]')) return;
+            var email = findEmail(form);
+            if (!email) return;
+            var name = byNames(form, ['nome', 'name', 'fullname'], null) || firstText(form);
+            var phone = byNames(form, ['phone', 'telefone', 'whats', 'celular', 'tel'], ['tel']);
+            if (!name) name = email.split('@')[0];
+
+            var fd = new FormData();
+            fd.append('action', 'crmlead_generic_form');
+            fd.append('_crmlead_nonce', NONCE);
+            fd.append('_crmlead_page', window.location.href);
+            fd.append('name', name);
+            fd.append('email', email);
+            if (phone) fd.append('phone', phone);
+            try {
+                fetch(ajaxUrl, { method: 'POST', body: fd, keepalive: true }).catch(function() {});
+            } catch (_) {}
+        }, true);
     })();
     </script>
     <?php
