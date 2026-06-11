@@ -1,6 +1,6 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { getCurrentCompanyId, getWriteCompanyId } from "@/services/lookup";
+import { getCurrentCompanyId, getViewCompanyId, getWriteCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
 import type { StageColor, TaskBoard, TaskColumn } from "@/types/domain";
 
@@ -30,7 +30,10 @@ export const taskBoardsService = {
       return [...mockBoards].sort((a, b) => a.position - b.position);
     }
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb.from("task_boards").select("*").order("position");
+    let q = sb.from("task_boards").select("*").order("position");
+    const co = getViewCompanyId();
+    if (co) q = q.eq("company_id", co);
+    const { data, error } = await q;
     if (error) throw error;
     return (data as TaskBoard[]) ?? [];
   },
@@ -120,7 +123,10 @@ export const taskBoardsService = {
       return [...mockColumns];
     }
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb.from("task_columns").select("*").order("position");
+    let q = sb.from("task_columns").select("*").order("position");
+    const co = getViewCompanyId();
+    if (co) q = q.eq("company_id", co);
+    const { data, error } = await q;
     if (error) throw error;
     return (data as TaskColumn[]) ?? [];
   },

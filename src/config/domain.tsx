@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   ArrowDown,
+  ArrowRight,
   ArrowUp,
   CheckCircle2,
   Circle,
@@ -68,7 +69,7 @@ export const TICKET_STATUS_META: Record<TicketStatus, DisplayMeta> = {
 
 export const TICKET_PRIORITY_META: Record<TicketPriority, DisplayMeta> = {
   low: { label: "Baixa", tone: "neutral", icon: ArrowDown },
-  medium: { label: "Média", tone: "primary", icon: Minus },
+  medium: { label: "Média", tone: "primary", icon: ArrowRight },
   high: { label: "Alta", tone: "warning", icon: ArrowUp },
   urgent: { label: "Urgente", tone: "destructive", icon: Flame },
 };

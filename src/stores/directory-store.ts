@@ -72,10 +72,15 @@ export const useDirectoryStore = create<DirectoryState>((set, get) => ({
   refreshTaskBoards: async () => {
     if (env.useMocks) return;
     const sb = getSupabaseBrowserClient();
-    const [boards, columns] = await Promise.all([
-      sb.from("task_boards").select("*").order("position"),
-      sb.from("task_columns").select("*").order("position"),
-    ]);
+    // Respeita o filtro de empresa do super_admin (senão vazam boards de outras).
+    const co = getViewCompanyId();
+    let bq = sb.from("task_boards").select("*").order("position");
+    let cq = sb.from("task_columns").select("*").order("position");
+    if (co) {
+      bq = bq.eq("company_id", co);
+      cq = cq.eq("company_id", co);
+    }
+    const [boards, columns] = await Promise.all([bq, cq]);
     set({
       taskBoards: (boards.data as TaskBoard[] | null) ?? [],
       taskColumns: (columns.data as TaskColumn[] | null) ?? [],

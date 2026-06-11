@@ -1,6 +1,6 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { getCurrentCompanyId, getWriteCompanyId } from "@/services/lookup";
+import { getCurrentCompanyId, getViewCompanyId, getWriteCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
 import type { KanbanBoard, KanbanColumn, StageColor } from "@/types/domain";
 
@@ -38,7 +38,10 @@ export const kanbanService = {
       return [...mockBoards].sort((a, b) => a.position - b.position);
     }
     const sb = getSupabaseBrowserClient();
-    const { data, error } = await sb.from("kanban_boards").select("*").order("position");
+    let q = sb.from("kanban_boards").select("*").order("position");
+    const co = getViewCompanyId();
+    if (co) q = q.eq("company_id", co);
+    const { data, error } = await q;
     if (error) throw error;
     return (data as KanbanBoard[]) ?? [];
   },
