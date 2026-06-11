@@ -74,6 +74,7 @@ export function TicketFormDialog({
   const taskTimeEnabled = resolveSettings(user.company).taskTimeEnabled;
   const [dueDate, setDueDate] = React.useState("");
   const [dueTime, setDueTime] = React.useState("");
+  const [dueReason, setDueReason] = React.useState("");
   const [boardId, setBoardId] = React.useState("");
   const [columnId, setColumnId] = React.useState("");
 
@@ -116,6 +117,7 @@ export function TicketFormDialog({
         setDueDate("");
         setDueTime(format(new Date(), "HH:mm"));
       }
+      setDueReason("");
       // Kanban placement: keep the task's board/column, else default board + first column.
       const { taskBoards, taskColumns } = useDirectoryStore.getState();
       const bId = ticket?.board_id ?? defaultBoardId(taskBoards) ?? "";
@@ -182,10 +184,19 @@ export function TicketFormDialog({
       if (values.priority !== old.priority) {
         logs.push(ticketsService.logEvent(old.id, "priority_changed", { to: values.priority }));
       }
+      const dueReasonMeta = dueReason.trim() ? { reason: dueReason.trim() } : {};
       if (old.due_at && !due_at) {
-        logs.push(ticketsService.logEvent(old.id, "due_removed"));
+        logs.push(
+          ticketsService.logEvent(old.id, "due_removed", { from: old.due_at, ...dueReasonMeta }),
+        );
       } else if ((due_at || null) !== (old.due_at || null)) {
-        logs.push(ticketsService.logEvent(old.id, "due_changed", { to: due_at }));
+        logs.push(
+          ticketsService.logEvent(old.id, "due_changed", {
+            from: old.due_at,
+            to: due_at,
+            ...dueReasonMeta,
+          }),
+        );
       }
       if (values.title !== old.title) {
         logs.push(ticketsService.logEvent(old.id, "edited", { field: "título" }));
@@ -213,6 +224,10 @@ export function TicketFormDialog({
     router.push(`/tickets/${created.id}`);
     router.refresh(); // revalida o contador de tarefas no menu (server)
   }
+
+  // Mostra o campo de motivo quando a DATA do prazo muda numa edição.
+  const origDateStr = editing && ticket?.due_at ? format(new Date(ticket.due_at), "yyyy-MM-dd") : "";
+  const dueChanged = editing && dueDate !== origDateStr;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -265,6 +280,13 @@ export function TicketFormDialog({
                 />
               )}
             </div>
+            {dueChanged && (
+              <Input
+                value={dueReason}
+                onChange={(e) => setDueReason(e.target.value)}
+                placeholder="Motivo da alteração do prazo (fica no histórico)"
+              />
+            )}
           </div>
 
           <BoardColumnPicker
