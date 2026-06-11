@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { CalendarClock, MessageSquare } from "lucide-react";
 import { findCarrier, findCustomer, findProduct, findUser } from "@/services/lookup";
-import { TICKET_SUBJECT_META, TICKET_PRIORITY_META, TONE_DOT_CLASS } from "@/config/domain";
+import { TICKET_SUBJECT_META, TICKET_PRIORITY_META, TONE_TEXT_CLASS } from "@/config/domain";
 import { formatShortDate } from "@/utils/format";
 import { cn } from "@/lib/utils";
 import type { Ticket } from "@/types/domain";
@@ -43,7 +43,7 @@ export function TaskCard({ ticket, draggable, onDragStart, onDragEnd, onOpen }: 
       )}
     >
       <div className="mb-2 flex items-center gap-2">
-        <span className={cn("size-2 rounded-full", TONE_DOT_CLASS[priority.tone])} />
+        <priority.icon className={cn("size-3.5 shrink-0", TONE_TEXT_CLASS[priority.tone])} />
         <span className="font-mono text-[11px] text-muted-foreground">#{ticket.number}</span>
         <Badge variant="outline" className="ml-auto text-[10px]">
           {TICKET_SUBJECT_META[ticket.subject_type].label}
