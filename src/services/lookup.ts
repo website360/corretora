@@ -52,6 +52,19 @@ export function getViewCompanyId(): string | null {
   return getCurrentCompanyId();
 }
 
+/**
+ * Empresa-alvo para INSERTS. Usuário comum: sua própria empresa. Super Admin:
+ * a empresa selecionada no filtro global (para criar NA empresa que está vendo);
+ * se estiver em "Todas", cai na própria. Evita criar dados na empresa errada.
+ */
+export function getWriteCompanyId(): string {
+  if (env.useMocks) return getCurrentCompanyId();
+  if (useSessionStore.getState().role === "super_admin") {
+    return useViewCompanyStore.getState().companyId ?? getCurrentCompanyId();
+  }
+  return getCurrentCompanyId();
+}
+
 export function findUser(id?: string | null): User | undefined {
   if (!id) return undefined;
   const source = env.useMocks ? mockUsers : useDirectoryStore.getState().users;

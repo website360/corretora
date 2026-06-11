@@ -1,6 +1,6 @@
 import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { getCurrentCompanyId } from "@/services/lookup";
+import { getCurrentCompanyId, getWriteCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
 import type { StageColor, TaskBoard, TaskColumn } from "@/types/domain";
 
@@ -63,8 +63,8 @@ export const taskBoardsService = {
       return board;
     }
     const sb = getSupabaseBrowserClient();
-    const company_id = getCurrentCompanyId();
-    const { data: existing } = await sb.from("task_boards").select("position");
+    const company_id = getWriteCompanyId();
+    const { data: existing } = await sb.from("task_boards").select("position").eq("company_id", company_id);
     const position = Math.max(-1, ...((existing as { position: number }[]) ?? []).map((b) => b.position)) + 1;
     const { data, error } = await sb
       .from("task_boards")
@@ -153,7 +153,7 @@ export const taskBoardsService = {
     const position = Math.max(-1, ...((existing as { position: number }[]) ?? []).map((c) => c.position)) + 1;
     const { data, error } = await sb
       .from("task_columns")
-      .insert({ company_id: getCurrentCompanyId(), board_id: boardId, name, color, icon: icon ?? null, position })
+      .insert({ company_id: getWriteCompanyId(), board_id: boardId, name, color, icon: icon ?? null, position })
       .select("*")
       .single();
     if (error) throw error;
