@@ -376,7 +376,10 @@ export interface KanbanColumn {
   company_id: UUID;
   board_id: UUID;
   name: string;
-  color: StageColor;
+  /** Tom predefinido (StageColor) ou HEX. */
+  color: string;
+  /** Ícone opcional (nome em STAGE_ICONS) — substitui a bolinha. */
+  icon?: string | null;
   position: number;
   created_at: ISODateString;
 }
@@ -449,7 +452,10 @@ export interface TaskColumn {
   company_id: UUID;
   board_id: UUID;
   name: string;
-  color: StageColor;
+  /** Tom predefinido (StageColor) ou HEX. */
+  color: string;
+  /** Ícone opcional (nome em STAGE_ICONS) — substitui a bolinha. */
+  icon?: string | null;
   position: number;
   is_terminal: boolean;
   created_at: ISODateString;
@@ -464,6 +470,8 @@ export interface Tag {
   name: string;
   /** Tom predefinido (StageColor) OU código HEX livre (#rrggbb). */
   color: string;
+  /** Ícone opcional (nome em STAGE_ICONS) — substitui a bolinha/ícone padrão. */
+  icon?: string | null;
   modules: TagModule[];
   /** Tag padrão do sistema (semeada do catálogo) — não editável pela corretora. */
   is_system?: boolean;

@@ -147,7 +147,12 @@ export const kanbanService = {
     return (data as KanbanColumn[]) ?? [];
   },
 
-  async createColumn(boardId: string, name: string, color: StageColor): Promise<KanbanColumn> {
+  async createColumn(
+    boardId: string,
+    name: string,
+    color: string,
+    icon?: string | null,
+  ): Promise<KanbanColumn> {
     if (env.useMocks) {
       await sleep(140);
       const siblings = mockColumns.filter((c) => c.board_id === boardId);
@@ -157,6 +162,7 @@ export const kanbanService = {
         board_id: boardId,
         name,
         color,
+        icon: icon ?? null,
         position: Math.max(-1, ...siblings.map((c) => c.position)) + 1,
         created_at: new Date().toISOString(),
       };
@@ -171,14 +177,17 @@ export const kanbanService = {
     const position = Math.max(-1, ...((existing as { position: number }[]) ?? []).map((c) => c.position)) + 1;
     const { data, error } = await sb
       .from("kanban_columns")
-      .insert({ company_id: getCurrentCompanyId(), board_id: boardId, name, color, position })
+      .insert({ company_id: getCurrentCompanyId(), board_id: boardId, name, color, icon: icon ?? null, position })
       .select("*")
       .single();
     if (error) throw error;
     return data as KanbanColumn;
   },
 
-  async updateColumn(id: string, patch: Partial<Pick<KanbanColumn, "name" | "color">>): Promise<void> {
+  async updateColumn(
+    id: string,
+    patch: Partial<Pick<KanbanColumn, "name" | "color" | "icon">>,
+  ): Promise<void> {
     if (env.useMocks) {
       await sleep(120);
       const c = mockColumns.find((x) => x.id === id);

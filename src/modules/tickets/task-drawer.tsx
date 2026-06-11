@@ -9,6 +9,8 @@ import { finalizeTask } from "@/services/finalize.service";
 import { findCustomer, findTaskColumn, findUser } from "@/services/lookup";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { TICKET_SUBJECT_META, TICKET_PRIORITY_META, TONE_BADGE_CLASS, TONE_DOT_CLASS } from "@/config/domain";
+import { tagBadgeStyle } from "@/lib/tag-color";
+import { StageDot } from "@/components/common/style-pickers";
 import { formatShortDate, formatSmartDate, taskCode } from "@/utils/format";
 import { cn } from "@/lib/utils";
 import type { Ticket } from "@/types/domain";
@@ -107,17 +109,22 @@ export function TaskDrawer({
                   <Badge variant="outline" className="text-[10px]">
                     {TICKET_SUBJECT_META[shown.subject_type].label}
                   </Badge>
-                  {stage && (
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium",
-                        TONE_BADGE_CLASS[stage.color],
-                      )}
-                    >
-                      <span className={cn("size-1.5 rounded-full", TONE_DOT_CLASS[stage.color])} />
-                      {stage.name}
-                    </span>
-                  )}
+                  {stage &&
+                    (() => {
+                      const st = tagBadgeStyle(stage.color);
+                      return (
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium",
+                            st.className,
+                          )}
+                          style={st.style}
+                        >
+                          <StageDot color={stage.color} icon={stage.icon} />
+                          {stage.name}
+                        </span>
+                      );
+                    })()}
                 </div>
                 <SheetTitle>{shown.title}</SheetTitle>
                 <SheetDescription>Resumo da tarefa</SheetDescription>

@@ -125,7 +125,12 @@ export const taskBoardsService = {
     return (data as TaskColumn[]) ?? [];
   },
 
-  async createColumn(boardId: string, name: string, color: StageColor): Promise<TaskColumn> {
+  async createColumn(
+    boardId: string,
+    name: string,
+    color: string,
+    icon?: string | null,
+  ): Promise<TaskColumn> {
     if (env.useMocks) {
       await sleep(120);
       const siblings = mockColumns.filter((c) => c.board_id === boardId);
@@ -135,6 +140,7 @@ export const taskBoardsService = {
         board_id: boardId,
         name,
         color,
+        icon: icon ?? null,
         position: Math.max(-1, ...siblings.map((c) => c.position)) + 1,
         is_terminal: false,
         created_at: now(),
@@ -147,7 +153,7 @@ export const taskBoardsService = {
     const position = Math.max(-1, ...((existing as { position: number }[]) ?? []).map((c) => c.position)) + 1;
     const { data, error } = await sb
       .from("task_columns")
-      .insert({ company_id: getCurrentCompanyId(), board_id: boardId, name, color, position })
+      .insert({ company_id: getCurrentCompanyId(), board_id: boardId, name, color, icon: icon ?? null, position })
       .select("*")
       .single();
     if (error) throw error;
@@ -156,7 +162,7 @@ export const taskBoardsService = {
 
   async updateColumn(
     id: string,
-    patch: Partial<Pick<TaskColumn, "name" | "color" | "is_terminal">>,
+    patch: Partial<Pick<TaskColumn, "name" | "color" | "icon" | "is_terminal">>,
   ): Promise<void> {
     if (env.useMocks) {
       await sleep(100);

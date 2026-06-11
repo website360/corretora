@@ -33,7 +33,12 @@ export const tagsService = {
     return ((data as Tag[]) ?? []).filter((t) => appliesTo(t, module));
   },
 
-  async create(input: { name: string; color: string; modules: TagModule[] }): Promise<Tag> {
+  async create(input: {
+    name: string;
+    color: string;
+    icon?: string | null;
+    modules: TagModule[];
+  }): Promise<Tag> {
     if (env.useMocks) {
       await sleep(200);
       const tag: Tag = {
@@ -55,7 +60,10 @@ export const tagsService = {
     return data as Tag;
   },
 
-  async update(id: string, patch: Partial<Pick<Tag, "name" | "color" | "modules">>): Promise<void> {
+  async update(
+    id: string,
+    patch: Partial<Pick<Tag, "name" | "color" | "icon" | "modules">>,
+  ): Promise<void> {
     if (env.useMocks) {
       await sleep(160);
       const t = mockTags.find((x) => x.id === id);

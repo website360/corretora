@@ -67,6 +67,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/common/status-badge";
 import { UserAvatar } from "@/components/common/user-avatar";
+import { tagBadgeStyle } from "@/lib/tag-color";
+import { StageDot } from "@/components/common/style-pickers";
 import { ListColumnsMenu } from "@/modules/tickets/list-columns-menu";
 
 export type AgendaRow =
@@ -197,7 +199,7 @@ export function UnifiedList({
       .map((c) => ({
         value: c.id,
         label: c.name,
-        leading: <span className={cn("size-2 rounded-full", TONE_DOT_CLASS[c.color])} />,
+        leading: <StageDot color={c.color} icon={c.icon} />,
       }));
 
   const columnDefs: Record<ListColumnId, ColumnDef<AgendaRow>> = {
@@ -666,15 +668,21 @@ function mergeDay(day: Date, timeFrom?: string | null): string {
   return d.toISOString();
 }
 
-function StageBadge({ stage }: { stage: { name: string; color: StageColor } }) {
+function StageBadge({
+  stage,
+}: {
+  stage: { name: string; color: string; icon?: string | null };
+}) {
+  const st = tagBadgeStyle(stage.color);
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium",
-        TONE_BADGE_CLASS[stage.color],
+        st.className,
       )}
+      style={st.style}
     >
-      <span className={cn("size-1.5 rounded-full", TONE_DOT_CLASS[stage.color])} />
+      <StageDot color={stage.color} icon={stage.icon} />
       {stage.name}
     </span>
   );

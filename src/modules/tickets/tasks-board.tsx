@@ -22,6 +22,7 @@ import type { CalendarEvent, TaskBoard, TaskColumn, Ticket } from "@/types/domai
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/common/user-avatar";
+import { StageDot } from "@/components/common/style-pickers";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -302,7 +303,7 @@ export function TasksBoard({
                 className="flex cursor-grab items-center gap-2 px-3 py-3 active:cursor-grabbing"
               >
                 <GripVertical className="size-4 shrink-0 text-muted-foreground/50" />
-                <span className={cn("size-2.5 rounded-full", TONE_DOT_CLASS[column.color])} />
+                <StageDot color={column.color} icon={column.icon} />
                 <h3 className="truncate text-sm font-semibold">{column.name}</h3>
                 <span className="rounded-full bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground">
                   {cards.length + colEvents.length}

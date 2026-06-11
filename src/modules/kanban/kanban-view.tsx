@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { TagBadge } from "@/components/common/tag-badge";
 import { EmptyState } from "@/components/common/empty-state";
 import { UserAvatar } from "@/components/common/user-avatar";
+import { StageDot } from "@/components/common/style-pickers";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import {
   DropdownMenu,
@@ -296,7 +297,7 @@ export function KanbanView() {
                   )}
                 >
                   <div className="flex items-center gap-2 px-3 py-3">
-                    <span className={cn("size-2.5 rounded-full", TONE_DOT_CLASS[column.color])} />
+                    <StageDot color={column.color} icon={column.icon} />
                     <h3 className="truncate text-sm font-semibold">{column.name}</h3>
                     <span className="rounded-full bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground">
                       {cards.length}

@@ -3,13 +3,12 @@
 import * as React from "react";
 import { toast } from "sonner";
 import { kanbanService } from "@/services/kanban.service";
-import { TONE_DOT_CLASS } from "@/config/domain";
-import { cn } from "@/lib/utils";
-import type { KanbanBoard, KanbanColumn, StageColor } from "@/types/domain";
+import type { KanbanBoard, KanbanColumn } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ColorPicker, IconPicker } from "@/components/common/style-pickers";
 import {
   Dialog,
   DialogContent,
@@ -18,14 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const COLORS: { value: StageColor; label: string }[] = [
-  { value: "neutral", label: "Cinza" },
-  { value: "primary", label: "Azul" },
-  { value: "success", label: "Verde" },
-  { value: "warning", label: "Amarelo" },
-  { value: "destructive", label: "Vermelho" },
-];
 
 export function BoardDialog({
   open,
@@ -136,13 +127,15 @@ export function ColumnDialog({
 }) {
   const editing = Boolean(column);
   const [name, setName] = React.useState("");
-  const [color, setColor] = React.useState<StageColor>("primary");
+  const [color, setColor] = React.useState<string>("primary");
+  const [icon, setIcon] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
     if (open) {
       setName(column?.name ?? "");
       setColor(column?.color ?? "primary");
+      setIcon(column?.icon ?? null);
     }
   }, [open, column]);
 
@@ -151,10 +144,10 @@ export function ColumnDialog({
     setSaving(true);
     try {
       if (editing) {
-        await kanbanService.updateColumn(column!.id, { name, color });
+        await kanbanService.updateColumn(column!.id, { name, color, icon });
         toast.success("Bloco atualizado");
       } else {
-        await kanbanService.createColumn(boardId, name, color);
+        await kanbanService.createColumn(boardId, name, color, icon);
         toast.success("Bloco criado");
       }
       onSaved?.();
@@ -186,22 +179,11 @@ export function ColumnDialog({
           </div>
           <div className="space-y-2">
             <Label>Cor</Label>
-            <div className="flex gap-2">
-              {COLORS.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => setColor(c.value)}
-                  title={c.label}
-                  className={cn(
-                    "flex size-9 items-center justify-center rounded-lg border-2 transition-colors",
-                    color === c.value ? "border-foreground" : "border-transparent hover:border-border",
-                  )}
-                >
-                  <span className={cn("size-4 rounded-full", TONE_DOT_CLASS[c.value])} />
-                </button>
-              ))}
-            </div>
+            <ColorPicker value={color} onChange={setColor} />
+          </div>
+          <div className="space-y-2">
+            <Label>Ícone (substitui a bolinha)</Label>
+            <IconPicker value={icon} onChange={setIcon} color={color} />
           </div>
         </div>
         <DialogFooter>

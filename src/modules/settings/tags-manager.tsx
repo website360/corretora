@@ -7,8 +7,9 @@ import { tagsService } from "@/services/tags.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { TAG_MODULE_META, TONE_TEXT_CLASS } from "@/config/domain";
 import { cn } from "@/lib/utils";
-import { isHexColor, tagIconStyle } from "@/lib/tag-color";
-import type { StageColor, Tag, TagModule } from "@/types/domain";
+import { tagIconStyle } from "@/lib/tag-color";
+import { ColorPicker, IconPicker, getStageIcon } from "@/components/common/style-pickers";
+import type { Tag, TagModule } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,14 +26,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const COLORS: { value: StageColor; label: string }[] = [
-  { value: "neutral", label: "Cinza" },
-  { value: "primary", label: "Azul" },
-  { value: "success", label: "Verde" },
-  { value: "warning", label: "Amarelo" },
-  { value: "destructive", label: "Vermelho" },
-];
 
 const MODULE_OPTIONS = (Object.keys(TAG_MODULE_META) as TagModule[]).map((k) => ({
   value: k,
@@ -94,9 +87,8 @@ export function TagsManager() {
               <li key={tag.id} className="flex items-center gap-3 py-3">
                 {(() => {
                   const ico = tagIconStyle(tag.color);
-                  return (
-                    <TagIcon className={cn("size-4 shrink-0", ico.className)} style={ico.style} />
-                  );
+                  const Ico = getStageIcon(tag.icon) ?? TagIcon;
+                  return <Ico className={cn("size-4 shrink-0", ico.className)} style={ico.style} />;
                 })()}
                 <span className="font-medium">{tag.name}</span>
                 <div className="ml-2 flex flex-wrap gap-1">
@@ -180,7 +172,7 @@ function TagDialog({
   const editing = Boolean(tag);
   const [name, setName] = React.useState("");
   const [color, setColor] = React.useState<string>("primary");
-  const [hexDraft, setHexDraft] = React.useState("");
+  const [icon, setIcon] = React.useState<string | null>(null);
   const [modules, setModules] = React.useState<TagModule[]>([]);
   const [saving, setSaving] = React.useState(false);
 
@@ -188,7 +180,7 @@ function TagDialog({
     if (open) {
       setName(tag?.name ?? "");
       setColor(tag?.color ?? "primary");
-      setHexDraft(isHexColor(tag?.color) ? (tag?.color ?? "") : "");
+      setIcon(tag?.icon ?? null);
       setModules(tag?.modules ?? []);
     }
   }, [open, tag]);
@@ -198,10 +190,10 @@ function TagDialog({
     setSaving(true);
     try {
       if (editing) {
-        await tagsService.update(tag!.id, { name, color, modules });
+        await tagsService.update(tag!.id, { name, color, icon, modules });
         toast.success("Etiqueta atualizada");
       } else {
-        await tagsService.create({ name, color, modules });
+        await tagsService.create({ name, color, icon, modules });
         toast.success("Etiqueta criada");
       }
       onOpenChange(false);
@@ -233,57 +225,11 @@ function TagDialog({
           </div>
           <div className="space-y-2">
             <Label>Cor</Label>
-            <div className="flex flex-wrap items-center gap-2">
-              {COLORS.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  title={c.label}
-                  onClick={() => setColor(c.value)}
-                  className={cn(
-                    "flex size-9 items-center justify-center rounded-lg border-2 transition-colors",
-                    color === c.value ? "border-foreground" : "border-transparent hover:border-border",
-                  )}
-                >
-                  <TagIcon className={cn("size-4", TONE_TEXT_CLASS[c.value])} />
-                </button>
-              ))}
-              <div className="mx-1 h-6 w-px bg-border" />
-              <label
-                title="Cor personalizada (hex)"
-                className={cn(
-                  "relative flex size-9 cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 transition-colors",
-                  isHexColor(color) ? "border-foreground" : "border-transparent hover:border-border",
-                )}
-              >
-                <TagIcon
-                  className="size-4"
-                  style={{ color: isHexColor(color) ? color : "currentColor" }}
-                />
-                <input
-                  type="color"
-                  value={isHexColor(color) ? color : "#64748b"}
-                  onChange={(e) => {
-                    setColor(e.target.value);
-                    setHexDraft(e.target.value);
-                  }}
-                  className="absolute inset-0 cursor-pointer opacity-0"
-                />
-              </label>
-              <Input
-                value={hexDraft}
-                onChange={(e) => {
-                  const raw = e.target.value.trim();
-                  const v = raw && !raw.startsWith("#") ? `#${raw}` : raw;
-                  setHexDraft(v);
-                  if (isHexColor(v)) setColor(v);
-                  else if (v === "") setColor("primary");
-                }}
-                placeholder="#RRGGBB"
-                className="h-9 w-28 font-mono text-sm"
-                maxLength={7}
-              />
-            </div>
+            <ColorPicker value={color} onChange={setColor} />
+          </div>
+          <div className="space-y-2">
+            <Label>Ícone (substitui a bolinha)</Label>
+            <IconPicker value={icon} onChange={setIcon} color={color} />
           </div>
           <div className="space-y-2">
             <Label>Disponível em</Label>

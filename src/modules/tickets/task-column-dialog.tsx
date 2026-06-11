@@ -4,13 +4,12 @@ import * as React from "react";
 import { toast } from "sonner";
 import { taskBoardsService } from "@/services/task-boards.service";
 import { useDirectoryStore } from "@/stores/directory-store";
-import { TONE_DOT_CLASS } from "@/config/domain";
-import { cn } from "@/lib/utils";
-import type { StageColor, TaskColumn } from "@/types/domain";
+import type { TaskColumn } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { ColorPicker, IconPicker } from "@/components/common/style-pickers";
 import {
   Dialog,
   DialogContent,
@@ -19,14 +18,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const COLORS: { value: StageColor; label: string }[] = [
-  { value: "neutral", label: "Cinza" },
-  { value: "primary", label: "Azul" },
-  { value: "success", label: "Verde" },
-  { value: "warning", label: "Amarelo" },
-  { value: "destructive", label: "Vermelho" },
-];
 
 export function TaskColumnDialog({
   open,
@@ -43,7 +34,8 @@ export function TaskColumnDialog({
 }) {
   const editing = Boolean(column);
   const [name, setName] = React.useState("");
-  const [color, setColor] = React.useState<StageColor>("primary");
+  const [color, setColor] = React.useState<string>("primary");
+  const [icon, setIcon] = React.useState<string | null>(null);
   const [terminal, setTerminal] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
 
@@ -51,6 +43,7 @@ export function TaskColumnDialog({
     if (open) {
       setName(column?.name ?? "");
       setColor(column?.color ?? "primary");
+      setIcon(column?.icon ?? null);
       setTerminal(column?.is_terminal ?? false);
     }
   }, [open, column]);
@@ -60,10 +53,15 @@ export function TaskColumnDialog({
     setSaving(true);
     try {
       if (editing) {
-        await taskBoardsService.updateColumn(column!.id, { name, color, is_terminal: terminal });
+        await taskBoardsService.updateColumn(column!.id, {
+          name,
+          color,
+          icon,
+          is_terminal: terminal,
+        });
         toast.success("Bloco atualizado");
       } else {
-        await taskBoardsService.createColumn(boardId, name, color);
+        await taskBoardsService.createColumn(boardId, name, color, icon);
         toast.success("Bloco criado");
       }
       await useDirectoryStore.getState().refreshTaskBoards();
@@ -96,22 +94,11 @@ export function TaskColumnDialog({
           </div>
           <div className="space-y-2">
             <Label>Cor</Label>
-            <div className="flex gap-2">
-              {COLORS.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => setColor(c.value)}
-                  title={c.label}
-                  className={cn(
-                    "flex size-9 items-center justify-center rounded-lg border-2 transition-colors",
-                    color === c.value ? "border-foreground" : "border-transparent hover:border-border",
-                  )}
-                >
-                  <span className={cn("size-4 rounded-full", TONE_DOT_CLASS[c.value])} />
-                </button>
-              ))}
-            </div>
+            <ColorPicker value={color} onChange={setColor} />
+          </div>
+          <div className="space-y-2">
+            <Label>Ícone (substitui a bolinha)</Label>
+            <IconPicker value={icon} onChange={setIcon} color={color} />
           </div>
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div>

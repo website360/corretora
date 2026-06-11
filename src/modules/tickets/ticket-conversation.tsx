@@ -59,6 +59,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import { UserAvatar } from "@/components/common/user-avatar";
+import { StageDot } from "@/components/common/style-pickers";
 import { TicketComposer } from "@/modules/tickets/ticket-composer";
 import {
   Select,
@@ -514,7 +515,7 @@ function ConversationHeader({
                 {columns.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     <span className="flex items-center gap-2">
-                      <span className={cn("size-2 rounded-full", TONE_DOT_CLASS[c.color])} />
+                      <StageDot color={c.color} icon={c.icon} />
                       {c.name}
                     </span>
                   </SelectItem>
