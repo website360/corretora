@@ -228,6 +228,45 @@ export const ticketsService = {
     });
   },
 
+  /** Reagenda a tarefa (due_at) e REGISTRA no log com o motivo (opcional). */
+  async setDue(
+    ticketId: string,
+    dueAt: string | null,
+    prevDue: string | null,
+    reason?: string,
+  ): Promise<void> {
+    const event: TicketEventType = dueAt ? "due_changed" : "due_removed";
+    const meta: Record<string, unknown> = { from: prevDue, to: dueAt };
+    if (reason && reason.trim()) meta.reason = reason.trim();
+    if (env.useMocks) {
+      await sleep(200);
+      const t = tickets.find((x) => x.id === ticketId);
+      if (t) {
+        t.due_at = dueAt;
+        t.updated_at = new Date().toISOString();
+      }
+      ticketLogs.push({
+        id: uid("tl"),
+        ticket_id: ticketId,
+        actor_id: getCurrentUserId(),
+        event,
+        meta,
+        created_at: new Date().toISOString(),
+      });
+      return;
+    }
+    const sb = getSupabaseBrowserClient();
+    const { error } = await sb.from("tickets").update({ due_at: dueAt }).eq("id", ticketId);
+    if (error) throw error;
+    await sb.from("ticket_logs").insert({
+      ticket_id: ticketId,
+      company_id: getCurrentCompanyId(),
+      actor_id: getCurrentUserId(),
+      event,
+      meta,
+    });
+  },
+
   async setStage(ticketId: string, stageId: string): Promise<void> {
     if (env.useMocks) {
       await sleep(160);

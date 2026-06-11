@@ -295,10 +295,15 @@ function feedDescribe(it: FeedItem): string {
       return it.meta?.tag ? `adicionou a etiqueta "${String(it.meta.tag)}"` : "adicionou uma etiqueta";
     case "tag_removed":
       return it.meta?.tag ? `removeu a etiqueta "${String(it.meta.tag)}"` : "removeu uma etiqueta";
-    case "due_changed":
-      return "alterou o prazo";
-    case "due_removed":
-      return "removeu o prazo";
+    case "due_changed": {
+      const to = it.meta?.to ? formatShortDate(String(it.meta.to)) : null;
+      const reason = it.meta?.reason ? ` — motivo: ${String(it.meta.reason)}` : "";
+      return (to ? `alterou o prazo para ${to}` : "alterou o prazo") + reason;
+    }
+    case "due_removed": {
+      const reason = it.meta?.reason ? ` — motivo: ${String(it.meta.reason)}` : "";
+      return "removeu o prazo" + reason;
+    }
     case "edited":
       return "editou a tarefa";
     case "comment_deleted":

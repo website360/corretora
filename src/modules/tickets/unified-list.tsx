@@ -47,6 +47,17 @@ import { DataTable } from "@/components/common/data-table";
 import { Badge } from "@/components/ui/badge";
 import { TagBadge } from "@/components/common/tag-badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -86,6 +97,34 @@ export function UnifiedList({
 }) {
   const { user } = useSession();
   const { sortRules, taskTimeEnabled } = resolveSettings(user.company);
+
+  // Reagendamento de tarefa: pergunta o motivo e registra no log.
+  const [reschedule, setReschedule] = React.useState<{
+    task: Ticket;
+    newDue: string | null;
+  } | null>(null);
+  const [reason, setReason] = React.useState("");
+  const [rescheduling, setRescheduling] = React.useState(false);
+
+  async function confirmReschedule() {
+    if (!reschedule) return;
+    setRescheduling(true);
+    try {
+      await ticketsService.setDue(
+        reschedule.task.id,
+        reschedule.newDue,
+        reschedule.task.due_at ?? null,
+        reason,
+      );
+      setReschedule(null);
+      setReason("");
+      onChanged?.();
+    } catch {
+      toast.error("Não foi possível reagendar.");
+    } finally {
+      setRescheduling(false);
+    }
+  }
 
   const { data: tagCatalog } = useAsyncData(() => tagsService.list());
   const tagColor = React.useMemo(() => {
@@ -234,22 +273,23 @@ export function UnifiedList({
             title="Reagendar"
             onClear={
               r.kind === "task"
-                ? async () => {
-                    await ticketsService.update(r.task.id, { due_at: null });
-                    onChanged?.();
+                ? () => {
+                    setReason("");
+                    setReschedule({ task: r.task, newDue: null });
                   }
                 : undefined
             }
             onPick={async (day) => {
               if (r.kind === "task") {
                 const due = mergeDay(day, taskTimeEnabled ? r.task.due_at : null);
-                await ticketsService.update(r.task.id, { due_at: due });
-              } else {
-                const startIso = mergeDay(day, r.event.starts_at);
-                const dur = +new Date(r.event.ends_at) - +new Date(r.event.starts_at);
-                const endIso = new Date(+new Date(startIso) + dur).toISOString();
-                await calendarService.update(r.event.id, { starts_at: startIso, ends_at: endIso });
+                setReason("");
+                setReschedule({ task: r.task, newDue: due });
+                return;
               }
+              const startIso = mergeDay(day, r.event.starts_at);
+              const dur = +new Date(r.event.ends_at) - +new Date(r.event.starts_at);
+              const endIso = new Date(+new Date(startIso) + dur).toISOString();
+              await calendarService.update(r.event.id, { starts_at: startIso, ends_at: endIso });
               onChanged?.();
             }}
           >
@@ -576,6 +616,39 @@ export function UnifiedList({
           </Button>
         )}
       />
+
+      <Dialog open={reschedule !== null} onOpenChange={(o) => !o && setReschedule(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {reschedule?.newDue ? "Reagendar tarefa" : "Remover prazo"}
+            </DialogTitle>
+            <DialogDescription>
+              {reschedule?.newDue
+                ? `Novo prazo: ${formatShortDate(reschedule.newDue)}. Informe o motivo (fica no histórico).`
+                : "Informe o motivo da remoção do prazo (fica no histórico)."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label>Motivo</Label>
+            <Input
+              autoFocus
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && confirmReschedule()}
+              placeholder="Ex.: cliente pediu para adiar"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReschedule(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmReschedule} loading={rescheduling}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
