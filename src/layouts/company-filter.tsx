@@ -34,6 +34,8 @@ export function CompanyFilter() {
           const next = !v || v === "all" ? null : v;
           if (next === companyId) return;
           setCompanyId(next);
+          // Cookie para o servidor escopar o contador de tarefas do menu.
+          document.cookie = `view_company=${next ?? ""}; path=/; max-age=${next ? 60 * 60 * 24 * 365 : 0}`;
           window.location.reload();
         }}
         placeholder="Todas as empresas"

@@ -25,7 +25,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ).length;
   } else {
     user = await getServerSessionUser();
-    ticketBadge = await getServerTicketBadge();
+    // Super admin: respeita a empresa selecionada no filtro global (cookie).
+    let viewCompany: string | null = null;
+    if (user.role === "super_admin") {
+      const { cookies } = await import("next/headers");
+      viewCompany = (await cookies()).get("view_company")?.value || null;
+    }
+    ticketBadge = await getServerTicketBadge(viewCompany);
   }
 
   return (

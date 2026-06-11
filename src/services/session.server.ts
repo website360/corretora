@@ -25,8 +25,11 @@ export async function getServerSessionUser(): Promise<SessionUser> {
   return { ...(rest as User), company } as SessionUser;
 }
 
-/** Count of active (non-terminal stage) tasks for the current tenant. */
-export async function getServerTicketBadge(): Promise<number> {
+/**
+ * Count of active (non-terminal stage) tasks. Para super admin com uma empresa
+ * selecionada no filtro global, escopa pela `companyId` (senão o RLS conta tudo).
+ */
+export async function getServerTicketBadge(companyId?: string | null): Promise<number> {
   const sb = await getSupabaseServerClient();
   const { data: stages } = await sb
     .from("task_stages")
@@ -34,9 +37,8 @@ export async function getServerTicketBadge(): Promise<number> {
     .eq("is_terminal", false);
   const ids = ((stages as { id: string }[] | null) ?? []).map((s) => s.id);
   if (ids.length === 0) return 0;
-  const { count } = await sb
-    .from("tickets")
-    .select("id", { count: "exact", head: true })
-    .in("stage_id", ids);
+  let q = sb.from("tickets").select("id", { count: "exact", head: true }).in("stage_id", ids);
+  if (companyId) q = q.eq("company_id", companyId);
+  const { count } = await q;
   return count ?? 0;
 }
