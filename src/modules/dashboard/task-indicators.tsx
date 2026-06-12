@@ -106,20 +106,11 @@ function IndicatorCard({
 }) {
   const Icon = metric.icon;
   const share = total > 0 ? Math.round((metric.value / total) * 100) : 0;
-  const fill = loading ? 0 : Math.max(share, total > 0 && metric.value > 0 ? 6 : 0);
   return (
     <Link href={metric.href} className="group block">
-      <Card className="relative overflow-hidden p-5 pr-8 transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
-        {/* barra de proporção vertical na borda direita */}
-        <div className="absolute inset-y-0 right-0 w-2 bg-muted">
-          <div
-            className={cn(
-              "absolute inset-x-0 bottom-0 transition-all duration-500",
-              TONE_BAR[metric.tone],
-            )}
-            style={{ height: `${fill}%` }}
-          />
-        </div>
+      <Card className="relative overflow-hidden p-5 pr-7 transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
+        {/* barra colorida vertical na borda direita */}
+        <div className={cn("absolute inset-y-0 right-0 w-1", TONE_BAR[metric.tone])} />
 
         {/* rótulo + ponto colorido do status / ícone no canto */}
         <div className="flex items-center justify-between gap-2">
