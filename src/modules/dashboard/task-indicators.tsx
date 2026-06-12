@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   endOfDay,
   endOfMonth,
@@ -75,26 +76,30 @@ interface Metric {
   value: number;
   tone: Tone;
   icon: typeof ListTodo;
+  /** Deep-link para a lista de tarefas já filtrada por este status. */
+  href: string;
 }
 
 function IndicatorCard({ metric, loading }: { metric: Metric; loading: boolean }) {
   const Icon = metric.icon;
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-sm font-medium text-muted-foreground">{metric.label}</span>
-        <span className={cn("rounded-lg bg-muted/60 p-1.5", TONE_TEXT_CLASS[metric.tone])}>
-          <Icon className="size-4" />
-        </span>
-      </div>
-      {loading ? (
-        <Skeleton className="mt-2 h-9 w-12" />
-      ) : (
-        <p className={cn("mt-1 text-3xl font-semibold tabular-nums", TONE_TEXT_CLASS[metric.tone])}>
-          {metric.value}
-        </p>
-      )}
-    </Card>
+    <Link href={metric.href} className="group">
+      <Card className="p-4 transition-all hover:border-primary/40 hover:shadow-md">
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-sm font-medium text-muted-foreground">{metric.label}</span>
+          <span className={cn("rounded-lg bg-muted/60 p-1.5", TONE_TEXT_CLASS[metric.tone])}>
+            <Icon className="size-4" />
+          </span>
+        </div>
+        {loading ? (
+          <Skeleton className="mt-2 h-9 w-12" />
+        ) : (
+          <p className={cn("mt-1 text-3xl font-semibold tabular-nums", TONE_TEXT_CLASS[metric.tone])}>
+            {metric.value}
+          </p>
+        )}
+      </Card>
+    </Link>
   );
 }
 
@@ -145,10 +150,10 @@ export function TaskIndicators() {
     ).length;
 
     return [
-      { key: "open", label: "Em aberto", value: open, tone: "primary", icon: CircleDashed },
-      { key: "overdue", label: "Em atraso", value: overdue, tone: "destructive", icon: AlertTriangle },
-      { key: "resolved", label: "Resolvidas", value: resolved, tone: "success", icon: CheckCircle2 },
-      { key: "closed", label: "Concluídas", value: closed, tone: "neutral", icon: CheckCheck },
+      { key: "open", label: "Em aberto", value: open, tone: "primary", icon: CircleDashed, href: "/tickets?status=open" },
+      { key: "overdue", label: "Em atraso", value: overdue, tone: "destructive", icon: AlertTriangle, href: "/tickets?status=overdue" },
+      { key: "resolved", label: "Resolvidas", value: resolved, tone: "success", icon: CheckCircle2, href: "/tickets?status=resolved" },
+      { key: "closed", label: "Concluídas", value: closed, tone: "neutral", icon: CheckCheck, href: "/tickets?status=closed" },
     ];
   }, [tickets, range, customFrom, customTo]);
 

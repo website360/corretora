@@ -252,6 +252,8 @@ export function TasksView() {
   React.useEffect(() => {
     if (hydrated.current || !user.id) return;
     hydrated.current = true;
+    // Deep-link de status (dashboard) controla a visão — não aplica o filtro grudado.
+    if (searchParams.get("status")) return;
     // localStorage (lido fresco a cada montagem) tem prioridade — é o filtro
     // temporário "grudado". O valor do banco serve de fallback entre devices.
     const last =
@@ -396,6 +398,20 @@ export function TasksView() {
     if (searchParams.get("new") === "1") setNewTaskOpen(true);
   }, [searchParams]);
 
+  // Deep-link dos indicadores do dashboard: ?status=open|overdue|resolved|closed
+  // abre a Lista filtrada por aquele status (todas as tarefas, sem janela de período).
+  const statusParam = searchParams.get("status");
+  React.useEffect(() => {
+    if (!statusParam) return;
+    setTaskView("list");
+    setEntryTypes(["tasks"]);
+    setHideClosed(false);
+    setPeriodMode("range");
+    setRangeFrom("");
+    setRangeTo("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusParam]);
+
   const { data: users } = useAsyncData(() => usersService.list());
   const { data: allTags } = useAsyncData(() => tagsService.list());
   // Tag filter options that apply to tasks or events (both are listed here).
@@ -449,6 +465,16 @@ export function TasksView() {
     subjectFilter.length === 0 || (!!subject && subjectFilter.includes(subject));
   // Finalização vem do status (tarefa) / finished (evento) — nunca da etapa.
   const taskOpenOk = (t: Ticket) => !hideClosed || t.status !== "closed";
+  // Filtro de status vindo do dashboard (?status=...).
+  const isOpenStatus = (t: Ticket) =>
+    t.status === "open" || t.status === "in_progress" || t.status === "waiting_customer";
+  const statusOk = (t: Ticket) => {
+    if (!statusParam) return true;
+    if (statusParam === "open") return isOpenStatus(t);
+    if (statusParam === "overdue")
+      return isOpenStatus(t) && !!t.due_at && new Date(t.due_at) < new Date();
+    return t.status === statusParam; // resolved | closed
+  };
   const eventOpenOk = (e: CalendarEvent) => !hideClosed || !e.finished;
 
   // The active time window. `null` while a custom range is incomplete (= no filter).
@@ -506,6 +532,7 @@ export function TasksView() {
       boardOk(t.board_id) &&
       stageOk(t.column_id) &&
       subjectOk(t.subject_type) &&
+      statusOk(t) &&
       taskOpenOk(t) &&
       taskInWindow(t),
   );
