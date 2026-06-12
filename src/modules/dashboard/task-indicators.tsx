@@ -118,7 +118,7 @@ function IndicatorCard({
         <Icon
           aria-hidden
           className={cn(
-            "pointer-events-none absolute -bottom-5 right-1 size-28 opacity-[0.06]",
+            "pointer-events-none absolute -bottom-8 -right-3 size-28 opacity-[0.06]",
             TONE_TEXT_CLASS[metric.tone],
           )}
         />
