@@ -106,10 +106,22 @@ function IndicatorCard({
 }) {
   const Icon = metric.icon;
   const share = total > 0 ? Math.round((metric.value / total) * 100) : 0;
+  const fill = loading ? 0 : Math.max(share, total > 0 && metric.value > 0 ? 6 : 0);
   return (
     <Link href={metric.href} className="group block">
-      <Card className="p-5 transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
-        {/* rótulo + ponto colorido do status */}
+      <Card className="relative overflow-hidden p-5 pr-8 transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
+        {/* barra de proporção vertical na borda direita */}
+        <div className="absolute inset-y-0 right-0 w-2 bg-muted">
+          <div
+            className={cn(
+              "absolute inset-x-0 bottom-0 transition-all duration-500",
+              TONE_BAR[metric.tone],
+            )}
+            style={{ height: `${fill}%` }}
+          />
+        </div>
+
+        {/* rótulo + ponto colorido do status / ícone no canto */}
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
             <span className={cn("size-2 rounded-full", TONE_DOT_CLASS[metric.tone])} />
@@ -117,7 +129,8 @@ function IndicatorCard({
           </span>
           <Icon
             className={cn(
-              "size-4 text-muted-foreground/35 transition-colors group-hover:text-muted-foreground",
+              "size-[18px] transition-colors",
+              TONE_TEXT_CLASS[metric.tone],
             )}
           />
         </div>
@@ -131,14 +144,7 @@ function IndicatorCard({
           </p>
         )}
 
-        {/* traço fino colorido proporcional ao total */}
-        <div className="mt-5 h-[3px] w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className={cn("h-full rounded-full transition-all duration-500", TONE_BAR[metric.tone])}
-            style={{ width: loading ? "0%" : `${Math.max(share, total > 0 && metric.value > 0 ? 6 : 0)}%` }}
-          />
-        </div>
-        <p className="mt-2 text-[11px] tabular-nums text-muted-foreground/70">
+        <p className="mt-3 text-[11px] tabular-nums text-muted-foreground/70">
           {loading ? "—" : `${share}% do total`}
         </p>
       </Card>
