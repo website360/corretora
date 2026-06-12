@@ -84,6 +84,8 @@ interface Metric {
   icon: typeof ListTodo;
   /** Deep-link para a lista de tarefas já filtrada por este status. */
   href: string;
+  /** Card de total (denominador) — barra cheia e legenda "no período". */
+  isTotal?: boolean;
 }
 
 /** Traço fino colorido (rodapé do card). */
@@ -112,32 +114,38 @@ function IndicatorCard({
         {/* barra colorida vertical na borda direita */}
         <div className={cn("absolute inset-y-0 right-0 w-1", TONE_BAR[metric.tone])} />
 
-        {/* rótulo + ponto colorido do status / ícone no canto */}
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
-            <span className={cn("size-2 rounded-full", TONE_DOT_CLASS[metric.tone])} />
-            {metric.label}
-          </span>
-          <Icon
-            className={cn(
-              "size-[18px] transition-colors",
-              TONE_TEXT_CLASS[metric.tone],
-            )}
-          />
-        </div>
+        {/* ícone grande como marca d'água, cortado no canto inferior direito */}
+        <Icon
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute -bottom-5 right-1 size-28 opacity-[0.06]",
+            TONE_TEXT_CLASS[metric.tone],
+          )}
+        />
 
-        {/* número gigante (herói) */}
-        {loading ? (
-          <Skeleton className="mt-4 h-12 w-20" />
-        ) : (
-          <p className="mt-4 text-5xl font-bold leading-none tracking-tight tabular-nums">
-            {metric.value}
+        <div className="relative">
+          {/* rótulo + ponto colorido do status / ícone no canto */}
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
+              <span className={cn("size-2 rounded-full", TONE_DOT_CLASS[metric.tone])} />
+              {metric.label}
+            </span>
+            <Icon className={cn("size-[18px]", TONE_TEXT_CLASS[metric.tone])} />
+          </div>
+
+          {/* número gigante (herói) */}
+          {loading ? (
+            <Skeleton className="mt-4 h-12 w-20" />
+          ) : (
+            <p className="mt-4 text-5xl font-bold leading-none tracking-tight tabular-nums">
+              {metric.value}
+            </p>
+          )}
+
+          <p className="mt-3 text-[11px] tabular-nums text-muted-foreground/70">
+            {loading ? "—" : metric.isTotal ? "no período" : `${share}% do total`}
           </p>
-        )}
-
-        <p className="mt-3 text-[11px] tabular-nums text-muted-foreground/70">
-          {loading ? "—" : `${share}% do total`}
-        </p>
+        </div>
       </Card>
     </Link>
   );
@@ -173,7 +181,7 @@ export function TaskIndicators() {
     // viewCompanyId: super_admin trocando a empresa do filtro refaz a busca.
   }, [viewCompanyId]);
 
-  const metrics = React.useMemo<Metric[]>(() => {
+  const { metrics, total } = React.useMemo(() => {
     const { from, to } = rangeFor(range, customFrom, customTo);
     const now = new Date();
     const inRange = tickets.filter((t) => {
@@ -182,6 +190,7 @@ export function TaskIndicators() {
       if (to && c > to) return false;
       return true;
     });
+    const all = inRange.length;
     const open = inRange.filter(isOpen).length;
     const resolved = inRange.filter((t) => t.status === "resolved").length;
     const closed = inRange.filter((t) => t.status === "closed").length;
@@ -189,15 +198,15 @@ export function TaskIndicators() {
       (t) => isOpen(t) && t.due_at != null && new Date(t.due_at) < now,
     ).length;
 
-    return [
-      { key: "open", label: "Em aberto", value: open, tone: "primary", icon: CircleDashed, href: "/tickets?status=open" },
+    const list: Metric[] = [
+      { key: "total", label: "Total", value: all, tone: "primary", icon: ListTodo, href: "/tickets", isTotal: true },
+      { key: "open", label: "Em aberto", value: open, tone: "warning", icon: CircleDashed, href: "/tickets?status=open" },
       { key: "overdue", label: "Em atraso", value: overdue, tone: "destructive", icon: AlertTriangle, href: "/tickets?status=overdue" },
       { key: "resolved", label: "Resolvidas", value: resolved, tone: "success", icon: CheckCircle2, href: "/tickets?status=resolved" },
       { key: "closed", label: "Concluídas", value: closed, tone: "neutral", icon: CheckCheck, href: "/tickets?status=closed" },
     ];
+    return { metrics: list, total: all };
   }, [tickets, range, customFrom, customTo]);
-
-  const total = metrics.reduce((s, m) => s + m.value, 0);
 
   return (
     <section className="space-y-3">
@@ -250,7 +259,7 @@ export function TaskIndicators() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {metrics.map((m) => (
           <IndicatorCard key={m.key} metric={m} total={total} loading={loading} />
         ))}
