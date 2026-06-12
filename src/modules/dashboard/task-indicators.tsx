@@ -15,7 +15,6 @@ import {
 } from "date-fns";
 import {
   AlertTriangle,
-  ArrowUpRight,
   CheckCheck,
   CheckCircle2,
   CircleDashed,
@@ -23,7 +22,7 @@ import {
 } from "lucide-react";
 import { ticketsService } from "@/services/tickets.service";
 import { useViewCompanyStore } from "@/stores/view-company-store";
-import { TONE_TEXT_CLASS, type Tone } from "@/config/domain";
+import { TONE_DOT_CLASS, TONE_TEXT_CLASS, type Tone } from "@/config/domain";
 import { cn } from "@/lib/utils";
 import type { Ticket } from "@/types/domain";
 import { Card } from "@/components/ui/card";
@@ -87,31 +86,13 @@ interface Metric {
   href: string;
 }
 
-/** Tile do ícone — fundo tonalizado + anel. */
-const TONE_ICON_TILE: Record<Tone, string> = {
-  neutral: "bg-muted-foreground/10 text-muted-foreground ring-muted-foreground/15",
-  primary: "bg-primary/10 text-primary ring-primary/15",
-  success: "bg-success/10 text-success ring-success/15",
-  warning: "bg-warning/10 text-warning ring-warning/15",
-  destructive: "bg-destructive/10 text-destructive ring-destructive/15",
-};
-
-/** Faixa de destaque no topo do card + barra de proporção. */
+/** Traço fino colorido (rodapé do card). */
 const TONE_BAR: Record<Tone, string> = {
   neutral: "bg-muted-foreground/50",
   primary: "bg-primary",
   success: "bg-success",
   warning: "bg-warning",
   destructive: "bg-destructive",
-};
-
-/** Brilho de fundo sutil no hover. */
-const TONE_GLOW: Record<Tone, string> = {
-  neutral: "from-muted-foreground/[0.07]",
-  primary: "from-primary/[0.07]",
-  success: "from-success/[0.07]",
-  warning: "from-warning/[0.07]",
-  destructive: "from-destructive/[0.07]",
 };
 
 function IndicatorCard({
@@ -127,52 +108,39 @@ function IndicatorCard({
   const share = total > 0 ? Math.round((metric.value / total) * 100) : 0;
   return (
     <Link href={metric.href} className="group block">
-      <Card className="relative overflow-hidden p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-lg">
-        {/* faixa superior tonalizada */}
-        <span className={cn("absolute inset-x-0 top-0 h-1", TONE_BAR[metric.tone])} />
-        {/* brilho no hover */}
-        <span
-          className={cn(
-            "pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100",
-            TONE_GLOW[metric.tone],
-          )}
-        />
-
-        <div className="relative flex items-start justify-between gap-2">
-          <span
+      <Card className="p-5 transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
+        {/* rótulo + ponto colorido do status */}
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
+            <span className={cn("size-2 rounded-full", TONE_DOT_CLASS[metric.tone])} />
+            {metric.label}
+          </span>
+          <Icon
             className={cn(
-              "inline-flex size-10 items-center justify-center rounded-xl ring-1 ring-inset transition-transform duration-200 group-hover:scale-105",
-              TONE_ICON_TILE[metric.tone],
+              "size-4 text-muted-foreground/35 transition-colors group-hover:text-muted-foreground",
             )}
-          >
-            <Icon className="size-5" />
-          </span>
-          <ArrowUpRight className="size-4 text-muted-foreground/40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground" />
+          />
         </div>
 
-        <div className="relative mt-3">
-          {loading ? (
-            <Skeleton className="h-9 w-14" />
-          ) : (
-            <p className="text-[2rem] font-bold leading-none tabular-nums tracking-tight">
-              {metric.value}
-            </p>
-          )}
-          <p className="mt-1.5 text-sm font-medium text-muted-foreground">{metric.label}</p>
-        </div>
+        {/* número gigante (herói) */}
+        {loading ? (
+          <Skeleton className="mt-4 h-12 w-20" />
+        ) : (
+          <p className="mt-4 text-5xl font-bold leading-none tracking-tight tabular-nums">
+            {metric.value}
+          </p>
+        )}
 
-        {/* barra de proporção do total */}
-        <div className="relative mt-3 flex items-center gap-2">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-            <div
-              className={cn("h-full rounded-full transition-all duration-500", TONE_BAR[metric.tone])}
-              style={{ width: loading ? "0%" : `${share}%` }}
-            />
-          </div>
-          <span className="w-9 shrink-0 text-right text-[11px] font-medium tabular-nums text-muted-foreground">
-            {loading ? "—" : `${share}%`}
-          </span>
+        {/* traço fino colorido proporcional ao total */}
+        <div className="mt-5 h-[3px] w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className={cn("h-full rounded-full transition-all duration-500", TONE_BAR[metric.tone])}
+            style={{ width: loading ? "0%" : `${Math.max(share, total > 0 && metric.value > 0 ? 6 : 0)}%` }}
+          />
         </div>
+        <p className="mt-2 text-[11px] tabular-nums text-muted-foreground/70">
+          {loading ? "—" : `${share}% do total`}
+        </p>
       </Card>
     </Link>
   );
