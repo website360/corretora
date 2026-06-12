@@ -211,16 +211,11 @@ export function TaskIndicators() {
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="inline-flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-inset ring-primary/15">
-            <ListTodo className="size-4" />
-          </span>
-          <div className="leading-tight">
-            <h2 className="text-sm font-semibold">Tarefas</h2>
-            <p className="text-xs text-muted-foreground">
-              {loading ? "Carregando…" : `${total} ${total === 1 ? "tarefa" : "tarefas"} no período`}
-            </p>
-          </div>
+        <div className="leading-tight">
+          <h2 className="text-lg font-semibold">Tarefas</h2>
+          <p className="text-xs text-muted-foreground">
+            {loading ? "Carregando…" : `${total} ${total === 1 ? "tarefa" : "tarefas"} no período`}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {range === "custom" && (
