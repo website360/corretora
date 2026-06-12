@@ -38,7 +38,7 @@ import type {
   TagModule,
 } from "@/types/domain";
 
-type Tone = "neutral" | "primary" | "success" | "warning" | "destructive";
+export type Tone = "neutral" | "primary" | "success" | "warning" | "destructive";
 
 export const TAG_MODULE_META: Record<TagModule, { label: string }> = {
   tasks: { label: "Tarefas" },
