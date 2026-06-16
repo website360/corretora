@@ -51,8 +51,8 @@ export default function RegisterPage() {
       await new Promise((r) => setTimeout(r, 900));
     }
     toast.success("Corretora criada! Escolha seu plano para começar.");
-    router.push("/escolher-plano");
-    router.refresh();
+    // Navegação dura: leva o cookie de sessão recém-criado ao destino.
+    window.location.assign("/escolher-plano");
   }
 
   return (

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Lock, Mail } from "lucide-react";
@@ -17,7 +17,6 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { GoogleButton } from "@/components/auth/google-button";
 
 export default function LoginPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -51,8 +50,12 @@ export default function LoginPage() {
       await new Promise((r) => setTimeout(r, 700));
     }
     toast.success("Bem-vindo de volta!");
-    router.push("/dashboard");
-    router.refresh();
+    // Navegação DURA (não client-side): garante que o request do destino
+    // carregue o cookie de sessão recém-gravado e evita um redirect de
+    // /dashboard porventura cacheado no router do Next (loop pós-login).
+    const raw = searchParams.get("redirect");
+    const dest = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/dashboard";
+    window.location.assign(dest);
   }
 
   return (

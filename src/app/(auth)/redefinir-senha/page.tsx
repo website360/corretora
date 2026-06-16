@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Lock } from "lucide-react";
@@ -14,7 +13,6 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { PasswordStrength } from "@/components/auth/password-strength";
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -38,8 +36,7 @@ export default function ResetPasswordPage() {
       await new Promise((r) => setTimeout(r, 700));
     }
     toast.success("Senha redefinida! Use a nova senha para entrar.");
-    router.push("/dashboard");
-    router.refresh();
+    window.location.assign("/dashboard");
   }
 
   return (
