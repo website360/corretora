@@ -94,11 +94,20 @@ export async function updateSession(request: NextRequest) {
   const isCustomer = user?.app_metadata?.user_type === "customer";
   const inPortal = pathname === "/portal" || pathname.startsWith("/portal/");
   const isPortalLogin = pathname.startsWith("/portal/login");
+
+  // Toda resposta de redirect PRECISA carregar os cookies que o Supabase
+  // acabou de gravar em `response` (refresh do token). Como o refresh token
+  // rotaciona, perder esses cookies num redirect invalida a sessão e gera
+  // loop de login. Copiamos os cookies da `response` para o redirect.
+  const withSessionCookies = <T extends NextResponse>(redirect: T): T => {
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return noSharedCache(redirect);
+  };
   const redirectTo = (path: string) => {
     const url = request.nextUrl.clone();
     url.pathname = path;
     url.search = "";
-    return noSharedCache(NextResponse.redirect(url));
+    return withSessionCookies(NextResponse.redirect(url));
   };
 
   // ── Realm do PORTAL DO CLIENTE (/portal) ──
@@ -127,8 +136,9 @@ export async function updateSession(request: NextRequest) {
   if (!user && !isPublic(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
     url.searchParams.set("redirect", pathname);
-    return noSharedCache(NextResponse.redirect(url));
+    return withSessionCookies(NextResponse.redirect(url));
   }
 
   // Authenticated users shouldn't see auth screens (mas podem ver o marketing).
