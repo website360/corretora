@@ -226,12 +226,17 @@ export function TaskIndicators() {
       (t) => isOpen(t) && t.due_at != null && new Date(t.due_at) < now,
     ).length;
 
+    const boardQ = boardId !== "all" ? `board=${boardId}` : "";
+    const href = (status?: string) => {
+      const parts = [status ? `status=${status}` : "", boardQ].filter(Boolean);
+      return parts.length ? `/tickets?${parts.join("&")}` : "/tickets";
+    };
     const list: Metric[] = [
-      { key: "total", label: "Total", value: all, tone: "primary", icon: ListTodo, href: "/tickets", isTotal: true },
-      { key: "open", label: "Em aberto", value: open, tone: "warning", icon: CircleDashed, href: "/tickets?status=open" },
-      { key: "overdue", label: "Em atraso", value: overdue, tone: "destructive", icon: AlertTriangle, href: "/tickets?status=overdue" },
-      { key: "resolved", label: "Resolvidas", value: resolved, tone: "success", icon: CheckCircle2, href: "/tickets?status=resolved" },
-      { key: "closed", label: "Concluídas", value: closed, tone: "neutral", icon: CheckCheck, href: "/tickets?status=closed" },
+      { key: "total", label: "Total", value: all, tone: "primary", icon: ListTodo, href: href(), isTotal: true },
+      { key: "open", label: "Em aberto", value: open, tone: "warning", icon: CircleDashed, href: href("open") },
+      { key: "overdue", label: "Em atraso", value: overdue, tone: "destructive", icon: AlertTriangle, href: href("overdue") },
+      { key: "resolved", label: "Resolvidas", value: resolved, tone: "success", icon: CheckCircle2, href: href("resolved") },
+      { key: "closed", label: "Concluídas", value: closed, tone: "neutral", icon: CheckCheck, href: href("closed") },
     ];
     return { metrics: list, total: all };
   }, [tickets, boardId, range, customFrom, customTo]);

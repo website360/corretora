@@ -254,8 +254,8 @@ export function TasksView() {
   React.useEffect(() => {
     if (hydrated.current || !user.id) return;
     hydrated.current = true;
-    // Deep-link de status (dashboard) controla a visão — não aplica o filtro grudado.
-    if (!searchParams.get("status")) {
+    // Deep-link do dashboard (status/board) controla a visão — não aplica o grudado.
+    if (!searchParams.get("status") && !searchParams.get("board")) {
       // localStorage (lido fresco a cada montagem) tem prioridade — é o filtro
       // grudado. O valor do banco serve de fallback entre devices.
       const last =
@@ -271,7 +271,8 @@ export function TasksView() {
   // (fallback entre devices) é debounced para não escrever a cada tecla.
   React.useEffect(() => {
     if (!autosaveReady.current) return;
-    if (searchParams.get("status")) return; // deep-link transitório não persiste
+    // deep-link transitório do dashboard (status/board) não persiste
+    if (searchParams.get("status") || searchParams.get("board")) return;
     // Pula a 1ª passada (estado ainda default antes da hidratação aplicar).
     if (!autosaveArmed.current) {
       autosaveArmed.current = true;
@@ -439,18 +440,20 @@ export function TasksView() {
   }, [searchParams]);
 
   // Deep-link dos indicadores do dashboard: ?status=open|overdue|resolved|closed
-  // abre a Lista filtrada por aquele status (todas as tarefas, sem janela de período).
+  // e/ou ?board=<id> abre a Lista filtrada (todas as tarefas, sem janela de período).
   const statusParam = searchParams.get("status");
+  const boardParam = searchParams.get("board");
   React.useEffect(() => {
-    if (!statusParam) return;
+    if (!statusParam && !boardParam) return;
     setTaskView("list");
     setEntryTypes(["tasks"]);
     setHideClosed(false);
+    setBoardFilter(boardParam ? [boardParam] : []);
     setPeriodMode("range");
     setRangeFrom("");
     setRangeTo("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusParam]);
+  }, [statusParam, boardParam]);
 
   const { data: users } = useAsyncData(() => usersService.list());
   const { data: allTags } = useAsyncData(() => tagsService.list());
