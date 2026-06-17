@@ -21,10 +21,11 @@ import {
   ListTodo,
 } from "lucide-react";
 import { ticketsService } from "@/services/tickets.service";
+import { taskBoardsService } from "@/services/task-boards.service";
 import { useViewCompanyStore } from "@/stores/view-company-store";
 import { TONE_DOT_CLASS, TONE_TEXT_CLASS, type Tone } from "@/config/domain";
 import { cn } from "@/lib/utils";
-import type { Ticket } from "@/types/domain";
+import type { TaskBoard, Ticket } from "@/types/domain";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -159,10 +160,23 @@ function IndicatorCard({
 export function TaskIndicators() {
   const viewCompanyId = useViewCompanyStore((s) => s.companyId);
   const [tickets, setTickets] = React.useState<Ticket[]>([]);
+  const [boards, setBoards] = React.useState<TaskBoard[]>([]);
+  const [boardId, setBoardId] = React.useState<string>("all");
   const [loading, setLoading] = React.useState(true);
   const [range, setRange] = React.useState<RangeKey>("month");
   const [customFrom, setCustomFrom] = React.useState("");
   const [customTo, setCustomTo] = React.useState("");
+
+  // Quadro escolhido fica guardado por dispositivo (volta selecionado).
+  React.useEffect(() => {
+    const saved = localStorage.getItem("dashboard_task_board");
+    if (saved) setBoardId(saved);
+  }, []);
+  const onBoardChange = (v: string) => {
+    setBoardId(v);
+    if (v === "all") localStorage.removeItem("dashboard_task_board");
+    else localStorage.setItem("dashboard_task_board", v);
+  };
 
   React.useEffect(() => {
     let alive = true;
@@ -175,16 +189,30 @@ export function TaskIndicators() {
       .finally(() => {
         if (alive) setLoading(false);
       });
+    taskBoardsService
+      .listBoards()
+      .then((b) => {
+        if (alive) setBoards(b);
+      })
+      .catch(() => {});
     return () => {
       alive = false;
     };
     // viewCompanyId: super_admin trocando a empresa do filtro refaz a busca.
   }, [viewCompanyId]);
 
+  // Se o quadro guardado não existe na empresa atual, volta para "Todos".
+  React.useEffect(() => {
+    if (boardId !== "all" && boards.length && !boards.some((b) => b.id === boardId)) {
+      setBoardId("all");
+    }
+  }, [boards, boardId]);
+
   const { metrics, total } = React.useMemo(() => {
     const { from, to } = rangeFor(range, customFrom, customTo);
     const now = new Date();
     const inRange = tickets.filter((t) => {
+      if (boardId !== "all" && t.board_id !== boardId) return false;
       const c = new Date(t.created_at);
       if (from && c < from) return false;
       if (to && c > to) return false;
@@ -206,7 +234,7 @@ export function TaskIndicators() {
       { key: "closed", label: "Concluídas", value: closed, tone: "neutral", icon: CheckCheck, href: "/tickets?status=closed" },
     ];
     return { metrics: list, total: all };
-  }, [tickets, range, customFrom, customTo]);
+  }, [tickets, boardId, range, customFrom, customTo]);
 
   return (
     <section className="space-y-3">
@@ -238,6 +266,21 @@ export function TaskIndicators() {
                 aria-label="Data final"
               />
             </>
+          )}
+          {boards.length > 0 && (
+            <Select value={boardId} onValueChange={onBoardChange}>
+              <SelectTrigger className="h-9 w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os quadros</SelectItem>
+                {boards.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
           <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
             <SelectTrigger className="h-9 w-[160px]">

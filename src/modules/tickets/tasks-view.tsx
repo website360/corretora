@@ -20,7 +20,6 @@ import {
   List,
   Plus,
   RotateCcw,
-  Save,
   Search,
   Shapes,
   SlidersHorizontal,
@@ -249,17 +248,58 @@ export function TasksView() {
 
   // Restaura o último filtro usado ao abrir (os presets ficam no SavedFiltersBar).
   const hydrated = React.useRef(false);
+  const autosaveReady = React.useRef(false);
+  const autosaveArmed = React.useRef(false);
+  const dbSaveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   React.useEffect(() => {
     if (hydrated.current || !user.id) return;
     hydrated.current = true;
     // Deep-link de status (dashboard) controla a visão — não aplica o filtro grudado.
-    if (searchParams.get("status")) return;
-    // localStorage (lido fresco a cada montagem) tem prioridade — é o filtro
-    // temporário "grudado". O valor do banco serve de fallback entre devices.
-    const last =
-      loadTaskFilters(user.id) ?? (user.task_filter_last as SavedTaskFilters | undefined) ?? null;
-    if (last) applyFilters(last);
+    if (!searchParams.get("status")) {
+      // localStorage (lido fresco a cada montagem) tem prioridade — é o filtro
+      // grudado. O valor do banco serve de fallback entre devices.
+      const last =
+        loadTaskFilters(user.id) ?? (user.task_filter_last as SavedTaskFilters | undefined) ?? null;
+      if (last) applyFilters(last);
+    }
+    autosaveReady.current = true;
   }, [user.id]);
+
+  // Persiste automaticamente TODO filtro aplicado: gruda ao sair e voltar à
+  // página, sem o usuário precisar salvar. Em estado padrão, limpa a
+  // persistência (é o que "Limpar" faz). localStorage é imediato; o banco
+  // (fallback entre devices) é debounced para não escrever a cada tecla.
+  React.useEffect(() => {
+    if (!autosaveReady.current) return;
+    if (searchParams.get("status")) return; // deep-link transitório não persiste
+    // Pula a 1ª passada (estado ainda default antes da hidratação aplicar).
+    if (!autosaveArmed.current) {
+      autosaveArmed.current = true;
+      return;
+    }
+    const isDefault =
+      activeFilterCount === 0 && periodMode === "month" && !rangeFrom && !rangeTo;
+    const f = isDefault ? null : currentFilters();
+    if (f) saveTaskFilters(user.id, f);
+    else clearTaskFilters(user.id);
+    if (dbSaveTimer.current) clearTimeout(dbSaveTimer.current);
+    dbSaveTimer.current = setTimeout(() => saveLastToDb(f), 1000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    search,
+    priorities,
+    relations,
+    personIds,
+    tagFilter,
+    boardFilter,
+    stageFilter,
+    hideClosed,
+    subjectFilter,
+    entryTypes,
+    periodMode,
+    rangeFrom,
+    rangeTo,
+  ]);
 
   // Aplica um preset vindo do SavedFiltersBar (lembra como "último uso" e gruda).
   function onApplyPreset(f: PresetFilters) {
@@ -732,19 +772,6 @@ export function TasksView() {
             onClick={() => setHideClosed((v) => !v)}
           >
             <EyeOff /> Ocultar concluídos
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9"
-            title="Guardar os filtros atuais para quando você voltar (sem criar um preset)"
-            onClick={() => {
-              saveTaskFilters(user.id, currentFilters());
-              saveLastToDb(currentFilters());
-              toast.success("Filtro guardado — fica ativo ao sair e voltar à página.");
-            }}
-          >
-            <Save /> Salvar filtro temporário
           </Button>
         </div>
       )}
