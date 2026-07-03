@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -16,6 +16,7 @@ import {
   Pencil,
   StickyNote,
   Tag as TagIcon,
+  Trash2,
   User as UserIcon,
   UserCheck,
   Users,
@@ -45,6 +46,9 @@ import { UserAvatar } from "@/components/common/user-avatar";
 import { EmptyState } from "@/components/common/empty-state";
 import { CustomerFormDialog } from "@/modules/customers/customer-form-dialog";
 import { CustomerPortalCard } from "@/modules/customers/customer-portal-card";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
+
+const VALID_TABS = ["geral", "contratos", "atendimentos", "historico"] as const;
 
 const INTERACTION_ICON = {
   note: StickyNote,
@@ -59,14 +63,35 @@ export function CustomerProfile({ id }: { id: string }) {
   useDirectory();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { data: customer, loading, refetch } = useAsyncData(() => customersService.get(id), [id]);
   const { data: interactions } = useAsyncData(() => customersService.interactions(id), [id]);
   const { data: tags } = useAsyncData(() => tagsService.list("customers"));
   const [editOpen, setEditOpen] = React.useState(false);
   const [converting, setConverting] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
 
   const isLead = customer?.kind === "lead";
   const basePath = isLead ? "/leads" : "/clientes";
+
+  // Deep-link para uma aba específica (ex.: ?tab=atendimentos vindo do kanban).
+  const tabParam = searchParams.get("tab");
+  const initialTab =
+    tabParam && (VALID_TABS as readonly string[]).includes(tabParam) ? tabParam : "geral";
+
+  async function confirmDelete() {
+    if (!customer) return;
+    setDeleting(true);
+    try {
+      await customersService.remove(customer.id);
+      toast.success(`${isLead ? "Lead" : "Contato"} movido para a lixeira`);
+      router.replace(isLead ? "/kanban" : "/clientes");
+    } catch {
+      toast.error("Não foi possível excluir.");
+      setDeleting(false);
+    }
+  }
 
   // Lead é lead, contato é contato: mantém a URL coerente com o tipo do registro.
   React.useEffect(() => {
@@ -173,11 +198,18 @@ export function CustomerProfile({ id }: { id: string }) {
           <Button onClick={() => setEditOpen(true)}>
             <Pencil /> {isLead ? "Editar lead" : "Editar contato"}
           </Button>
+          <Button
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 /> {isLead ? "Excluir lead" : "Excluir contato"}
+          </Button>
         </div>
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="geral">
+      <Tabs defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="geral">Geral</TabsTrigger>
           {!isLead && (
@@ -302,6 +334,22 @@ export function CustomerProfile({ id }: { id: string }) {
         onOpenChange={setEditOpen}
         customer={customer}
         onSaved={() => refetch()}
+      />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={isLead ? "Excluir lead" : "Excluir contato"}
+        description={
+          <>
+            <strong>{customer.name || "Sem nome"}</strong> será movido para a lixeira (restaurável
+            por 5 dias).
+          </>
+        }
+        confirmLabel="Excluir"
+        variant="destructive"
+        loading={deleting}
+        onConfirm={confirmDelete}
       />
     </div>
   );

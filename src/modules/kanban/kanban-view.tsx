@@ -7,6 +7,7 @@ import {
   CalendarDays,
   KanbanSquare,
   List,
+  Lock,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -262,6 +263,7 @@ export function KanbanView() {
             loading={!customers}
             tagColor={tagColor}
             onOpen={setDrawerLead}
+            onChanged={refetchCustomers}
           />
         </div>
       ) : view === "calendar" ? (
@@ -299,6 +301,12 @@ export function KanbanView() {
                   <div className="flex items-center gap-2 px-3 py-3">
                     <StageDot color={column.color} icon={column.icon} />
                     <h3 className="truncate text-sm font-semibold">{column.name}</h3>
+                    {column.slot && (
+                      <Lock
+                        className="size-3 shrink-0 text-muted-foreground"
+                        aria-label="Bloco fixo do funil"
+                      />
+                    )}
                     <span className="rounded-full bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground">
                       {cards.length}
                     </span>
@@ -317,13 +325,18 @@ export function KanbanView() {
                         >
                           <Pencil /> Editar bloco
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setDeleteColumn(column)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 /> Excluir bloco
-                        </DropdownMenuItem>
+                        {/* Novo/Ganho/Perdido são fixos: não podem ser excluídos. */}
+                        {!column.slot && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setDeleteColumn(column)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 /> Excluir bloco
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

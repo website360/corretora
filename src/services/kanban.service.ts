@@ -16,18 +16,19 @@ const mockBoards: KanbanBoard[] = [
   },
 ];
 const mockColumns: KanbanColumn[] = [
-  { id: "kc_novo", company_id: "co_apex", board_id: "kb_default", name: "Novo", color: "primary", position: 0, created_at: new Date().toISOString() },
+  { id: "kc_novo", company_id: "co_apex", board_id: "kb_default", name: "Novo", color: "primary", slot: "new", position: 0, created_at: new Date().toISOString() },
   { id: "kc_contato", company_id: "co_apex", board_id: "kb_default", name: "Em contato", color: "warning", position: 1, created_at: new Date().toISOString() },
   { id: "kc_proposta", company_id: "co_apex", board_id: "kb_default", name: "Proposta", color: "neutral", position: 2, created_at: new Date().toISOString() },
-  { id: "kc_ganho", company_id: "co_apex", board_id: "kb_default", name: "Ganho", color: "success", position: 3, created_at: new Date().toISOString() },
-  { id: "kc_perdido", company_id: "co_apex", board_id: "kb_default", name: "Perdido", color: "destructive", position: 4, created_at: new Date().toISOString() },
+  { id: "kc_ganho", company_id: "co_apex", board_id: "kb_default", name: "Ganho", color: "success", slot: "won", position: 3, created_at: new Date().toISOString() },
+  { id: "kc_perdido", company_id: "co_apex", board_id: "kb_default", name: "Perdido", color: "destructive", slot: "lost", position: 4, created_at: new Date().toISOString() },
 ];
 
-const DEFAULT_COLUMNS: { name: string; color: StageColor }[] = [
-  { name: "Novo", color: "primary" },
+// The three anchors are fixed: Novo first, then Ganho/Perdido last.
+const DEFAULT_COLUMNS: { name: string; color: StageColor; slot?: "new" | "won" | "lost" }[] = [
+  { name: "Novo", color: "primary", slot: "new" },
   { name: "Em contato", color: "warning" },
-  { name: "Ganho", color: "success" },
-  { name: "Perdido", color: "destructive" },
+  { name: "Ganho", color: "success", slot: "won" },
+  { name: "Perdido", color: "destructive", slot: "lost" },
 ];
 
 export const kanbanService = {
@@ -66,6 +67,7 @@ export const kanbanService = {
           board_id: board.id,
           name: c.name,
           color: c.color,
+          slot: c.slot ?? null,
           position: i,
           created_at: new Date().toISOString(),
         }),
@@ -89,6 +91,7 @@ export const kanbanService = {
         board_id: board.id,
         name: c.name,
         color: c.color,
+        slot: c.slot ?? null,
         position: i,
       })),
     );
@@ -156,9 +159,16 @@ export const kanbanService = {
     color: string,
     icon?: string | null,
   ): Promise<KanbanColumn> {
+    // New columns always land BEFORE the fixed Ganho/Perdido pair.
+    const isTerminal = (c: { slot?: string | null }) => c.slot === "won" || c.slot === "lost";
+
     if (env.useMocks) {
       await sleep(140);
-      const siblings = mockColumns.filter((c) => c.board_id === boardId);
+      const siblings = mockColumns
+        .filter((c) => c.board_id === boardId)
+        .sort((a, b) => a.position - b.position);
+      const terminals = siblings.filter(isTerminal);
+      const insertPos = siblings.length - terminals.length;
       const col: KanbanColumn = {
         id: uid("kc"),
         company_id: getCurrentCompanyId() || "co_apex",
@@ -166,24 +176,35 @@ export const kanbanService = {
         name,
         color,
         icon: icon ?? null,
-        position: Math.max(-1, ...siblings.map((c) => c.position)) + 1,
+        slot: null,
+        position: insertPos,
         created_at: new Date().toISOString(),
       };
+      terminals.forEach((t, i) => (t.position = insertPos + 1 + i));
       mockColumns.push(col);
       return col;
     }
     const sb = getSupabaseBrowserClient();
     const { data: existing } = await sb
       .from("kanban_columns")
-      .select("position")
-      .eq("board_id", boardId);
-    const position = Math.max(-1, ...((existing as { position: number }[]) ?? []).map((c) => c.position)) + 1;
+      .select("id, position, slot")
+      .eq("board_id", boardId)
+      .order("position");
+    const cols = (existing as { id: string; position: number; slot: string | null }[]) ?? [];
+    const terminals = cols.filter(isTerminal);
+    const insertPos = cols.length - terminals.length;
     const { data, error } = await sb
       .from("kanban_columns")
-      .insert({ company_id: getWriteCompanyId(), board_id: boardId, name, color, icon: icon ?? null, position })
+      .insert({ company_id: getWriteCompanyId(), board_id: boardId, name, color, icon: icon ?? null, position: insertPos })
       .select("*")
       .single();
     if (error) throw error;
+    // Push the fixed terminals back to the end so they stay last.
+    await Promise.all(
+      terminals.map((t, i) =>
+        sb.from("kanban_columns").update({ position: insertPos + 1 + i }).eq("id", t.id),
+      ),
+    );
     return data as KanbanColumn;
   },
 
@@ -203,13 +224,20 @@ export const kanbanService = {
   },
 
   async removeColumn(id: string): Promise<void> {
+    const FIXED_MSG = "Este bloco é fixo do funil e não pode ser excluído.";
     if (env.useMocks) {
       await sleep(140);
       const i = mockColumns.findIndex((c) => c.id === id);
-      if (i !== -1) mockColumns.splice(i, 1);
+      if (i !== -1) {
+        if (mockColumns[i]!.slot) throw new Error(FIXED_MSG);
+        mockColumns.splice(i, 1);
+      }
       return;
     }
     const sb = getSupabaseBrowserClient();
+    // Guard: fixed anchors (Novo/Ganho/Perdido) can't be removed.
+    const { data: col } = await sb.from("kanban_columns").select("slot").eq("id", id).single();
+    if ((col as { slot: string | null } | null)?.slot) throw new Error(FIXED_MSG);
     const { error } = await sb.from("kanban_columns").delete().eq("id", id);
     if (error) throw error;
   },

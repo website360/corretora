@@ -380,6 +380,11 @@ export interface KanbanColumn {
   color: string;
   /** Ícone opcional (nome em STAGE_ICONS) — substitui a bolinha. */
   icon?: string | null;
+  /**
+   * Âncora fixa do funil: 'new' (primeira coluna), 'won'/'lost' (duas últimas).
+   * Colunas com slot não podem ser excluídas e ficam nas extremidades.
+   */
+  slot?: "new" | "won" | "lost" | null;
   position: number;
   created_at: ISODateString;
 }

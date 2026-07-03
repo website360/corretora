@@ -4,11 +4,13 @@ import * as React from "react";
 import Link from "next/link";
 import {
   Building2,
+  Headset,
   Mail,
   MapPin,
   Pencil,
   Phone,
   SquareArrowOutUpRight,
+  Trash2,
   User as UserIcon,
   UserCheck,
 } from "lucide-react";
@@ -24,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { TagBadge } from "@/components/common/tag-badge";
 import { Separator } from "@/components/ui/separator";
 import { UserAvatar } from "@/components/common/user-avatar";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import {
   Sheet,
   SheetContent,
@@ -51,10 +54,31 @@ export function CustomerDrawer({
   const [shown, setShown] = React.useState<Customer | null>(customer);
   const [editOpen, setEditOpen] = React.useState(false);
   const [converting, setConverting] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
 
   React.useEffect(() => {
     if (customer) setShown(customer);
   }, [customer]);
+
+  const isLead = shown?.kind === "lead";
+  const basePath = isLead ? "/leads" : "/clientes";
+
+  async function confirmDelete() {
+    if (!shown) return;
+    setDeleting(true);
+    try {
+      await customersService.remove(shown.id);
+      toast.success(`${isLead ? "Lead" : "Contato"} movido para a lixeira`);
+      setDeleteOpen(false);
+      onOpenChange(false);
+      onChanged?.();
+    } catch {
+      toast.error("Não foi possível excluir.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function convertToClient() {
     if (!shown) return;
@@ -157,19 +181,35 @@ export function CustomerDrawer({
               </div>
 
               <SheetFooter>
-                <Button variant="outline" asChild>
-                  <Link href={`${shown.kind === "lead" ? "/leads" : "/clientes"}/${shown.id}`}>
-                    <SquareArrowOutUpRight /> Abrir
-                  </Link>
-                </Button>
-                {shown.kind === "lead" && (
-                  <Button variant="outline" onClick={convertToClient} loading={converting}>
-                    <UserCheck /> Converter
+                <div className="flex w-full flex-wrap items-center gap-2">
+                  <Button variant="outline" asChild>
+                    <Link href={`${basePath}/${shown.id}`}>
+                      <SquareArrowOutUpRight /> Abrir
+                    </Link>
                   </Button>
-                )}
-                <Button className="flex-1" onClick={() => setEditOpen(true)}>
-                  <Pencil /> Editar
-                </Button>
+                  <Button variant="outline" asChild>
+                    <Link href={`${basePath}/${shown.id}?tab=atendimentos`}>
+                      <Headset /> Atendimentos
+                    </Link>
+                  </Button>
+                  {isLead && (
+                    <Button variant="outline" onClick={convertToClient} loading={converting}>
+                      <UserCheck /> Converter
+                    </Button>
+                  )}
+                  <Button className="flex-1" onClick={() => setEditOpen(true)}>
+                    <Pencil /> Editar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    title="Excluir"
+                    onClick={() => setDeleteOpen(true)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
               </SheetFooter>
             </>
           )}
@@ -184,6 +224,22 @@ export function CustomerDrawer({
           setShown(c);
           onChanged?.();
         }}
+      />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={isLead ? "Excluir lead" : "Excluir contato"}
+        description={
+          <>
+            <strong>{shown?.name || "Sem nome"}</strong> será movido para a lixeira (restaurável por
+            5 dias).
+          </>
+        }
+        confirmLabel="Excluir"
+        variant="destructive"
+        loading={deleting}
+        onConfirm={confirmDelete}
       />
     </>
   );
