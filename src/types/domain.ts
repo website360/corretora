@@ -422,6 +422,7 @@ export type TicketCategory =
 export type TicketSubjectType =
   | "internal" // interna (sem vínculo)
   | "customer" // cliente
+  | "lead" // lead (ex.: recuperação de lead perdido)
   | "carrier" // seguradora
   | "product" // produto
   | "contract" // contrato/apólice

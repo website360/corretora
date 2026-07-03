@@ -51,10 +51,22 @@ import {
 import { CustomerFormDialog } from "@/modules/customers/customer-form-dialog";
 import { CustomerDrawer } from "@/modules/customers/customer-drawer";
 import { BoardDialog, ColumnDialog } from "@/modules/kanban/kanban-dialogs";
+import { TicketFormDialog } from "@/modules/tickets/ticket-form-dialog";
 import { LeadsList } from "@/modules/kanban/leads-list";
 import { LeadsCalendar } from "@/modules/kanban/leads-calendar";
 
 type LeadView = "board" | "list" | "calendar";
+
+/** Etiqueta padrão da tarefa de recuperação de lead perdido. */
+const RECOVERY_TAGS = ["recuperação"];
+
+/** Data sugerida de retomada: hoje + 30 dias, às 09:00 (ISO). */
+function suggestedRetryISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  d.setHours(9, 0, 0, 0);
+  return d.toISOString();
+}
 
 export function KanbanView() {
   const router = useRouter();
@@ -82,6 +94,14 @@ export function KanbanView() {
   const [deleteBoard, setDeleteBoard] = React.useState(false);
   const [deleteColumn, setDeleteColumn] = React.useState<KanbanColumn | null>(null);
   const [leadDialog, setLeadDialog] = React.useState<{ columnId: string } | null>(null);
+  // Lead recém-movido para "Perdido" — pergunta se quer criar tarefa de recuperação.
+  const [lostPrompt, setLostPrompt] = React.useState<Customer | null>(null);
+  // Rascunho da tarefa de recuperação (abre o formulário manual pré-preenchido).
+  const [recoveryDraft, setRecoveryDraft] = React.useState<{
+    lead: Customer;
+    title: string;
+    dueAt: string;
+  } | null>(null);
 
   // Drag state
   const [dragLeadId, setDragLeadId] = React.useState<string | null>(null);
@@ -156,6 +176,18 @@ export function KanbanView() {
       }
       return;
     }
+    // Coluna "Perdido": move o lead e oferece criar uma tarefa de recuperação.
+    if (column.slot === "lost") {
+      try {
+        await customersService.update(id, { column_id: column.id, board_id: activeBoardId });
+        toast.success(`Lead movido para "${column.name}"`);
+        refetchCustomers();
+        setLostPrompt(lead);
+      } catch {
+        toast.error("Não foi possível mover o lead");
+      }
+      return;
+    }
     try {
       await customersService.update(id, { column_id: column.id, board_id: activeBoardId });
       toast.success(`Lead movido para "${column.name}"`);
@@ -163,6 +195,18 @@ export function KanbanView() {
     } catch {
       toast.error("Não foi possível mover o lead");
     }
+  }
+
+  // Abre o formulário manual de tarefa já preenchido para recuperar o lead.
+  function openRecoveryTask() {
+    const lead = lostPrompt;
+    if (!lead) return;
+    setLostPrompt(null);
+    setRecoveryDraft({
+      lead,
+      title: `Recuperar lead perdido: ${lead.name || "Lead"}`,
+      dueAt: suggestedRetryISO(),
+    });
   }
 
   async function confirmDeleteBoard() {
@@ -434,6 +478,35 @@ export function KanbanView() {
         confirmLabel="Excluir"
         variant="destructive"
         onConfirm={confirmDeleteColumn}
+      />
+
+      <ConfirmDialog
+        open={lostPrompt !== null}
+        onOpenChange={(o) => !o && setLostPrompt(null)}
+        title="Lead marcado como perdido"
+        description={
+          <>
+            Deseja criar uma tarefa para retomar o contato com{" "}
+            <strong>{lostPrompt?.name || "este lead"}</strong> e tentar recuperá-lo?
+          </>
+        }
+        confirmLabel="Criar tarefa de recuperação"
+        cancelLabel="Agora não"
+        onConfirm={openRecoveryTask}
+      />
+
+      <TicketFormDialog
+        open={recoveryDraft !== null}
+        onOpenChange={(o) => !o && setRecoveryDraft(null)}
+        initialSubjectType="lead"
+        initialTitle={recoveryDraft?.title}
+        initialCustomerId={recoveryDraft?.lead.id}
+        initialDueAt={recoveryDraft?.dueAt}
+        initialTags={RECOVERY_TAGS}
+        onSaved={() => {
+          setRecoveryDraft(null);
+          refetchCustomers();
+        }}
       />
 
       <CustomerDrawer

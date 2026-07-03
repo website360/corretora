@@ -53,7 +53,7 @@ export const ticketSchema = z.object({
   title: z.string().min(4, "Descreva o título"),
   description: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]),
-  subject_type: z.enum(["internal", "customer", "carrier", "product", "contract", "quote"]),
+  subject_type: z.enum(["internal", "customer", "lead", "carrier", "product", "contract", "quote"]),
   customer_id: z.string().optional(),
   carrier_id: z.string().optional(),
   product_id: z.string().optional(),

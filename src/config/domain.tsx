@@ -19,6 +19,7 @@ import {
   XCircle,
   ClipboardList,
   User,
+  UserPlus,
   Building2,
   Package,
   FileText,
@@ -87,6 +88,7 @@ export const TICKET_CATEGORY_META: Record<TicketCategory, { label: string }> = {
 export const TICKET_SUBJECT_META: Record<TicketSubjectType, DisplayMeta> = {
   internal: { label: "Interna", tone: "neutral", icon: ClipboardList },
   customer: { label: "Cliente", tone: "primary", icon: User },
+  lead: { label: "Lead", tone: "warning", icon: UserPlus },
   carrier: { label: "Seguradora", tone: "warning", icon: Building2 },
   product: { label: "Produto", tone: "success", icon: Package },
   contract: { label: "Contrato", tone: "primary", icon: FileText },
@@ -97,7 +99,7 @@ export const TICKET_SUBJECT_META: Record<TicketSubjectType, DisplayMeta> = {
  * Categorias de tarefa/evento que o usuário pode ESCOLHER e FILTRAR. Os demais
  * tipos (produto/contrato/orçamento) não são categorias — viram Indicadores.
  */
-export const TASK_CATEGORY_TYPES: TicketSubjectType[] = ["internal", "customer", "carrier"];
+export const TASK_CATEGORY_TYPES: TicketSubjectType[] = ["internal", "customer", "lead", "carrier"];
 
 export const CALENDAR_EVENT_META: Record<
   CalendarEventType,
