@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BookOpen, LifeBuoy, MessageCircle, Rocket } from "lucide-react";
 import { PageHeader } from "@/components/common/page-header";
 import { Card, CardContent } from "@/components/ui/card";
+import { NovidadesCard } from "@/modules/help/novidades-card";
 
 export const metadata: Metadata = { title: "Ajuda & Suporte" };
 
@@ -32,6 +33,7 @@ export default function AjudaPage() {
   return (
     <div className="space-y-6 p-4 lg:p-6">
       <PageHeader title="Ajuda & Suporte" description="Tudo o que você precisa para tirar o máximo da plataforma." />
+      <NovidadesCard />
       <div className="grid gap-4 sm:grid-cols-2">
         {RESOURCES.map((r) => {
           const Icon = r.icon;

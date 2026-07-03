@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -42,9 +43,15 @@ export function VersionWatcher() {
 
   return (
     <div className="fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 px-3">
-      <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-card px-4 py-2.5 shadow-lg">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-primary/30 bg-card px-4 py-2.5 shadow-lg">
         <Sparkles className="size-4 shrink-0 text-primary" />
         <span className="text-sm font-medium">Nova versão disponível.</span>
+        <Link
+          href="/ajuda/novidades"
+          className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+        >
+          Ver o que mudou
+        </Link>
         <Button size="sm" onClick={() => window.location.reload()}>
           <RefreshCw className="size-4" /> Atualizar agora
         </Button>
