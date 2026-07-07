@@ -2,6 +2,15 @@
 
 import * as React from "react";
 import Link from "next/link";
+import {
+  endOfDay,
+  endOfMonth,
+  endOfYear,
+  startOfDay,
+  startOfMonth,
+  startOfYear,
+  subDays,
+} from "date-fns";
 import { LayoutGrid, ListChecks } from "lucide-react";
 import { ticketsService } from "@/services/tickets.service";
 import { calendarService } from "@/services/calendar.service";
@@ -33,11 +42,39 @@ const TONE_BAR: Record<StageColor, string> = {
   destructive: "bg-destructive",
 };
 
+type RangeKey = "today" | "7d" | "month" | "year" | "all";
+
+const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
+  { key: "today", label: "Hoje" },
+  { key: "7d", label: "Últimos 7 dias" },
+  { key: "month", label: "Este mês" },
+  { key: "year", label: "Este ano" },
+  { key: "all", label: "Tudo" },
+];
+
+function rangeFor(key: RangeKey): { from: Date; to: Date } | null {
+  const now = new Date();
+  switch (key) {
+    case "today":
+      return { from: startOfDay(now), to: endOfDay(now) };
+    case "7d":
+      return { from: startOfDay(subDays(now, 6)), to: endOfDay(now) };
+    case "month":
+      return { from: startOfMonth(now), to: endOfMonth(now) };
+    case "year":
+      return { from: startOfYear(now), to: endOfYear(now) };
+    case "all":
+      return null;
+  }
+}
+
 /**
  * Dashboard de Kanbans. Os quadros são separados por TIPO (Tarefas / Agenda /
- * Outro). O usuário escolhe o tipo e depois o quadro; vê as etapas (colunas)
+ * Outro). O usuário escolhe o tipo, o quadro e o período; vê as etapas (colunas)
  * daquele quadro com a contagem de itens em cada uma. O tipo do quadro define o
- * que é contado: Tarefas → tickets, Agenda → eventos, Outro → ambos.
+ * que é contado (Tarefas → tickets, Agenda → eventos, Outro → ambos) e o período
+ * filtra tarefas por data de criação e eventos pela data de início. Clicar num
+ * card abre as Tarefas já filtradas por aquele quadro/etapa/período.
  */
 export function KanbanDashboard() {
   useDirectory();
@@ -50,6 +87,7 @@ export function KanbanDashboard() {
 
   const [kind, setKind] = React.useState<TaskBoardKind | "">("");
   const [boardId, setBoardId] = React.useState("");
+  const [range, setRange] = React.useState<RangeKey>("today");
 
   // Preferências guardadas por dispositivo (voltam selecionadas).
   React.useEffect(() => {
@@ -57,6 +95,8 @@ export function KanbanDashboard() {
     if (k === "tasks" || k === "agenda" || k === "other") setKind(k);
     const b = localStorage.getItem("dashboard_kanban_board");
     if (b) setBoardId(b);
+    const r = localStorage.getItem("dashboard_kanban_range");
+    if (r === "today" || r === "7d" || r === "month" || r === "year" || r === "all") setRange(r);
   }, []);
 
   // Tipos que realmente têm quadros (na ordem canônica).
@@ -83,12 +123,28 @@ export function KanbanDashboard() {
     setBoardId(v);
     localStorage.setItem("dashboard_kanban_board", v);
   };
+  const onRangeChange = (v: string) => {
+    setRange(v as RangeKey);
+    localStorage.setItem("dashboard_kanban_range", v);
+  };
 
   // Tarefas → só tickets; Agenda → só eventos; Outro → ambos.
   const showTasks = activeKind !== "agenda";
   const showEvents = activeKind !== "tasks";
   const both = showTasks && showEvents;
+  const entry = activeKind === "agenda" ? "events" : both ? "all" : "tasks";
   const loading = !tickets || !events;
+
+  const rangeWindow = React.useMemo(() => rangeFor(range), [range]);
+  const inRange = React.useCallback(
+    (iso?: string | null) => {
+      if (!rangeWindow) return true;
+      if (!iso) return false;
+      const t = +new Date(iso);
+      return t >= +rangeWindow.from && t <= +rangeWindow.to;
+    },
+    [rangeWindow],
+  );
 
   const columns = React.useMemo(
     () =>
@@ -114,17 +170,25 @@ export function KanbanDashboard() {
     () =>
       columns.map((col, i) => {
         const taskCount = showTasks
-          ? (tickets ?? []).filter((t) => inColumn(t, col, i)).length
+          ? (tickets ?? []).filter((t) => inColumn(t, col, i) && inRange(t.created_at)).length
           : 0;
         const eventCount = showEvents
-          ? (events ?? []).filter((e) => inColumn(e, col, i)).length
+          ? (events ?? []).filter((e) => inColumn(e, col, i) && inRange(e.starts_at)).length
           : 0;
         return { col, taskCount, eventCount, total: taskCount + eventCount };
       }),
-    [columns, tickets, events, showTasks, showEvents, inColumn],
+    [columns, tickets, events, showTasks, showEvents, inColumn, inRange],
   );
 
-  const boardQ = activeBoardId ? `?board=${activeBoardId}` : "";
+  // Deep-link para as Tarefas já filtradas pela etapa (+ período).
+  const cardHref = (columnId: string) => {
+    const parts = [`board=${activeBoardId}`, `stage=${columnId}`, `entry=${entry}`];
+    if (rangeWindow) {
+      parts.push(`from=${encodeURIComponent(rangeWindow.from.toISOString())}`);
+      parts.push(`to=${encodeURIComponent(rangeWindow.to.toISOString())}`);
+    }
+    return `/tickets?${parts.join("&")}`;
+  };
 
   if (boards.length === 0) {
     return (
@@ -165,20 +229,36 @@ export function KanbanDashboard() {
         </div>
       )}
 
-      {/* Seletor de quadro do tipo ativo */}
-      <div className="w-full sm:w-72">
-        <Select value={activeBoardId} onValueChange={onBoardChange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione um Kanban" />
-          </SelectTrigger>
-          <SelectContent>
-            {boardsOfKind.map((b) => (
-              <SelectItem key={b.id} value={b.id}>
-                {b.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Seletor de quadro + período */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="w-full sm:w-72">
+          <Select value={activeBoardId} onValueChange={onBoardChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione um Kanban" />
+            </SelectTrigger>
+            <SelectContent>
+              {boardsOfKind.map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {b.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full sm:w-48">
+          <Select value={range} onValueChange={onRangeChange}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {RANGE_OPTIONS.map((o) => (
+                <SelectItem key={o.key} value={o.key}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Etapas do quadro selecionado */}
@@ -196,7 +276,7 @@ export function KanbanDashboard() {
             {perColumn.map(({ col, taskCount, eventCount, total }) => {
               const hex = isHexColor(col.color);
               return (
-                <Link key={col.id} href={`/tickets${boardQ}`} className="group block">
+                <Link key={col.id} href={cardHref(col.id)} className="group block">
                   <Card className="relative overflow-hidden p-4 transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
                     <div
                       className={cn(

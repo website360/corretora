@@ -154,11 +154,17 @@ export function TasksView() {
   // corrida em que o grudado vencia e o indicador era ignorado.
   const statusParam = searchParams.get("status");
   const boardParam = searchParams.get("board");
-  // Janela do período selecionado no dashboard (por data de criação), para a
-  // lista bater exatamente com a contagem do indicador clicado.
+  // Coluna/etapa (?stage=<column_id>) e o que exibir (?entry=tasks|events|all),
+  // vindos dos cards de etapa do dashboard.
+  const stageParam = searchParams.get("stage");
+  const entryParam = searchParams.get("entry");
+  // Janela do período selecionado no dashboard (por data de criação/início),
+  // para a lista bater exatamente com a contagem do card clicado.
   const fromParam = searchParams.get("from");
   const toParam = searchParams.get("to");
-  const hasDeepLink = Boolean(statusParam || boardParam || fromParam || toParam);
+  const hasDeepLink = Boolean(
+    statusParam || boardParam || stageParam || entryParam || fromParam || toParam,
+  );
 
   const [search, setSearch] = React.useState("");
   const [priorities, setPriorities] = React.useState<TicketPriority[]>([]);
@@ -463,17 +469,19 @@ export function TasksView() {
     setRelations(["assignee"]);
     setPersonIds([]);
     setTagFilter([]);
-    setStageFilter([]);
+    setStageFilter(stageParam ? [stageParam] : []);
     setSubjectFilter([]);
     setTaskView("list");
-    setEntryTypes(["tasks"]);
+    setEntryTypes(
+      entryParam === "events" ? ["events"] : entryParam === "all" ? ["tasks", "events"] : ["tasks"],
+    );
     setHideClosed(false);
     setBoardFilter(boardParam ? [boardParam] : []);
     setPeriodMode("range");
     setRangeFrom("");
     setRangeTo("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusParam, boardParam, fromParam, toParam]);
+  }, [statusParam, boardParam, stageParam, entryParam, fromParam, toParam]);
 
   const { data: users } = useAsyncData(() => usersService.list());
   const { data: allTags } = useAsyncData(() => tagsService.list());
@@ -543,6 +551,14 @@ export function TasksView() {
   const createdInDeepLinkRange = (t: Ticket) => {
     if (!fromParam && !toParam) return true;
     const c = +new Date(t.created_at);
+    if (fromParam && c < +new Date(fromParam)) return false;
+    if (toParam && c > +new Date(toParam)) return false;
+    return true;
+  };
+  // Eventos casam a janela do dashboard pela data de início (starts_at).
+  const eventStartsInDeepLinkRange = (e: CalendarEvent) => {
+    if (!fromParam && !toParam) return true;
+    const c = +new Date(e.starts_at);
     if (fromParam && c < +new Date(fromParam)) return false;
     if (toParam && c > +new Date(toParam)) return false;
     return true;
@@ -637,11 +653,12 @@ export function TasksView() {
       if (!boardOk(e.board_id)) return false;
       if (!stageOk(e.column_id)) return false;
       if (!eventOpenOk(e)) return false;
+      if (!eventStartsInDeepLinkRange(e)) return false;
       if (periodWindow && !inWindow(e.starts_at)) return false;
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localEvents, search, relations, personIds, tagFilter, subjectFilter, boardFilter, stageFilter, hideClosed, periodWindow, inWindow]);
+  }, [localEvents, search, relations, personIds, tagFilter, subjectFilter, boardFilter, stageFilter, hideClosed, periodWindow, inWindow, fromParam, toParam]);
 
   const events = showEvents ? filteredEvents : [];
 
