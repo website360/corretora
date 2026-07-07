@@ -39,9 +39,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-/** Grade única — todos os cards ficam do mesmo tamanho nas duas seções. */
-const GRID_COLS = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
-
 /** Barra colorida fina da borda esquerda do card (por tom predefinido). */
 const TONE_BAR: Record<StageColor, string> = {
   neutral: "bg-muted-foreground/50",
@@ -359,58 +356,59 @@ export function KanbanDashboard() {
         </div>
       </div>
 
-      {/* Indicador por vencimento */}
-      <div>
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-          <CalendarClock className="size-4" />
-          Por vencimento
-        </div>
-        <div className={GRID_COLS}>
-          {dueCards.map((c) => (
-            <StatCard
-              key={c.key}
-              href={dueHref(c.key)}
-              barClass={TONE_BAR[c.tone]}
-              marker={<span className={cn("size-2.5 rounded-full", TONE_DOT_CLASS[c.tone])} />}
-              label={c.label}
-              value={c.value}
-              valueClass={TONE_TEXT_CLASS[c.tone]}
-              loading={loading}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Etapas do quadro selecionado */}
-      <div>
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-          <ListChecks className="size-4" />
-          Etapas do quadro
-        </div>
-        {columns.length === 0 ? (
-          <Card className="p-8">
-            <EmptyState title="Sem etapas" description="Este quadro ainda não tem colunas." />
-          </Card>
-        ) : (
-          <div className={GRID_COLS}>
-            {perColumn.map(({ col, taskCount, eventCount, total }) => {
-              const hex = isHexColor(col.color);
-              return (
-                <StatCard
-                  key={col.id}
-                  href={cardHref(col.id)}
-                  barClass={hex ? undefined : TONE_BAR[col.color as StageColor]}
-                  barStyle={hex ? { backgroundColor: col.color } : undefined}
-                  marker={<StageDot color={col.color} icon={col.icon} />}
-                  label={col.name}
-                  value={total}
-                  sub={both && total > 0 ? `${taskCount} tar. · ${eventCount} ev.` : null}
-                  loading={loading}
-                />
-              );
-            })}
+      {/* Dois painéis lado a lado, cada um delimitado */}
+      <div className="grid gap-4 lg:grid-cols-5">
+        {/* Painel: Por vencimento */}
+        <section className="rounded-xl border bg-muted/20 p-4 lg:col-span-2">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <CalendarClock className="size-4" />
+            Por vencimento
           </div>
-        )}
+          <div className="grid grid-cols-3 gap-3">
+            {dueCards.map((c) => (
+              <StatCard
+                key={c.key}
+                href={dueHref(c.key)}
+                barClass={TONE_BAR[c.tone]}
+                marker={<span className={cn("size-2.5 rounded-full", TONE_DOT_CLASS[c.tone])} />}
+                label={c.label}
+                value={c.value}
+                valueClass={TONE_TEXT_CLASS[c.tone]}
+                loading={loading}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Painel: Etapas do quadro */}
+        <section className="rounded-xl border bg-muted/20 p-4 lg:col-span-3">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <ListChecks className="size-4" />
+            Etapas do quadro
+          </div>
+          {columns.length === 0 ? (
+            <EmptyState title="Sem etapas" description="Este quadro ainda não tem colunas." />
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {perColumn.map(({ col, taskCount, eventCount, total }) => {
+                const hex = isHexColor(col.color);
+                return (
+                  <StatCard
+                    key={col.id}
+                    href={cardHref(col.id)}
+                    barClass={hex ? undefined : TONE_BAR[col.color as StageColor]}
+                    barStyle={hex ? { backgroundColor: col.color } : undefined}
+                    marker={<StageDot color={col.color} icon={col.icon} />}
+                    label={col.name}
+                    value={total}
+                    sub={both && total > 0 ? `${taskCount} tar. · ${eventCount} ev.` : null}
+                    loading={loading}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
