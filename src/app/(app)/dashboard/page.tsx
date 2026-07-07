@@ -2,6 +2,7 @@
 
 import { useSession } from "@/contexts/session-context";
 import { PageHeader } from "@/components/common/page-header";
+import { KanbanDashboard } from "@/modules/dashboard/kanban-dashboard";
 
 export default function DashboardPage() {
   const { user } = useSession();
@@ -11,8 +12,9 @@ export default function DashboardPage() {
     <div className="space-y-6 p-4 lg:p-6">
       <PageHeader
         title={`Olá, ${firstName} 👋`}
-        description="Bem-vindo à sua corretora."
+        description="Indicadores dos seus Kanbans de Tarefas e Agenda."
       />
+      <KanbanDashboard />
     </div>
   );
 }
