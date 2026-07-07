@@ -2,35 +2,17 @@
 
 import * as React from "react";
 import Link from "next/link";
-import {
-  AlertTriangle,
-  CalendarClock,
-  CheckCircle2,
-  CircleDashed,
-  LayoutGrid,
-  ListChecks,
-} from "lucide-react";
+import { LayoutGrid, ListChecks } from "lucide-react";
 import { ticketsService } from "@/services/tickets.service";
 import { calendarService } from "@/services/calendar.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useDirectory, useDirectoryStore } from "@/stores/directory-store";
 import { useViewCompanyStore } from "@/stores/view-company-store";
-import {
-  TASK_BOARD_KINDS,
-  TASK_BOARD_KIND_META,
-  TONE_DOT_CLASS,
-  TONE_TEXT_CLASS,
-} from "@/config/domain";
+import { TASK_BOARD_KINDS, TASK_BOARD_KIND_META } from "@/config/domain";
 import { StageDot } from "@/components/common/style-pickers";
 import { isHexColor } from "@/lib/tag-color";
 import { cn } from "@/lib/utils";
-import type {
-  CalendarEvent,
-  StageColor,
-  TaskBoardKind,
-  TaskColumn,
-  Ticket,
-} from "@/types/domain";
+import type { StageColor, TaskBoardKind, TaskColumn } from "@/types/domain";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
@@ -50,10 +32,6 @@ const TONE_BAR: Record<StageColor, string> = {
   warning: "bg-warning",
   destructive: "bg-destructive",
 };
-
-/** Tarefa aberta = ainda em andamento (não resolvida/fechada). */
-const isOpen = (t: Ticket) =>
-  t.status === "open" || t.status === "in_progress" || t.status === "waiting_customer";
 
 /**
  * Dashboard de Kanbans. Os quadros são separados por TIPO (Tarefas / Agenda /
@@ -146,98 +124,7 @@ export function KanbanDashboard() {
     [columns, tickets, events, showTasks, showEvents, inColumn],
   );
 
-  // Itens do quadro ativo (para o resumo por status).
-  const boardTasks = React.useMemo(
-    () =>
-      showTasks ? (tickets ?? []).filter((t) => columns.some((c, i) => inColumn(t, c, i))) : [],
-    [tickets, columns, showTasks, inColumn],
-  );
-  const boardEvents = React.useMemo(
-    () =>
-      showEvents ? (events ?? []).filter((e) => columns.some((c, i) => inColumn(e, c, i))) : [],
-    [events, columns, showEvents, inColumn],
-  );
-
-  const nowMs = Date.now();
-  const totalItems = perColumn.reduce((s, c) => s + c.total, 0);
-  const openCount = boardTasks.filter(isOpen).length;
-  const overdueCount = boardTasks.filter(
-    (t) => isOpen(t) && t.due_at != null && +new Date(t.due_at) < nowMs,
-  ).length;
-  const doneCount = boardTasks.filter(
-    (t) => t.status === "resolved" || t.status === "closed",
-  ).length;
-  const finishedEvents = boardEvents.filter((e) => e.finished).length;
-  const upcomingEvents = boardEvents.filter(
-    (e) => !e.finished && +new Date(e.starts_at) >= nowMs,
-  ).length;
-
   const boardQ = activeBoardId ? `?board=${activeBoardId}` : "";
-  const summary: {
-    key: string;
-    label: string;
-    value: number;
-    tone: StageColor;
-    icon: typeof LayoutGrid;
-    href: string;
-  }[] = [
-    {
-      key: "total",
-      label: activeKind === "agenda" ? "Eventos" : both ? "Itens" : "Tarefas",
-      value: totalItems,
-      tone: "primary",
-      icon: LayoutGrid,
-      href: `/tickets${boardQ}`,
-    },
-  ];
-  if (showTasks) {
-    summary.push(
-      {
-        key: "open",
-        label: "Em aberto",
-        value: openCount,
-        tone: "warning",
-        icon: CircleDashed,
-        href: `/tickets?status=open${activeBoardId ? `&board=${activeBoardId}` : ""}`,
-      },
-      {
-        key: "overdue",
-        label: "Em atraso",
-        value: overdueCount,
-        tone: "destructive",
-        icon: AlertTriangle,
-        href: `/tickets?status=overdue${activeBoardId ? `&board=${activeBoardId}` : ""}`,
-      },
-      {
-        key: "done",
-        label: "Concluídas",
-        value: doneCount,
-        tone: "success",
-        icon: CheckCircle2,
-        href: `/tickets${boardQ}`,
-      },
-    );
-  }
-  if (showEvents && !showTasks) {
-    summary.push(
-      {
-        key: "upcoming",
-        label: "A realizar",
-        value: upcomingEvents,
-        tone: "warning",
-        icon: CalendarClock,
-        href: `/tickets${boardQ}`,
-      },
-      {
-        key: "finished",
-        label: "Realizados",
-        value: finishedEvents,
-        tone: "success",
-        icon: CheckCircle2,
-        href: `/tickets${boardQ}`,
-      },
-    );
-  }
 
   if (boards.length === 0) {
     return (
@@ -292,33 +179,6 @@ export function KanbanDashboard() {
             ))}
           </SelectContent>
         </Select>
-      </div>
-
-      {/* Resumo */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {summary.map((m) => {
-          const Icon = m.icon;
-          return (
-            <Link key={m.key} href={m.href} className="group block">
-              <Card className="relative overflow-hidden p-5 transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
-                    <span className={cn("size-2 rounded-full", TONE_DOT_CLASS[m.tone])} />
-                    {m.label}
-                  </span>
-                  <Icon className={cn("size-[18px]", TONE_TEXT_CLASS[m.tone])} />
-                </div>
-                {loading ? (
-                  <Skeleton className="mt-4 h-10 w-16" />
-                ) : (
-                  <p className="mt-4 text-4xl font-bold leading-none tracking-tight tabular-nums">
-                    {m.value}
-                  </p>
-                )}
-              </Card>
-            </Link>
-          );
-        })}
       </div>
 
       {/* Etapas do quadro selecionado */}
