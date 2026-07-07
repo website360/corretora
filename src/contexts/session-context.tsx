@@ -19,11 +19,18 @@ export function SessionProvider({
   user: SessionUser;
   children: React.ReactNode;
 }) {
-  // Expose the ids to the client-side stores so service inserts can stamp
-  // company_id / author_id under RLS.
-  React.useEffect(() => {
-    useSessionStore.getState().setSession(user.id, user.company_id, user.role);
-  }, [user.id, user.company_id, user.role]);
+  // Sync the server session into the client store DURING render, before any
+  // child renders or effects run. Service reads (e.g. getViewCompanyId) execute
+  // inside child effects — which fire BEFORE this component's own effect — so
+  // doing this in a useEffect would be too late: the first list fetch after each
+  // load/reload would run with role=null, skip the company scope, and leak every
+  // company's rows to the super admin. Guarded so it only writes when changed.
+  if (typeof window !== "undefined") {
+    const s = useSessionStore.getState();
+    if (s.userId !== user.id || s.companyId !== user.company_id || s.role !== user.role) {
+      s.setSession(user.id, user.company_id, user.role);
+    }
+  }
 
   const value = React.useMemo<SessionContextValue>(
     () => ({
