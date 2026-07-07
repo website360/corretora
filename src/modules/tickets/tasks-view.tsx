@@ -873,6 +873,7 @@ export function TasksView() {
             showTasks={showTasks}
             showEvents={showEvents}
             events={events}
+            boardFilter={boardFilter}
             onOpenEvent={setSelectedEvent}
             onOpenTask={(t) => router.push(`/tickets/${t.id}`)}
           />

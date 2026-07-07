@@ -51,6 +51,7 @@ export function TasksBoard({
   showTasks = true,
   showEvents = false,
   events = [],
+  boardFilter = [],
   onOpenEvent,
   onOpenTask,
 }: {
@@ -60,6 +61,8 @@ export function TasksBoard({
   showTasks?: boolean;
   showEvents?: boolean;
   events?: CalendarEvent[];
+  /** Filtro de kanban da barra (ou deep-link). Com 1 board, dirige as etapas. */
+  boardFilter?: string[];
   onOpenEvent?: (event: CalendarEvent) => void;
   onOpenTask?: (task: Ticket) => void;
 }) {
@@ -99,6 +102,17 @@ export function TasksBoard({
   React.useEffect(() => {
     if (activeBoardId) useLastBoardStore.getState().set("tasks", activeBoardId);
   }, [activeBoardId]);
+
+  // Quando a barra (ou o deep-link) filtra por exatamente 1 kanban, o Quadro
+  // mostra as ETAPAS desse kanban — antes as colunas seguiam só o seletor
+  // interno, então trocar de kanban no filtro não trocava as etapas. Dispara só
+  // quando o filtro muda; o usuário ainda pode alternar pelos botões do Quadro.
+  const filterBoard = boardFilter.length === 1 ? boardFilter[0]! : null;
+  React.useEffect(() => {
+    if (filterBoard && boards.some((b) => b.id === filterBoard)) {
+      setActiveBoardId(filterBoard);
+    }
+  }, [filterBoard, boards]);
 
   const columns = allColumns
     .filter((c) => c.board_id === activeBoardId)
