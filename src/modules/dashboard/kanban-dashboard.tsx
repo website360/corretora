@@ -39,6 +39,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+/** Grade única — todos os cards ficam do mesmo tamanho nas duas seções. */
+const GRID_COLS = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
+
 /** Barra colorida fina da borda esquerda do card (por tom predefinido). */
 const TONE_BAR: Record<StageColor, string> = {
   neutral: "bg-muted-foreground/50",
@@ -362,7 +365,7 @@ export function KanbanDashboard() {
           <CalendarClock className="size-4" />
           Por vencimento
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className={GRID_COLS}>
           {dueCards.map((c) => (
             <StatCard
               key={c.key}
@@ -389,7 +392,7 @@ export function KanbanDashboard() {
             <EmptyState title="Sem etapas" description="Este quadro ainda não tem colunas." />
           </Card>
         ) : (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className={GRID_COLS}>
             {perColumn.map(({ col, taskCount, eventCount, total }) => {
               const hex = isHexColor(col.color);
               return (
