@@ -2,7 +2,6 @@
 
 import { useSession } from "@/contexts/session-context";
 import { PageHeader } from "@/components/common/page-header";
-import { TaskIndicators } from "@/modules/dashboard/task-indicators";
 
 export default function DashboardPage() {
   const { user } = useSession();
@@ -14,7 +13,6 @@ export default function DashboardPage() {
         title={`Olá, ${firstName} 👋`}
         description="Bem-vindo à sua corretora."
       />
-      <TaskIndicators />
     </div>
   );
 }
