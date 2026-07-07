@@ -148,6 +148,14 @@ export function TasksView() {
   const { taskView, setTaskView } = useUIStore();
   const isCalendar = taskView === "calendar";
 
+  // Deep-link dos indicadores do dashboard: ?status=open|overdue|resolved|closed
+  // e/ou ?board=<id>. Lido uma única vez no render para que o restore do filtro
+  // grudado e o efeito de deep-link concordem sobre "há deep-link?" — evita a
+  // corrida em que o grudado vencia e o indicador era ignorado.
+  const statusParam = searchParams.get("status");
+  const boardParam = searchParams.get("board");
+  const hasDeepLink = Boolean(statusParam || boardParam);
+
   const [search, setSearch] = React.useState("");
   const [priorities, setPriorities] = React.useState<TicketPriority[]>([]);
   const [relations, setRelations] = React.useState<AttributionRelation[]>(["assignee"]);
@@ -255,7 +263,7 @@ export function TasksView() {
     if (hydrated.current || !user.id) return;
     hydrated.current = true;
     // Deep-link do dashboard (status/board) controla a visão — não aplica o grudado.
-    if (!searchParams.get("status") && !searchParams.get("board")) {
+    if (!hasDeepLink) {
       // localStorage (lido fresco a cada montagem) tem prioridade — é o filtro
       // grudado. O valor do banco serve de fallback entre devices.
       const last =
@@ -263,7 +271,8 @@ export function TasksView() {
       if (last) applyFilters(last);
     }
     autosaveReady.current = true;
-  }, [user.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id, hasDeepLink]);
 
   // Persiste automaticamente TODO filtro aplicado: gruda ao sair e voltar à
   // página, sem o usuário precisar salvar. Em estado padrão, limpa a
@@ -272,7 +281,7 @@ export function TasksView() {
   React.useEffect(() => {
     if (!autosaveReady.current) return;
     // deep-link transitório do dashboard (status/board) não persiste
-    if (searchParams.get("status") || searchParams.get("board")) return;
+    if (hasDeepLink) return;
     // Pula a 1ª passada (estado ainda default antes da hidratação aplicar).
     if (!autosaveArmed.current) {
       autosaveArmed.current = true;
@@ -439,12 +448,19 @@ export function TasksView() {
     if (searchParams.get("new") === "1") setNewTaskOpen(true);
   }, [searchParams]);
 
-  // Deep-link dos indicadores do dashboard: ?status=open|overdue|resolved|closed
-  // e/ou ?board=<id> abre a Lista filtrada (todas as tarefas, sem janela de período).
-  const statusParam = searchParams.get("status");
-  const boardParam = searchParams.get("board");
+  // Deep-link dos indicadores do dashboard abre a Lista filtrada (todas as
+  // tarefas, sem janela de período). Zera TODOS os filtros e aplica só
+  // status/board — assim o deep-link sempre vence o filtro grudado, mesmo que
+  // o restore tenha rodado antes (params ainda não disponíveis no 1º render).
   React.useEffect(() => {
-    if (!statusParam && !boardParam) return;
+    if (!hasDeepLink) return;
+    setSearch("");
+    setPriorities([]);
+    setRelations(["assignee"]);
+    setPersonIds([]);
+    setTagFilter([]);
+    setStageFilter([]);
+    setSubjectFilter([]);
     setTaskView("list");
     setEntryTypes(["tasks"]);
     setHideClosed(false);
