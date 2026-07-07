@@ -308,6 +308,8 @@ export interface Contract {
   commission_percent: number | null;
   status: ContractStatus;
   notes: string | null;
+  /** Novo contrato que renova/substitui este (opcional; usado com status "renewal"). */
+  renewal_contract_id?: UUID | null;
   /** Originating quote (orçamento), when generated from one. */
   quote_id?: UUID | null;
   created_at: ISODateString;

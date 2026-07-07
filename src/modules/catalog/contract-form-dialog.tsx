@@ -64,6 +64,7 @@ export function ContractFormDialog({
   const { data: products } = useAsyncData(() => productsService.list());
   const { data: carriers } = useAsyncData(() => carriersService.list());
   const { data: users } = useAsyncData(() => usersService.list());
+  const { data: contracts } = useAsyncData(() => contractsService.list());
 
   const [customerId, setCustomerId] = React.useState("");
   const [carrierId, setCarrierId] = React.useState("");
@@ -75,6 +76,7 @@ export function ContractFormDialog({
   const [premium, setPremium] = React.useState("");
   const [commission, setCommission] = React.useState("");
   const [status, setStatus] = React.useState<ContractStatus>("active");
+  const [renewalContractId, setRenewalContractId] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [reminder, setReminder] = React.useState(true);
   const [pendingFiles, setPendingFiles] = React.useState<File[]>([]);
@@ -113,6 +115,7 @@ export function ContractFormDialog({
       setPremium(contract.premium_cents ? formatMoneyInput(String(contract.premium_cents)) : "");
       setCommission(contract.commission_percent?.toString() ?? "");
       setStatus(contract.status);
+      setRenewalContractId(contract.renewal_contract_id ?? "");
       setNotes(contract.notes ?? "");
       setReminder(false);
     } else {
@@ -127,6 +130,7 @@ export function ContractFormDialog({
       setPremium("");
       setCommission("");
       setStatus("active");
+      setRenewalContractId("");
       setNotes("");
       setReminder(true);
     }
@@ -150,6 +154,8 @@ export function ContractFormDialog({
       premium_cents: moneyToCents(premium),
       commission_percent: commission ? parseFloat(commission.replace(",", ".")) : null,
       status,
+      // Vínculo com o novo contrato só faz sentido em renovação; limpa caso contrário.
+      renewal_contract_id: status === "renewal" ? renewalContractId || null : null,
       notes: notes || null,
     };
     try {
@@ -281,6 +287,37 @@ export function ContractFormDialog({
               </Select>
             </div>
           </div>
+
+          {status === "renewal" && (
+            <div className="space-y-2">
+              <Label>Novo contrato (renovação)</Label>
+              <Combobox
+                options={(contracts ?? [])
+                  .filter(
+                    (c) =>
+                      c.id !== contract?.id &&
+                      (!customerId || c.customer_id === customerId),
+                  )
+                  .map((c) => {
+                    const prod = (products ?? []).find((p) => p.id === c.product_id);
+                    const label = [
+                      c.policy_number ? `Apólice ${c.policy_number}` : "Sem apólice",
+                      prod?.name,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ");
+                    return { value: c.id, label };
+                  })}
+                value={renewalContractId}
+                onChange={setRenewalContractId}
+                placeholder="Opcional — contrato que renova este"
+                searchPlaceholder="Buscar contrato..."
+              />
+              <p className="text-xs text-muted-foreground">
+                Relacione o contrato novo que substitui este. Opcional.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Responsável</Label>
