@@ -42,6 +42,7 @@ import {
   startOfMonth,
   startOfWeek,
   startOfYear,
+  subDays,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -158,12 +159,15 @@ export function TasksView() {
   // vindos dos cards de etapa do dashboard.
   const stageParam = searchParams.get("stage");
   const entryParam = searchParams.get("entry");
+  // Recorte por vencimento (?due=overdue|today|upcoming) vindo do indicador
+  // "por data" do dashboard. Tarefas usam due_at; eventos, starts_at.
+  const dueParam = searchParams.get("due");
   // Janela do período selecionado no dashboard (por data de criação/início),
   // para a lista bater exatamente com a contagem do card clicado.
   const fromParam = searchParams.get("from");
   const toParam = searchParams.get("to");
   const hasDeepLink = Boolean(
-    statusParam || boardParam || stageParam || entryParam || fromParam || toParam,
+    statusParam || boardParam || stageParam || entryParam || dueParam || fromParam || toParam,
   );
 
   const [search, setSearch] = React.useState("");
@@ -563,6 +567,18 @@ export function TasksView() {
     if (toParam && c > +new Date(toParam)) return false;
     return true;
   };
+  // Recorte por vencimento (indicador "por data" do dashboard). Atrasada conta
+  // só os últimos 30 dias; "em dia" inclui os sem data. `d` = due_at | starts_at.
+  const dueOk = (d?: string | null) => {
+    if (!dueParam) return true;
+    const today0 = +startOfDay(new Date());
+    if (d == null) return dueParam === "upcoming";
+    const t = +new Date(d);
+    if (dueParam === "overdue") return t >= +startOfDay(subDays(new Date(), 30)) && t < today0;
+    if (dueParam === "today") return t >= today0 && t <= +endOfDay(new Date());
+    if (dueParam === "upcoming") return t >= +startOfDay(addDays(new Date(), 1));
+    return true;
+  };
   const eventOpenOk = (e: CalendarEvent) => !hideClosed || !e.finished;
 
   // The active time window. `null` while a custom range is incomplete (= no filter).
@@ -623,6 +639,7 @@ export function TasksView() {
       statusOk(t) &&
       taskOpenOk(t) &&
       createdInDeepLinkRange(t) &&
+      dueOk(t.due_at) &&
       taskInWindow(t),
   );
 
@@ -654,11 +671,12 @@ export function TasksView() {
       if (!stageOk(e.column_id)) return false;
       if (!eventOpenOk(e)) return false;
       if (!eventStartsInDeepLinkRange(e)) return false;
+      if (!dueOk(e.starts_at)) return false;
       if (periodWindow && !inWindow(e.starts_at)) return false;
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localEvents, search, relations, personIds, tagFilter, subjectFilter, boardFilter, stageFilter, hideClosed, periodWindow, inWindow, fromParam, toParam]);
+  }, [localEvents, search, relations, personIds, tagFilter, subjectFilter, boardFilter, stageFilter, hideClosed, periodWindow, inWindow, fromParam, toParam, dueParam]);
 
   const events = showEvents ? filteredEvents : [];
 

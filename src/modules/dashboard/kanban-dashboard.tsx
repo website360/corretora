@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import {
+  addDays,
   endOfDay,
   endOfMonth,
   endOfYear,
@@ -11,13 +12,18 @@ import {
   startOfYear,
   subDays,
 } from "date-fns";
-import { LayoutGrid, ListChecks } from "lucide-react";
+import { CalendarClock, LayoutGrid, ListChecks } from "lucide-react";
 import { ticketsService } from "@/services/tickets.service";
 import { calendarService } from "@/services/calendar.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useDirectory, useDirectoryStore } from "@/stores/directory-store";
 import { useViewCompanyStore } from "@/stores/view-company-store";
-import { TASK_BOARD_KINDS, TASK_BOARD_KIND_META } from "@/config/domain";
+import {
+  TASK_BOARD_KINDS,
+  TASK_BOARD_KIND_META,
+  TONE_DOT_CLASS,
+  TONE_TEXT_CLASS,
+} from "@/config/domain";
 import { StageDot } from "@/components/common/style-pickers";
 import { isHexColor } from "@/lib/tag-color";
 import { cn } from "@/lib/utils";
@@ -180,15 +186,57 @@ export function KanbanDashboard() {
     [columns, tickets, events, showTasks, showEvents, inColumn, inRange],
   );
 
+  // Item pertence ao quadro ativo (em qualquer coluna dele).
+  const onBoard = React.useCallback(
+    (item: { board_id?: string | null; column_id?: string | null }) =>
+      columns.some((c, i) => inColumn(item, c, i)),
+    [columns, inColumn],
+  );
+
+  // Indicador por vencimento (tarefas: due_at; eventos: starts_at). Respeita o
+  // quadro e o período. Atrasada = vencidas nos últimos 30 dias; Em dia inclui
+  // itens sem prazo (nada vencido).
+  const dueBuckets = React.useMemo(() => {
+    const today0 = +startOfDay(new Date());
+    const endToday = +endOfDay(new Date());
+    const start30 = +startOfDay(subDays(new Date(), 30));
+    const startTomorrow = +startOfDay(addDays(new Date(), 1));
+    let overdue = 0;
+    let today = 0;
+    let upcoming = 0;
+    const classify = (d?: string | null) => {
+      if (d == null) {
+        upcoming++;
+        return;
+      }
+      const t = +new Date(d);
+      if (t >= start30 && t < today0) overdue++;
+      else if (t >= today0 && t <= endToday) today++;
+      else if (t >= startTomorrow) upcoming++;
+    };
+    if (showTasks)
+      for (const t of tickets ?? []) if (onBoard(t) && inRange(t.created_at)) classify(t.due_at);
+    if (showEvents)
+      for (const e of events ?? []) if (onBoard(e) && inRange(e.starts_at)) classify(e.starts_at);
+    return { overdue, today, upcoming };
+  }, [tickets, events, showTasks, showEvents, onBoard, inRange]);
+
+  const dueCards: { key: string; label: string; value: number; tone: StageColor }[] = [
+    { key: "overdue", label: "Atrasada (30 dias)", value: dueBuckets.overdue, tone: "destructive" },
+    { key: "today", label: "De hoje", value: dueBuckets.today, tone: "warning" },
+    { key: "upcoming", label: "Em dia", value: dueBuckets.upcoming, tone: "success" },
+  ];
+
+  const rangeQuery = rangeWindow
+    ? `&from=${encodeURIComponent(rangeWindow.from.toISOString())}&to=${encodeURIComponent(rangeWindow.to.toISOString())}`
+    : "";
+
   // Deep-link para as Tarefas já filtradas pela etapa (+ período).
-  const cardHref = (columnId: string) => {
-    const parts = [`board=${activeBoardId}`, `stage=${columnId}`, `entry=${entry}`];
-    if (rangeWindow) {
-      parts.push(`from=${encodeURIComponent(rangeWindow.from.toISOString())}`);
-      parts.push(`to=${encodeURIComponent(rangeWindow.to.toISOString())}`);
-    }
-    return `/tickets?${parts.join("&")}`;
-  };
+  const cardHref = (columnId: string) =>
+    `/tickets?board=${activeBoardId}&stage=${columnId}&entry=${entry}${rangeQuery}`;
+  // Deep-link do indicador por vencimento (+ período).
+  const dueHref = (bucket: string) =>
+    `/tickets?board=${activeBoardId}&entry=${entry}&due=${bucket}${rangeQuery}`;
 
   if (boards.length === 0) {
     return (
@@ -258,6 +306,39 @@ export function KanbanDashboard() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+      </div>
+
+      {/* Indicador por vencimento */}
+      <div>
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+          <CalendarClock className="size-4" />
+          Por vencimento
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {dueCards.map((c) => (
+            <Link key={c.key} href={dueHref(c.key)} className="group block">
+              <Card className="relative overflow-hidden p-5 transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
+                <div className={cn("absolute inset-y-0 left-0 w-1", TONE_BAR[c.tone])} />
+                <span className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
+                  <span className={cn("size-2 rounded-full", TONE_DOT_CLASS[c.tone])} />
+                  {c.label}
+                </span>
+                {loading ? (
+                  <Skeleton className="mt-3 h-10 w-16" />
+                ) : (
+                  <p
+                    className={cn(
+                      "mt-3 text-4xl font-bold leading-none tracking-tight tabular-nums",
+                      TONE_TEXT_CLASS[c.tone],
+                    )}
+                  >
+                    {c.value}
+                  </p>
+                )}
+              </Card>
+            </Link>
+          ))}
         </div>
       </div>
 
