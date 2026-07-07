@@ -193,8 +193,9 @@ export function KanbanDashboard() {
     [columns, inColumn],
   );
 
-  // Indicador por vencimento (tarefas: due_at; eventos: starts_at). Respeita o
-  // quadro e o período. Atrasada = vencidas nos últimos 30 dias; Em dia inclui
+  // Indicador por vencimento (tarefas: due_at; eventos: starts_at). Considera
+  // TODAS as tarefas do quadro (ignora o período, para "Atrasada" refletir tudo
+  // que está vencido). Atrasada = vencidas nos últimos 30 dias; Em dia inclui
   // itens sem prazo (nada vencido).
   const dueBuckets = React.useMemo(() => {
     const today0 = +startOfDay(new Date());
@@ -214,12 +215,10 @@ export function KanbanDashboard() {
       else if (t >= today0 && t <= endToday) today++;
       else if (t >= startTomorrow) upcoming++;
     };
-    if (showTasks)
-      for (const t of tickets ?? []) if (onBoard(t) && inRange(t.created_at)) classify(t.due_at);
-    if (showEvents)
-      for (const e of events ?? []) if (onBoard(e) && inRange(e.starts_at)) classify(e.starts_at);
+    if (showTasks) for (const t of tickets ?? []) if (onBoard(t)) classify(t.due_at);
+    if (showEvents) for (const e of events ?? []) if (onBoard(e)) classify(e.starts_at);
     return { overdue, today, upcoming };
-  }, [tickets, events, showTasks, showEvents, onBoard, inRange]);
+  }, [tickets, events, showTasks, showEvents, onBoard]);
 
   const dueCards: { key: string; label: string; value: number; tone: StageColor }[] = [
     { key: "overdue", label: "Atrasada (30 dias)", value: dueBuckets.overdue, tone: "destructive" },
@@ -234,9 +233,9 @@ export function KanbanDashboard() {
   // Deep-link para as Tarefas já filtradas pela etapa (+ período).
   const cardHref = (columnId: string) =>
     `/tickets?board=${activeBoardId}&stage=${columnId}&entry=${entry}${rangeQuery}`;
-  // Deep-link do indicador por vencimento (+ período).
+  // Deep-link do indicador por vencimento (ignora o período, como a contagem).
   const dueHref = (bucket: string) =>
-    `/tickets?board=${activeBoardId}&entry=${entry}&due=${bucket}${rangeQuery}`;
+    `/tickets?board=${activeBoardId}&entry=${entry}&due=${bucket}`;
 
   if (boards.length === 0) {
     return (
