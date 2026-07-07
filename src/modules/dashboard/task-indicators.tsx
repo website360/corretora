@@ -227,8 +227,12 @@ export function TaskIndicators() {
     ).length;
 
     const boardQ = boardId !== "all" ? `board=${boardId}` : "";
+    // Leva a janela do período (por data de criação) para a lista bater com a
+    // contagem do card. Sem range ("Tudo") não envia — mostra todas as tarefas.
+    const fromQ = from ? `from=${encodeURIComponent(from.toISOString())}` : "";
+    const toQ = to ? `to=${encodeURIComponent(to.toISOString())}` : "";
     const href = (status?: string) => {
-      const parts = [status ? `status=${status}` : "", boardQ].filter(Boolean);
+      const parts = [status ? `status=${status}` : "", boardQ, fromQ, toQ].filter(Boolean);
       return parts.length ? `/tickets?${parts.join("&")}` : "/tickets";
     };
     const list: Metric[] = [

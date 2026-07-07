@@ -154,7 +154,11 @@ export function TasksView() {
   // corrida em que o grudado vencia e o indicador era ignorado.
   const statusParam = searchParams.get("status");
   const boardParam = searchParams.get("board");
-  const hasDeepLink = Boolean(statusParam || boardParam);
+  // Janela do período selecionado no dashboard (por data de criação), para a
+  // lista bater exatamente com a contagem do indicador clicado.
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
+  const hasDeepLink = Boolean(statusParam || boardParam || fromParam || toParam);
 
   const [search, setSearch] = React.useState("");
   const [priorities, setPriorities] = React.useState<TicketPriority[]>([]);
@@ -469,7 +473,7 @@ export function TasksView() {
     setRangeFrom("");
     setRangeTo("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusParam, boardParam]);
+  }, [statusParam, boardParam, fromParam, toParam]);
 
   const { data: users } = useAsyncData(() => usersService.list());
   const { data: allTags } = useAsyncData(() => tagsService.list());
@@ -534,6 +538,15 @@ export function TasksView() {
       return isOpenStatus(t) && !!t.due_at && new Date(t.due_at) < new Date();
     return t.status === statusParam; // resolved | closed
   };
+  // Janela de criação vinda do dashboard (?from=/?to=). Espelha o filtro do
+  // indicador (que conta por created_at), então a lista mostra o mesmo conjunto.
+  const createdInDeepLinkRange = (t: Ticket) => {
+    if (!fromParam && !toParam) return true;
+    const c = +new Date(t.created_at);
+    if (fromParam && c < +new Date(fromParam)) return false;
+    if (toParam && c > +new Date(toParam)) return false;
+    return true;
+  };
   const eventOpenOk = (e: CalendarEvent) => !hideClosed || !e.finished;
 
   // The active time window. `null` while a custom range is incomplete (= no filter).
@@ -593,6 +606,7 @@ export function TasksView() {
       subjectOk(t.subject_type) &&
       statusOk(t) &&
       taskOpenOk(t) &&
+      createdInDeepLinkRange(t) &&
       taskInWindow(t),
   );
 
