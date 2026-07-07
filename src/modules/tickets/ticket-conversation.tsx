@@ -38,6 +38,7 @@ import {
   TONE_DOT_CLASS,
 } from "@/config/domain";
 import { tagsService } from "@/services/tags.service";
+import { describeTicketLog, ticketLogIcon } from "@/modules/tickets/ticket-log-format";
 import { formatShortDate, formatSmartDate, taskCode } from "@/utils/format";
 import { cn, initials } from "@/lib/utils";
 import type {
@@ -262,86 +263,14 @@ function feedActorName(id: string | null): string {
 
 function feedDescribe(it: FeedItem): string {
   if (it.kind === "comment") return it.internal ? "adicionou uma nota interna" : "comentou";
-  const statusLabel = (s: unknown) =>
-    TICKET_STATUS_META[s as TicketStatus]?.label ?? String(s);
-  switch (it.event) {
-    case "created":
-      return "criou a tarefa";
-    case "status_changed": {
-      const to = it.meta?.to ? statusLabel(it.meta.to) : null;
-      const from = it.meta?.from ? statusLabel(it.meta.from) : null;
-      if (from && to) return `mudou o status de ${from} para ${to}`;
-      if (to) return `mudou o status para ${to}`;
-      return "mudou o status";
-    }
-    case "priority_changed": {
-      const to = it.meta?.to
-        ? (TICKET_PRIORITY_META[it.meta.to as TicketPriority]?.label ?? String(it.meta.to))
-        : null;
-      return to ? `alterou a prioridade para ${to}` : "alterou a prioridade";
-    }
-    case "assigned": {
-      const to = it.meta?.to ? feedActorName(String(it.meta.to)) : null;
-      return to ? `atribuiu para ${to}` : "removeu o responsável";
-    }
-    case "participant_added": {
-      const who = it.meta?.to ? feedActorName(String(it.meta.to)) : null;
-      return who ? `adicionou ${who} aos envolvidos` : "adicionou um envolvido";
-    }
-    case "participant_removed": {
-      const who = it.meta?.to ? feedActorName(String(it.meta.to)) : null;
-      return who ? `removeu ${who} dos envolvidos` : "removeu um envolvido";
-    }
-    case "tag_added":
-      return it.meta?.tag ? `adicionou a etiqueta "${String(it.meta.tag)}"` : "adicionou uma etiqueta";
-    case "tag_removed":
-      return it.meta?.tag ? `removeu a etiqueta "${String(it.meta.tag)}"` : "removeu uma etiqueta";
-    case "due_changed": {
-      const to = it.meta?.to ? formatShortDate(String(it.meta.to)) : null;
-      const reason = it.meta?.reason ? ` — motivo: ${String(it.meta.reason)}` : "";
-      return (to ? `alterou o prazo para ${to}` : "alterou o prazo") + reason;
-    }
-    case "due_removed": {
-      const reason = it.meta?.reason ? ` — motivo: ${String(it.meta.reason)}` : "";
-      return "removeu o prazo" + reason;
-    }
-    case "edited":
-      return "editou a tarefa";
-    case "comment_deleted":
-      return "removeu um comentário";
-    default:
-      return "atualizou a tarefa";
-  }
+  return describeTicketLog(it.event, it.meta ?? {});
 }
 
 function FeedIcon({ item }: { item: FeedItem }) {
   const cls = "size-3.5 text-muted-foreground";
   if (item.kind === "comment") return <MessageSquare className={cls} />;
-  switch (item.event) {
-    case "created":
-      return <Plus className={cls} />;
-    case "status_changed":
-      return <CircleDot className={cls} />;
-    case "priority_changed":
-      return <Flag className={cls} />;
-    case "assigned":
-      return <UserRound className={cls} />;
-    case "participant_added":
-    case "participant_removed":
-      return <Users className={cls} />;
-    case "tag_added":
-    case "tag_removed":
-      return <Tag className={cls} />;
-    case "due_changed":
-    case "due_removed":
-      return <CalendarClock className={cls} />;
-    case "edited":
-      return <Pencil className={cls} />;
-    case "comment_deleted":
-      return <Trash2 className={cls} />;
-    default:
-      return <History className={cls} />;
-  }
+  const Icon = ticketLogIcon(item.event);
+  return <Icon className={cls} />;
 }
 
 /** Full activity log of a task: comments (messages) + change events, newest first. */

@@ -145,6 +145,35 @@ export const ticketsService = {
     return (data as TicketLog[]) ?? [];
   },
 
+  /** Logs de alteração de TODAS as tarefas de um cliente (timeline do perfil). */
+  async logsByCustomer(customerId: string): Promise<TicketLog[]> {
+    if (env.useMocks) {
+      await sleep(200);
+      const ids = new Set(
+        tickets.filter((t) => t.customer_id === customerId).map((t) => t.id),
+      );
+      return ticketLogs
+        .filter((l) => ids.has(l.ticket_id))
+        .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+    }
+    const sb = getSupabaseBrowserClient();
+    const { data: tks, error: e1 } = await sb
+      .from("tickets")
+      .select("id")
+      .eq("customer_id", customerId)
+      .is("deleted_at", null);
+    if (e1) throw e1;
+    const ids = (tks ?? []).map((t) => (t as { id: string }).id);
+    if (ids.length === 0) return [];
+    const { data, error } = await sb
+      .from("ticket_logs")
+      .select("*")
+      .in("ticket_id", ids)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data as TicketLog[]) ?? [];
+  },
+
   async sendMessage(
     ticketId: string,
     body: string,

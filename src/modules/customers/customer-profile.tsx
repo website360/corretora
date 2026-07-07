@@ -46,6 +46,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Contract, StageColor } from "@/types/domain";
 import { ContractFormDialog } from "@/modules/catalog/contract-form-dialog";
+import { describeTicketLog, ticketLogIcon } from "@/modules/tickets/ticket-log-format";
 import { AtendimentoChat } from "@/modules/service/atendimento-chat";
 import { Calculator, ClipboardList, Headset, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -571,6 +572,7 @@ const ACTIVITY_FILTERS: { key: string; label: string }[] = [
   { key: "Contrato", label: "Contratos" },
   { key: "Orçamento", label: "Orçamentos" },
   { key: "Evento", label: "Eventos" },
+  { key: "Alteração", label: "Alterações" },
 ];
 
 /**
@@ -603,6 +605,10 @@ function ActivityTimeline({ customerId }: { customerId: string }) {
     () => calendarService.listByCustomer(customerId),
     [customerId],
   );
+  const { data: ticketLogs } = useAsyncData(
+    () => ticketsService.logsByCustomer(customerId),
+    [customerId],
+  );
   const { data: products } = useAsyncData(() => productsService.list());
   const [filter, setFilter] = React.useState("all");
 
@@ -610,9 +616,13 @@ function ActivityTimeline({ customerId }: { customerId: string }) {
     () => new Map((products ?? []).map((p) => [p.id, p.name])),
     [products],
   );
+  const ticketById = React.useMemo(
+    () => new Map((tickets ?? []).map((t) => [t.id, t])),
+    [tickets],
+  );
 
   const loading =
-    !interactions || !tickets || !contracts || !quotes || !services || !events;
+    !interactions || !tickets || !contracts || !quotes || !services || !events || !ticketLogs;
 
   const items = React.useMemo<ActivityItem[]>(() => {
     const out: ActivityItem[] = [];
@@ -701,8 +711,27 @@ function ActivityTimeline({ customerId }: { customerId: string }) {
         href: `/agenda`,
       });
     }
+    // Histórico granular de alterações das tarefas (quem mudou o quê). "created"
+    // já vira um item "Tarefa"; comentários são conversa interna — ambos fora.
+    for (const l of ticketLogs ?? []) {
+      if (l.event === "created" || l.event === "comment" || l.event === "comment_deleted") {
+        continue;
+      }
+      const tk = ticketById.get(l.ticket_id);
+      out.push({
+        id: `log-${l.id}`,
+        date: l.created_at,
+        icon: ticketLogIcon(l.event),
+        tone: "neutral",
+        kind: "Alteração",
+        title: `${tk ? `#${tk.number} ` : ""}${describeTicketLog(l.event, l.meta ?? {})}`,
+        description: tk?.title ?? null,
+        authorId: l.actor_id,
+        href: `/tickets/${l.ticket_id}`,
+      });
+    }
     return out.sort((a, b) => +new Date(b.date) - +new Date(a.date));
-  }, [interactions, tickets, contracts, quotes, services, events, productName]);
+  }, [interactions, tickets, contracts, quotes, services, events, ticketLogs, ticketById, productName]);
 
   const filtered = filter === "all" ? items : items.filter((i) => i.kind === filter);
 
