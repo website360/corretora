@@ -2,13 +2,13 @@ import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getCurrentCompanyId, getViewCompanyId, getWriteCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
-import type { StageColor, TaskBoard, TaskColumn } from "@/types/domain";
+import type { StageColor, TaskBoard, TaskBoardKind, TaskColumn } from "@/types/domain";
 
 const now = () => new Date().toISOString();
 
 // Minimal mock store (the app runs against Supabase; mocks keep dev parity).
 const mockBoards: TaskBoard[] = [
-  { id: "tb_default", company_id: "co_apex", name: "Tarefas", description: "Quadro padrão de tarefas", position: 0, is_default: true, created_at: now() },
+  { id: "tb_default", company_id: "co_apex", name: "Tarefas", description: "Quadro padrão de tarefas", kind: "tasks", position: 0, is_default: true, created_at: now() },
 ];
 const mockColumns: TaskColumn[] = [
   { id: "tc_aberto", company_id: "co_apex", board_id: "tb_default", name: "Aberto", color: "primary", position: 0, is_terminal: false, created_at: now() },
@@ -38,7 +38,11 @@ export const taskBoardsService = {
     return (data as TaskBoard[]) ?? [];
   },
 
-  async createBoard(name: string, description?: string | null): Promise<TaskBoard> {
+  async createBoard(
+    name: string,
+    description?: string | null,
+    kind: TaskBoardKind = "tasks",
+  ): Promise<TaskBoard> {
     if (env.useMocks) {
       await sleep(160);
       const board: TaskBoard = {
@@ -46,6 +50,7 @@ export const taskBoardsService = {
         company_id: getCurrentCompanyId() || "co_apex",
         name,
         description: description ?? null,
+        kind,
         position: Math.max(-1, ...mockBoards.map((b) => b.position)) + 1,
         is_default: false,
         created_at: now(),
@@ -71,7 +76,7 @@ export const taskBoardsService = {
     const position = Math.max(-1, ...((existing as { position: number }[]) ?? []).map((b) => b.position)) + 1;
     const { data, error } = await sb
       .from("task_boards")
-      .insert({ company_id, name, description: description ?? null, position, is_default: false })
+      .insert({ company_id, name, description: description ?? null, kind, position, is_default: false })
       .select("*")
       .single();
     if (error) throw error;
@@ -89,7 +94,10 @@ export const taskBoardsService = {
     return board;
   },
 
-  async updateBoard(id: string, patch: Partial<Pick<TaskBoard, "name" | "description">>): Promise<void> {
+  async updateBoard(
+    id: string,
+    patch: Partial<Pick<TaskBoard, "name" | "description" | "kind">>,
+  ): Promise<void> {
     if (env.useMocks) {
       await sleep(120);
       const b = mockBoards.find((x) => x.id === id);

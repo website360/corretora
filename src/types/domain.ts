@@ -443,12 +443,17 @@ export interface TaskStage {
   created_at: ISODateString;
 }
 
+/** Finalidade do quadro: tarefas, agenda (eventos) ou outro. */
+export type TaskBoardKind = "tasks" | "agenda" | "other";
+
 /** A task kanban board (multiple per company; one is the system default). */
 export interface TaskBoard {
   id: UUID;
   company_id: UUID;
   name: string;
   description: string | null;
+  /** Tipo do quadro — separa Kanbans de Tarefas x Agenda x Outros. */
+  kind: TaskBoardKind;
   position: number;
   is_default: boolean;
   created_at: ISODateString;

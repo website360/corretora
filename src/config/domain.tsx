@@ -24,6 +24,9 @@ import {
   Package,
   FileText,
   Calculator,
+  CalendarClock,
+  LayoutGrid,
+  ListChecks,
   type LucideIcon,
 } from "lucide-react";
 import type {
@@ -37,6 +40,7 @@ import type {
   QuoteStatus,
   ServiceChannel,
   TagModule,
+  TaskBoardKind,
 } from "@/types/domain";
 
 export type Tone = "neutral" | "primary" | "success" | "warning" | "destructive";
@@ -110,6 +114,19 @@ export const CALENDAR_EVENT_META: Record<
   task: { label: "Tarefa", tone: "neutral", icon: CheckCircle2 },
   renewal: { label: "Renovação", tone: "success", icon: ArrowUp },
 };
+
+/** Tipo de Kanban (task_board) — separa quadros de Tarefas x Agenda x Outros. */
+export const TASK_BOARD_KIND_META: Record<
+  TaskBoardKind,
+  { label: string; icon: LucideIcon }
+> = {
+  tasks: { label: "Tarefas", icon: ListChecks },
+  agenda: { label: "Agenda", icon: CalendarClock },
+  other: { label: "Outro", icon: LayoutGrid },
+};
+
+/** Ordem de exibição dos tipos de Kanban. */
+export const TASK_BOARD_KINDS: TaskBoardKind[] = ["tasks", "agenda", "other"];
 
 export const TONE_BADGE_CLASS: Record<Tone, string> = {
   neutral: "bg-muted text-muted-foreground border-border",

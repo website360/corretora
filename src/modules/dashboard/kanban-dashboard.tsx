@@ -15,11 +15,22 @@ import { calendarService } from "@/services/calendar.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useDirectory, useDirectoryStore } from "@/stores/directory-store";
 import { useViewCompanyStore } from "@/stores/view-company-store";
-import { TONE_DOT_CLASS, TONE_TEXT_CLASS } from "@/config/domain";
+import {
+  TASK_BOARD_KINDS,
+  TASK_BOARD_KIND_META,
+  TONE_DOT_CLASS,
+  TONE_TEXT_CLASS,
+} from "@/config/domain";
 import { StageDot } from "@/components/common/style-pickers";
 import { isHexColor } from "@/lib/tag-color";
 import { cn } from "@/lib/utils";
-import type { CalendarEvent, StageColor, TaskColumn, Ticket } from "@/types/domain";
+import type {
+  CalendarEvent,
+  StageColor,
+  TaskBoardKind,
+  TaskColumn,
+  Ticket,
+} from "@/types/domain";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
@@ -30,14 +41,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-type Scope = "all" | "tasks" | "events";
-
-const SCOPES: { key: Scope; label: string }[] = [
-  { key: "all", label: "Tudo" },
-  { key: "tasks", label: "Tarefas" },
-  { key: "events", label: "Agenda" },
-];
 
 /** Barra colorida fina do rodapé do card (por tom predefinido). */
 const TONE_BAR: Record<StageColor, string> = {
@@ -53,10 +56,10 @@ const isOpen = (t: Ticket) =>
   t.status === "open" || t.status === "in_progress" || t.status === "waiting_customer";
 
 /**
- * Dashboard de Kanbans. O usuário escolhe um quadro (task_board) e vê as etapas
- * (colunas) daquele quadro com a contagem de itens em cada uma. O alternador
- * "Tudo / Tarefas / Agenda" define se conta tarefas (tickets), eventos
- * (calendar_events) ou ambos — os dois módulos compartilham os mesmos quadros.
+ * Dashboard de Kanbans. Os quadros são separados por TIPO (Tarefas / Agenda /
+ * Outro). O usuário escolhe o tipo e depois o quadro; vê as etapas (colunas)
+ * daquele quadro com a contagem de itens em cada uma. O tipo do quadro define o
+ * que é contado: Tarefas → tickets, Agenda → eventos, Outro → ambos.
  */
 export function KanbanDashboard() {
   useDirectory();
@@ -67,33 +70,46 @@ export function KanbanDashboard() {
   const { data: tickets } = useAsyncData(() => ticketsService.list(), [viewCompanyId]);
   const { data: events } = useAsyncData(() => calendarService.list(), [viewCompanyId]);
 
+  const [kind, setKind] = React.useState<TaskBoardKind | "">("");
   const [boardId, setBoardId] = React.useState("");
-  const [scope, setScope] = React.useState<Scope>("all");
 
   // Preferências guardadas por dispositivo (voltam selecionadas).
   React.useEffect(() => {
+    const k = localStorage.getItem("dashboard_kanban_kind");
+    if (k === "tasks" || k === "agenda" || k === "other") setKind(k);
     const b = localStorage.getItem("dashboard_kanban_board");
     if (b) setBoardId(b);
-    const s = localStorage.getItem("dashboard_kanban_scope");
-    if (s === "all" || s === "tasks" || s === "events") setScope(s);
   }, []);
 
-  const activeBoardId =
-    boards.some((b) => b.id === boardId)
-      ? boardId
-      : (boards.find((b) => b.is_default)?.id ?? boards[0]?.id ?? "");
+  // Tipos que realmente têm quadros (na ordem canônica).
+  const presentKinds = React.useMemo(
+    () => TASK_BOARD_KINDS.filter((k) => boards.some((b) => b.kind === k)),
+    [boards],
+  );
+  const activeKind: TaskBoardKind | "" =
+    kind && presentKinds.includes(kind) ? kind : (presentKinds[0] ?? "");
 
+  const boardsOfKind = React.useMemo(
+    () => boards.filter((b) => b.kind === activeKind),
+    [boards, activeKind],
+  );
+  const activeBoardId = boardsOfKind.some((b) => b.id === boardId)
+    ? boardId
+    : (boardsOfKind.find((b) => b.is_default)?.id ?? boardsOfKind[0]?.id ?? "");
+
+  const onKindChange = (k: TaskBoardKind) => {
+    setKind(k);
+    localStorage.setItem("dashboard_kanban_kind", k);
+  };
   const onBoardChange = (v: string) => {
     setBoardId(v);
     localStorage.setItem("dashboard_kanban_board", v);
   };
-  const onScopeChange = (s: Scope) => {
-    setScope(s);
-    localStorage.setItem("dashboard_kanban_scope", s);
-  };
 
-  const showTasks = scope !== "events";
-  const showEvents = scope !== "tasks";
+  // Tarefas → só tickets; Agenda → só eventos; Outro → ambos.
+  const showTasks = activeKind !== "agenda";
+  const showEvents = activeKind !== "tasks";
+  const both = showTasks && showEvents;
   const loading = !tickets || !events;
 
   const columns = React.useMemo(
@@ -142,18 +158,18 @@ export function KanbanDashboard() {
     [events, columns, showEvents, inColumn],
   );
 
-  const now = Date.now();
+  const nowMs = Date.now();
   const totalItems = perColumn.reduce((s, c) => s + c.total, 0);
   const openCount = boardTasks.filter(isOpen).length;
   const overdueCount = boardTasks.filter(
-    (t) => isOpen(t) && t.due_at != null && +new Date(t.due_at) < now,
+    (t) => isOpen(t) && t.due_at != null && +new Date(t.due_at) < nowMs,
   ).length;
   const doneCount = boardTasks.filter(
     (t) => t.status === "resolved" || t.status === "closed",
   ).length;
   const finishedEvents = boardEvents.filter((e) => e.finished).length;
   const upcomingEvents = boardEvents.filter(
-    (e) => !e.finished && +new Date(e.starts_at) >= now,
+    (e) => !e.finished && +new Date(e.starts_at) >= nowMs,
   ).length;
 
   const boardQ = activeBoardId ? `?board=${activeBoardId}` : "";
@@ -167,7 +183,7 @@ export function KanbanDashboard() {
   }[] = [
     {
       key: "total",
-      label: scope === "events" ? "Eventos" : scope === "tasks" ? "Tarefas" : "Itens",
+      label: activeKind === "agenda" ? "Eventos" : both ? "Itens" : "Tarefas",
       value: totalItems,
       tone: "primary",
       icon: LayoutGrid,
@@ -237,38 +253,45 @@ export function KanbanDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Controles: seletor de quadro + alternador de tipo */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="w-full sm:w-64">
-          <Select value={activeBoardId} onValueChange={onBoardChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione um Kanban" />
-            </SelectTrigger>
-            <SelectContent>
-              {boards.map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* Abas por tipo de Kanban */}
+      {presentKinds.length > 1 && (
+        <div className="inline-flex flex-wrap gap-1 rounded-lg border p-0.5">
+          {presentKinds.map((k) => {
+            const meta = TASK_BOARD_KIND_META[k];
+            const Icon = meta.icon;
+            return (
+              <button
+                key={k}
+                onClick={() => onKindChange(k)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  activeKind === k
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Icon className="size-4" />
+                {meta.label}
+              </button>
+            );
+          })}
         </div>
-        <div className="inline-flex rounded-lg border p-0.5">
-          {SCOPES.map((s) => (
-            <button
-              key={s.key}
-              onClick={() => onScopeChange(s.key)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                scope === s.key
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+      )}
+
+      {/* Seletor de quadro do tipo ativo */}
+      <div className="w-full sm:w-72">
+        <Select value={activeBoardId} onValueChange={onBoardChange}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione um Kanban" />
+          </SelectTrigger>
+          <SelectContent>
+            {boardsOfKind.map((b) => (
+              <SelectItem key={b.id} value={b.id}>
+                {b.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Resumo */}
@@ -313,11 +336,7 @@ export function KanbanDashboard() {
             {perColumn.map(({ col, taskCount, eventCount, total }) => {
               const hex = isHexColor(col.color);
               return (
-                <Link
-                  key={col.id}
-                  href={`/tickets${boardQ}`}
-                  className="group block"
-                >
+                <Link key={col.id} href={`/tickets${boardQ}`} className="group block">
                   <Card className="relative overflow-hidden p-4 transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
                     <div
                       className={cn(
@@ -335,7 +354,7 @@ export function KanbanDashboard() {
                     ) : (
                       <p className="mt-3 text-3xl font-bold leading-none tabular-nums">{total}</p>
                     )}
-                    {!loading && scope === "all" && total > 0 && (
+                    {!loading && both && total > 0 && (
                       <p className="mt-2 text-[11px] tabular-nums text-muted-foreground/70">
                         {taskCount} {taskCount === 1 ? "tarefa" : "tarefas"} · {eventCount}{" "}
                         {eventCount === 1 ? "evento" : "eventos"}
