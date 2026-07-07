@@ -163,7 +163,9 @@ export function TaskIndicators() {
   const [boards, setBoards] = React.useState<TaskBoard[]>([]);
   const [boardId, setBoardId] = React.useState<string>("all");
   const [loading, setLoading] = React.useState(true);
-  const [range, setRange] = React.useState<RangeKey>("month");
+  // Padrão "Tudo": o recorte por quadro fica visível de imediato (em meses
+  // esparsos, "este mês" faz Todos ≈ um quadro só e parece que não filtra).
+  const [range, setRange] = React.useState<RangeKey>("all");
   const [customFrom, setCustomFrom] = React.useState("");
   const [customTo, setCustomTo] = React.useState("");
 
