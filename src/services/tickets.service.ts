@@ -79,6 +79,25 @@ export const ticketsService = {
     return applyFilters((data as Ticket[]) ?? [], filters);
   },
 
+  /** Todas as tarefas vinculadas a um cliente (para a timeline do perfil). */
+  async listByCustomer(customerId: string): Promise<Ticket[]> {
+    if (env.useMocks) {
+      await sleep(200);
+      return tickets
+        .filter((t) => t.customer_id === customerId)
+        .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+    }
+    const sb = getSupabaseBrowserClient();
+    const { data, error } = await sb
+      .from("tickets")
+      .select("*")
+      .eq("customer_id", customerId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data as Ticket[]) ?? [];
+  },
+
   async get(id: string): Promise<Ticket | null> {
     if (env.useMocks) {
       await sleep(180);

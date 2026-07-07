@@ -34,6 +34,25 @@ export const quotesService = {
     return (data as Quote[]) ?? [];
   },
 
+  /** Todos os orçamentos de um cliente (para a timeline do perfil). */
+  async listByCustomer(customerId: string): Promise<Quote[]> {
+    if (env.useMocks) {
+      await sleep(160);
+      return mockQuotes
+        .filter((q) => q.customer_id === customerId)
+        .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+    }
+    const sb = getSupabaseBrowserClient();
+    const { data, error } = await sb
+      .from("quotes")
+      .select("*")
+      .eq("customer_id", customerId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data as Quote[]) ?? [];
+  },
+
   async get(id: string): Promise<Quote | null> {
     if (env.useMocks) {
       await sleep(120);

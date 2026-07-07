@@ -25,6 +25,25 @@ export const calendarService = {
     return (data as CalendarEvent[]) ?? [];
   },
 
+  /** Todos os eventos de agenda vinculados a um cliente (timeline do perfil). */
+  async listByCustomer(customerId: string): Promise<CalendarEvent[]> {
+    if (env.useMocks) {
+      await sleep(180);
+      return calendarEvents
+        .filter((e) => e.customer_id === customerId)
+        .sort((a, b) => +new Date(b.starts_at) - +new Date(a.starts_at));
+    }
+    const sb = getSupabaseBrowserClient();
+    const { data, error } = await sb
+      .from("calendar_events")
+      .select("*")
+      .eq("customer_id", customerId)
+      .is("deleted_at", null)
+      .order("starts_at", { ascending: false });
+    if (error) throw error;
+    return (data as CalendarEvent[]) ?? [];
+  },
+
   async create(input: Omit<CalendarEvent, "id" | "company_id" | "created_at">): Promise<CalendarEvent> {
     if (env.useMocks) {
       await sleep(380);

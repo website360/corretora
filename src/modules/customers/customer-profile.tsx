@@ -26,16 +26,28 @@ import { tagsService } from "@/services/tags.service";
 import { contractsService } from "@/services/contracts.service";
 import { productsService } from "@/services/products.service";
 import { serviceRecordsService } from "@/services/service-records.service";
+import { ticketsService } from "@/services/tickets.service";
+import { quotesService } from "@/services/quotes.service";
+import { calendarService } from "@/services/calendar.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useDirectory } from "@/stores/directory-store";
 import { findUser } from "@/services/lookup";
 import { formatCurrency, formatDocument, formatPhone, formatShortDate, formatSmartDate } from "@/utils/format";
-import { CONTRACT_STATUS_META, TONE_BADGE_CLASS } from "@/config/domain";
+import {
+  CALENDAR_EVENT_META,
+  CONTRACT_STATUS_META,
+  QUOTE_STATUS_META,
+  SERVICE_CHANNEL_META,
+  TICKET_CATEGORY_META,
+  TICKET_STATUS_META,
+  TONE_BADGE_CLASS,
+  TONE_TEXT_CLASS,
+} from "@/config/domain";
 import { cn } from "@/lib/utils";
-import type { Contract, CustomerInteraction, StageColor } from "@/types/domain";
+import type { Contract, StageColor } from "@/types/domain";
 import { ContractFormDialog } from "@/modules/catalog/contract-form-dialog";
 import { AtendimentoChat } from "@/modules/service/atendimento-chat";
-import { Headset, Plus } from "lucide-react";
+import { Calculator, ClipboardList, Headset, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -65,7 +77,6 @@ export function CustomerProfile({ id }: { id: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { data: customer, loading, refetch } = useAsyncData(() => customersService.get(id), [id]);
-  const { data: interactions } = useAsyncData(() => customersService.interactions(id), [id]);
   const { data: tags } = useAsyncData(() => tagsService.list("customers"));
   const [editOpen, setEditOpen] = React.useState(false);
   const [converting, setConverting] = React.useState(false);
@@ -221,7 +232,7 @@ export function CustomerProfile({ id }: { id: string }) {
             <Headset className="size-4" /> Atendimentos
           </TabsTrigger>
           <TabsTrigger value="historico">
-            <CalendarClock className="size-4" /> Histórico
+            <CalendarClock className="size-4" /> Atividades
           </TabsTrigger>
         </TabsList>
 
@@ -321,11 +332,7 @@ export function CustomerProfile({ id }: { id: string }) {
         </TabsContent>
 
         <TabsContent value="historico">
-          <SectionCard title="Histórico de interações">
-            <div className="p-5">
-              <Timeline items={interactions ?? []} />
-            </div>
-          </SectionCard>
+          <ActivityTimeline customerId={customer.id} />
         </TabsContent>
       </Tabs>
 
@@ -539,33 +546,264 @@ function EmptyHint({ show, text }: { show: boolean; text: string }) {
   return <p className="px-5 py-4 text-sm text-muted-foreground">{text}</p>;
 }
 
-function Timeline({ items }: { items: CustomerInteraction[] }) {
-  if (items.length === 0) {
-    return <EmptyState title="Sem histórico" description="As interações aparecerão aqui." />;
-  }
+type Tone = keyof typeof TONE_BADGE_CLASS;
+
+interface ActivityItem {
+  id: string;
+  /** ISO date used for chronological sorting (creation moment). */
+  date: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone: Tone;
+  /** Category label shown as a chip (Tarefa, Contrato, etc.). */
+  kind: string;
+  title: string;
+  description?: string | null;
+  authorId?: string | null;
+  badge?: { label: string; tone: Tone } | null;
+  href?: string | null;
+}
+
+const ACTIVITY_FILTERS: { key: string; label: string }[] = [
+  { key: "all", label: "Tudo" },
+  { key: "Interação", label: "Interações" },
+  { key: "Tarefa", label: "Tarefas" },
+  { key: "Atendimento", label: "Atendimentos" },
+  { key: "Contrato", label: "Contratos" },
+  { key: "Orçamento", label: "Orçamentos" },
+  { key: "Evento", label: "Eventos" },
+];
+
+/**
+ * Timeline unificada do cliente: agrega TUDO que foi criado/relacionado a ele —
+ * interações, tarefas, atendimentos, contratos, orçamentos e eventos de agenda —
+ * num único feed ordenado do mais recente para o mais antigo.
+ */
+function ActivityTimeline({ customerId }: { customerId: string }) {
+  const { data: interactions } = useAsyncData(
+    () => customersService.interactions(customerId),
+    [customerId],
+  );
+  const { data: tickets } = useAsyncData(
+    () => ticketsService.listByCustomer(customerId),
+    [customerId],
+  );
+  const { data: contracts } = useAsyncData(
+    () => contractsService.listByCustomer(customerId),
+    [customerId],
+  );
+  const { data: quotes } = useAsyncData(
+    () => quotesService.listByCustomer(customerId),
+    [customerId],
+  );
+  const { data: services } = useAsyncData(
+    () => serviceRecordsService.listByCustomer(customerId),
+    [customerId],
+  );
+  const { data: events } = useAsyncData(
+    () => calendarService.listByCustomer(customerId),
+    [customerId],
+  );
+  const { data: products } = useAsyncData(() => productsService.list());
+  const [filter, setFilter] = React.useState("all");
+
+  const productName = React.useMemo(
+    () => new Map((products ?? []).map((p) => [p.id, p.name])),
+    [products],
+  );
+
+  const loading =
+    !interactions || !tickets || !contracts || !quotes || !services || !events;
+
+  const items = React.useMemo<ActivityItem[]>(() => {
+    const out: ActivityItem[] = [];
+    for (const i of interactions ?? []) {
+      out.push({
+        id: `int-${i.id}`,
+        date: i.created_at,
+        icon: INTERACTION_ICON[i.type],
+        tone: "primary",
+        kind: "Interação",
+        title: i.title,
+        description: i.description,
+        authorId: i.author_id,
+      });
+    }
+    for (const t of tickets ?? []) {
+      const meta = TICKET_STATUS_META[t.status];
+      out.push({
+        id: `tk-${t.id}`,
+        date: t.created_at,
+        icon: ClipboardList,
+        tone: meta.tone,
+        kind: "Tarefa",
+        title: `#${t.number} · ${t.title}`,
+        description: TICKET_CATEGORY_META[t.category]?.label ?? null,
+        authorId: t.created_by,
+        badge: { label: meta.label, tone: meta.tone },
+        href: `/tickets/${t.id}`,
+      });
+    }
+    for (const c of contracts ?? []) {
+      const meta = CONTRACT_STATUS_META[c.status];
+      const prod = c.product_id ? productName.get(c.product_id) : null;
+      out.push({
+        id: `ct-${c.id}`,
+        date: c.created_at,
+        icon: FileText,
+        tone: meta.tone,
+        kind: "Contrato",
+        title: `${prod ?? "Contrato"}${c.policy_number ? ` · Apólice ${c.policy_number}` : ""}`,
+        description: c.premium_cents ? formatCurrency(c.premium_cents / 100) : null,
+        authorId: c.owner_id,
+        badge: { label: meta.label, tone: meta.tone },
+        href: `/contratos/${c.id}`,
+      });
+    }
+    for (const q of quotes ?? []) {
+      const meta = QUOTE_STATUS_META[q.status];
+      out.push({
+        id: `qt-${q.id}`,
+        date: q.created_at,
+        icon: Calculator,
+        tone: meta.tone,
+        kind: "Orçamento",
+        title: `Orçamento #${q.number}${q.title ? ` · ${q.title}` : ""}`,
+        authorId: q.created_by,
+        badge: { label: meta.label, tone: meta.tone },
+        href: `/orcamentos`,
+      });
+    }
+    for (const s of services ?? []) {
+      const meta = SERVICE_CHANNEL_META[s.channel];
+      out.push({
+        id: `sv-${s.id}`,
+        date: s.created_at,
+        icon: meta.icon,
+        tone: meta.tone,
+        kind: "Atendimento",
+        title: `Atendimento · ${meta.label}`,
+        description: s.notes,
+        authorId: s.author_id,
+      });
+    }
+    for (const e of events ?? []) {
+      const meta = CALENDAR_EVENT_META[e.type];
+      out.push({
+        id: `ev-${e.id}`,
+        date: e.created_at,
+        icon: meta.icon,
+        tone: meta.tone,
+        kind: "Evento",
+        title: e.title,
+        description: `${meta.label} · ${formatSmartDate(e.starts_at)}`,
+        authorId: e.created_by ?? e.owner_id,
+        badge: { label: meta.label, tone: meta.tone },
+        href: `/agenda`,
+      });
+    }
+    return out.sort((a, b) => +new Date(b.date) - +new Date(a.date));
+  }, [interactions, tickets, contracts, quotes, services, events, productName]);
+
+  const filtered = filter === "all" ? items : items.filter((i) => i.kind === filter);
+
   return (
-    <ol className="relative space-y-6">
-      <span className="absolute left-[15px] top-2 h-[calc(100%-1rem)] w-px bg-border" />
-      {items.map((item) => {
-        const Icon = INTERACTION_ICON[item.type];
-        const author = findUser(item.author_id);
-        return (
-          <li key={item.id} className="relative flex gap-4">
-            <span className="z-10 flex size-8 shrink-0 items-center justify-center rounded-full border bg-card text-primary">
-              <Icon className="size-4" />
-            </span>
-            <div className="flex-1 pt-0.5">
-              <p className="text-sm font-medium">{item.title}</p>
-              {item.description && (
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-              )}
-              <p className="mt-1 text-xs text-muted-foreground/70">
-                {author?.name} · {formatSmartDate(item.created_at)}
-              </p>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
+    <SectionCard title={`Atividades${items.length ? ` (${items.length})` : ""}`}>
+      <div className="space-y-4 p-5">
+        <div className="flex flex-wrap gap-1.5">
+          {ACTIVITY_FILTERS.map((f) => {
+            const count =
+              f.key === "all" ? items.length : items.filter((i) => i.kind === f.key).length;
+            if (f.key !== "all" && count === 0) return null;
+            return (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  filter === f.key
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "hover:bg-muted",
+                )}
+              >
+                {f.label}
+                {count > 0 && <span className="ml-1 opacity-70">({count})</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 rounded-lg" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            title="Nada por aqui"
+            description="As atividades deste cliente aparecerão aqui."
+          />
+        ) : (
+          <ol className="relative space-y-5">
+            <span className="absolute left-[15px] top-2 h-[calc(100%-1rem)] w-px bg-border" />
+            {filtered.map((item) => {
+              const Icon = item.icon;
+              const author = findUser(item.authorId);
+              const content = (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {item.kind}
+                    </span>
+                    <p className="text-sm font-medium">{item.title}</p>
+                    {item.badge && (
+                      <Badge
+                        variant="outline"
+                        className={cn("text-[10px]", TONE_BADGE_CLASS[item.badge.tone])}
+                      >
+                        {item.badge.label}
+                      </Badge>
+                    )}
+                  </div>
+                  {item.description && (
+                    <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
+                      {item.description}
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-muted-foreground/70">
+                    {author?.name ? `${author.name} · ` : ""}
+                    {formatSmartDate(item.date)}
+                  </p>
+                </>
+              );
+              return (
+                <li key={item.id} className="relative flex gap-4">
+                  <span
+                    className={cn(
+                      "z-10 flex size-8 shrink-0 items-center justify-center rounded-full border bg-card",
+                      TONE_TEXT_CLASS[item.tone],
+                    )}
+                  >
+                    <Icon className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    {item.href ? (
+                      <Link
+                        href={item.href}
+                        className="-mx-2 block rounded-lg px-2 py-1 transition-colors hover:bg-muted/40"
+                      >
+                        {content}
+                      </Link>
+                    ) : (
+                      content
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </div>
+    </SectionCard>
   );
 }
