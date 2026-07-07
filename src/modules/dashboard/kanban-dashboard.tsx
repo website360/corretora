@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-/** Barra colorida fina do rodapé do card (por tom predefinido). */
+/** Barra colorida fina da borda esquerda do card (por tom predefinido). */
 const TONE_BAR: Record<StageColor, string> = {
   neutral: "bg-muted-foreground/50",
   primary: "bg-primary",
@@ -74,13 +74,59 @@ function rangeFor(key: RangeKey): { from: Date; to: Date } | null {
   }
 }
 
+/** Card de indicador — tamanho/estilo únicos para "Por vencimento" e "Etapas". */
+function StatCard({
+  href,
+  barClass,
+  barStyle,
+  marker,
+  label,
+  value,
+  valueClass,
+  sub,
+  loading,
+}: {
+  href: string;
+  barClass?: string;
+  barStyle?: React.CSSProperties;
+  marker: React.ReactNode;
+  label: string;
+  value: number;
+  valueClass?: string;
+  sub?: string | null;
+  loading: boolean;
+}) {
+  return (
+    <Link href={href} className="group block h-full">
+      <Card className="relative flex h-full flex-col overflow-hidden p-5 transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
+        <div className={cn("absolute inset-y-0 left-0 w-1", barClass)} style={barStyle} />
+        <div className="flex items-center gap-2">
+          {marker}
+          <span className="truncate text-[13px] font-medium text-muted-foreground">{label}</span>
+        </div>
+        {loading ? (
+          <Skeleton className="mt-4 h-9 w-16" />
+        ) : (
+          <p
+            className={cn(
+              "mt-4 text-4xl font-bold leading-none tracking-tight tabular-nums",
+              valueClass,
+            )}
+          >
+            {value}
+          </p>
+        )}
+        <p className="mt-2 h-4 text-[11px] tabular-nums text-muted-foreground/70">{sub ?? ""}</p>
+      </Card>
+    </Link>
+  );
+}
+
 /**
  * Dashboard de Kanbans. Os quadros são separados por TIPO (Tarefas / Agenda /
  * Outro). O usuário escolhe o tipo, o quadro e o período; vê as etapas (colunas)
- * daquele quadro com a contagem de itens em cada uma. O tipo do quadro define o
- * que é contado (Tarefas → tickets, Agenda → eventos, Outro → ambos) e o período
- * filtra tarefas por data de criação e eventos pela data de início. Clicar num
- * card abre as Tarefas já filtradas por aquele quadro/etapa/período.
+ * daquele quadro com a contagem de itens em cada uma, e um indicador por
+ * vencimento. Ao clicar, abre as Tarefas & Agenda já filtradas (tarefas + eventos).
  */
 export function KanbanDashboard() {
   useDirectory();
@@ -138,7 +184,6 @@ export function KanbanDashboard() {
   const showTasks = activeKind !== "agenda";
   const showEvents = activeKind !== "tasks";
   const both = showTasks && showEvents;
-  const entry = activeKind === "agenda" ? "events" : both ? "all" : "tasks";
   const loading = !tickets || !events;
 
   const rangeWindow = React.useMemo(() => rangeFor(range), [range]);
@@ -194,9 +239,9 @@ export function KanbanDashboard() {
   );
 
   // Indicador por vencimento (tarefas: due_at; eventos: starts_at). Considera
-  // TODAS as tarefas do quadro (ignora o período, para "Atrasada" refletir tudo
-  // que está vencido). Atrasada = vencidas nos últimos 30 dias; Em dia inclui
-  // itens sem prazo (nada vencido).
+  // TODAS as tarefas do quadro (ignora o período). Exclui finalizados (tarefa
+  // com status "closed" / evento finished). Atrasada = vencidas nos últimos 30
+  // dias; Em dia inclui itens sem prazo (nada vencido).
   const dueBuckets = React.useMemo(() => {
     const today0 = +startOfDay(new Date());
     const endToday = +endOfDay(new Date());
@@ -215,8 +260,11 @@ export function KanbanDashboard() {
       else if (t >= today0 && t <= endToday) today++;
       else if (t >= startTomorrow) upcoming++;
     };
-    if (showTasks) for (const t of tickets ?? []) if (onBoard(t)) classify(t.due_at);
-    if (showEvents) for (const e of events ?? []) if (onBoard(e)) classify(e.starts_at);
+    if (showTasks)
+      for (const t of tickets ?? [])
+        if (onBoard(t) && t.status !== "closed") classify(t.due_at);
+    if (showEvents)
+      for (const e of events ?? []) if (onBoard(e) && !e.finished) classify(e.starts_at);
     return { overdue, today, upcoming };
   }, [tickets, events, showTasks, showEvents, onBoard]);
 
@@ -230,12 +278,12 @@ export function KanbanDashboard() {
     ? `&from=${encodeURIComponent(rangeWindow.from.toISOString())}&to=${encodeURIComponent(rangeWindow.to.toISOString())}`
     : "";
 
-  // Deep-link para as Tarefas já filtradas pela etapa (+ período).
+  // Deep-links abrem Tarefas & Agenda com o filtro aplicado, mantendo tarefas +
+  // eventos (entry=all).
   const cardHref = (columnId: string) =>
-    `/tickets?board=${activeBoardId}&stage=${columnId}&entry=${entry}${rangeQuery}`;
-  // Deep-link do indicador por vencimento (ignora o período, como a contagem).
+    `/tickets?board=${activeBoardId}&stage=${columnId}&entry=all${rangeQuery}`;
   const dueHref = (bucket: string) =>
-    `/tickets?board=${activeBoardId}&entry=${entry}&due=${bucket}`;
+    `/tickets?board=${activeBoardId}&entry=all&due=${bucket}`;
 
   if (boards.length === 0) {
     return (
@@ -316,27 +364,16 @@ export function KanbanDashboard() {
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {dueCards.map((c) => (
-            <Link key={c.key} href={dueHref(c.key)} className="group block">
-              <Card className="relative overflow-hidden p-5 transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
-                <div className={cn("absolute inset-y-0 left-0 w-1", TONE_BAR[c.tone])} />
-                <span className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
-                  <span className={cn("size-2 rounded-full", TONE_DOT_CLASS[c.tone])} />
-                  {c.label}
-                </span>
-                {loading ? (
-                  <Skeleton className="mt-3 h-10 w-16" />
-                ) : (
-                  <p
-                    className={cn(
-                      "mt-3 text-4xl font-bold leading-none tracking-tight tabular-nums",
-                      TONE_TEXT_CLASS[c.tone],
-                    )}
-                  >
-                    {c.value}
-                  </p>
-                )}
-              </Card>
-            </Link>
+            <StatCard
+              key={c.key}
+              href={dueHref(c.key)}
+              barClass={TONE_BAR[c.tone]}
+              marker={<span className={cn("size-2.5 rounded-full", TONE_DOT_CLASS[c.tone])} />}
+              label={c.label}
+              value={c.value}
+              valueClass={TONE_TEXT_CLASS[c.tone]}
+              loading={loading}
+            />
           ))}
         </div>
       </div>
@@ -356,32 +393,17 @@ export function KanbanDashboard() {
             {perColumn.map(({ col, taskCount, eventCount, total }) => {
               const hex = isHexColor(col.color);
               return (
-                <Link key={col.id} href={cardHref(col.id)} className="group block">
-                  <Card className="relative overflow-hidden p-4 transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
-                    <div
-                      className={cn(
-                        "absolute inset-x-0 bottom-0 h-1",
-                        hex ? "" : TONE_BAR[col.color as StageColor],
-                      )}
-                      style={hex ? { backgroundColor: col.color } : undefined}
-                    />
-                    <div className="flex items-center gap-2">
-                      <StageDot color={col.color} icon={col.icon} />
-                      <span className="truncate text-sm font-medium">{col.name}</span>
-                    </div>
-                    {loading ? (
-                      <Skeleton className="mt-3 h-9 w-14" />
-                    ) : (
-                      <p className="mt-3 text-3xl font-bold leading-none tabular-nums">{total}</p>
-                    )}
-                    {!loading && both && total > 0 && (
-                      <p className="mt-2 text-[11px] tabular-nums text-muted-foreground/70">
-                        {taskCount} {taskCount === 1 ? "tarefa" : "tarefas"} · {eventCount}{" "}
-                        {eventCount === 1 ? "evento" : "eventos"}
-                      </p>
-                    )}
-                  </Card>
-                </Link>
+                <StatCard
+                  key={col.id}
+                  href={cardHref(col.id)}
+                  barClass={hex ? undefined : TONE_BAR[col.color as StageColor]}
+                  barStyle={hex ? { backgroundColor: col.color } : undefined}
+                  marker={<StageDot color={col.color} icon={col.icon} />}
+                  label={col.name}
+                  value={total}
+                  sub={both && total > 0 ? `${taskCount} tar. · ${eventCount} ev.` : null}
+                  loading={loading}
+                />
               );
             })}
           </div>

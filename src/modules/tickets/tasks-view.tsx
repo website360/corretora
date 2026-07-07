@@ -640,6 +640,8 @@ export function TasksView() {
       taskOpenOk(t) &&
       createdInDeepLinkRange(t) &&
       dueOk(t.due_at) &&
+      // Finalizadas (status closed) não entram no recorte por vencimento.
+      (!dueParam || t.status !== "closed") &&
       taskInWindow(t),
   );
 
@@ -672,6 +674,8 @@ export function TasksView() {
       if (!eventOpenOk(e)) return false;
       if (!eventStartsInDeepLinkRange(e)) return false;
       if (!dueOk(e.starts_at)) return false;
+      // Finalizados (finished) não entram no recorte por vencimento.
+      if (dueParam && e.finished) return false;
       if (periodWindow && !inWindow(e.starts_at)) return false;
       return true;
     });
