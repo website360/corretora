@@ -48,6 +48,15 @@ const TONE_SOFT_BG: Record<StageColor, string> = {
   destructive: "bg-destructive/10",
 };
 
+/** Degradê de fundo do card por tom (início; termina transparente). */
+const TONE_TINT: Record<StageColor, string> = {
+  neutral: "from-muted/50",
+  primary: "from-primary/10",
+  success: "from-success/10",
+  warning: "from-warning/10",
+  destructive: "from-destructive/10",
+};
+
 type RangeKey = "today" | "7d" | "month" | "year" | "all";
 
 const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
@@ -76,9 +85,9 @@ function rangeFor(key: RangeKey): { from: Date; to: Date } | null {
 
 /**
  * Dashboard de Kanbans. Quadros separados por TIPO (Tarefas / Agenda / Outro).
- * Escolhe-se o tipo, o quadro e o período. Mostra: um indicador por vencimento
- * (respeita o quadro, ignora o período) e a distribuição por etapa do quadro
- * (respeita o período). Cada card abre as Tarefas & Agenda com o filtro aplicado.
+ * Escolhe-se o tipo, o quadro e o período. Mostra um indicador por vencimento
+ * (respeita o quadro, ignora o período) e os cards das etapas do quadro
+ * (respeitam o período). Cada card abre as Tarefas & Agenda com o filtro aplicado.
  */
 export function KanbanDashboard() {
   useDirectory();
@@ -155,8 +164,8 @@ export function KanbanDashboard() {
     [allColumns, activeBoardId],
   );
 
-  // Estrito: item está numa coluna se board+coluna batem exatamente — igual ao
-  // filtro por etapa das Tarefas, então a contagem sempre casa com o deep-link.
+  // Estrito: board+coluna exatos — igual ao filtro por etapa das Tarefas, então
+  // a contagem sempre casa com o deep-link do card.
   const inColumn = React.useCallback(
     (item: { board_id?: string | null; column_id?: string | null }, col: TaskColumn) =>
       item.board_id === activeBoardId && item.column_id === col.id,
@@ -181,9 +190,10 @@ export function KanbanDashboard() {
     [columns, tickets, events, showTasks, showEvents, inColumn, inRange],
   );
   const boardTotal = perColumn.reduce((s, c) => s + c.total, 0);
+  const maxCol = perColumn.reduce((m, c) => Math.max(m, c.total), 0);
 
-  // Indicador por vencimento — considera TODAS as tarefas do quadro (ignora o
-  // período), excluindo finalizados (tarefa closed / evento finished).
+  // Indicador por vencimento — todas as tarefas do quadro (ignora o período),
+  // excluindo finalizados (tarefa closed / evento finished).
   const dueBuckets = React.useMemo(() => {
     const today0 = +startOfDay(new Date());
     const endToday = +endOfDay(new Date());
@@ -242,11 +252,11 @@ export function KanbanDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       {/* Controles */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         {presentKinds.length > 1 ? (
-          <div className="inline-flex flex-wrap gap-1 rounded-full border bg-card p-1">
+          <div className="inline-flex flex-wrap gap-1 rounded-full border bg-card p-1 shadow-xs">
             {presentKinds.map((k) => {
               const meta = TASK_BOARD_KIND_META[k];
               const Icon = meta.icon;
@@ -299,20 +309,19 @@ export function KanbanDashboard() {
         </div>
       </div>
 
-      {/* Por vencimento — 3 cards fortes */}
+      {/* Por vencimento — 3 cards em degradê na cor do status */}
       <div className="grid gap-4 sm:grid-cols-3">
         {dueCards.map((c) => {
           const Icon = c.icon;
           return (
             <Link key={c.key} href={dueHref(c.key)} className="group block">
-              <div className="relative overflow-hidden rounded-2xl border bg-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-                <div
-                  className={cn(
-                    "pointer-events-none absolute -right-8 -top-8 size-28 rounded-full opacity-10 blur-2xl",
-                    TONE_DOT_CLASS[c.tone],
-                  )}
-                />
-                <div className="relative flex items-start justify-between">
+              <div
+                className={cn(
+                  "relative overflow-hidden rounded-2xl border bg-gradient-to-br to-transparent p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
+                  TONE_TINT[c.tone],
+                )}
+              >
+                <div className="flex items-start justify-between">
                   <div
                     className={cn(
                       "flex size-11 items-center justify-center rounded-xl",
@@ -325,45 +334,48 @@ export function KanbanDashboard() {
                   <ArrowUpRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                 </div>
                 {loading ? (
-                  <Skeleton className="relative mt-4 h-11 w-16" />
+                  <Skeleton className="mt-4 h-12 w-16" />
                 ) : (
-                  <p className={cn("relative mt-4 text-5xl font-bold tabular-nums tracking-tight", TONE_TEXT_CLASS[c.tone])}>
+                  <p className={cn("mt-4 text-5xl font-bold tabular-nums tracking-tight", TONE_TEXT_CLASS[c.tone])}>
                     {c.value}
                   </p>
                 )}
-                <p className="relative mt-1 text-sm font-medium text-muted-foreground">{c.label}</p>
+                <p className="mt-1 text-sm font-medium text-foreground/70">{c.label}</p>
               </div>
             </Link>
           );
         })}
       </div>
 
-      {/* Etapas do quadro */}
-      <div className="rounded-2xl border bg-card/40 p-4 sm:p-5">
-        <div className="mb-4 flex items-center justify-between gap-2">
+      {/* Etapas do quadro — cards estilo kanban */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2 px-0.5">
           <div className="flex items-center gap-2 font-semibold">
             <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <LayoutGrid className="size-4" />
             </span>
             {activeBoard?.name ?? "Etapas"}
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground tabular-nums">
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium tabular-nums text-muted-foreground">
             {loading ? "—" : `${boardTotal} ${boardTotal === 1 ? "item" : "itens"}`}
           </span>
         </div>
 
         {columns.length === 0 ? (
-          <EmptyState title="Sem etapas" description="Este quadro ainda não tem colunas." />
+          <div className="rounded-2xl border bg-card p-8">
+            <EmptyState title="Sem etapas" description="Este quadro ainda não tem colunas." />
+          </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {perColumn.map(({ col, taskCount, eventCount, total }) => {
               const hex = isHexColor(col.color);
-              const share = boardTotal > 0 ? Math.round((total / boardTotal) * 100) : 0;
+              const share = maxCol > 0 ? Math.round((total / maxCol) * 100) : 0;
+              const pct = boardTotal > 0 ? Math.round((total / boardTotal) * 100) : 0;
               const colorClass = hex ? undefined : TONE_DOT_CLASS[col.color as StageColor];
               const colorStyle = hex ? { backgroundColor: col.color } : undefined;
               return (
                 <Link key={col.id} href={cardHref(col.id)} className="group block">
-                  <div className="relative overflow-hidden rounded-xl border bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                  <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border bg-card p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-md">
                     <div
                       className={cn("absolute inset-x-0 top-0 h-1.5", colorClass)}
                       style={colorStyle}
@@ -373,20 +385,22 @@ export function KanbanDashboard() {
                       <span className="truncate text-sm font-medium">{col.name}</span>
                     </div>
                     {loading ? (
-                      <Skeleton className="mt-3 h-9 w-12" />
+                      <Skeleton className="mt-4 h-10 w-12" />
                     ) : (
-                      <p className="mt-3 text-3xl font-bold leading-none tabular-nums">{total}</p>
+                      <p className="mt-4 text-4xl font-bold leading-none tabular-nums">{total}</p>
                     )}
-                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className={cn("h-full rounded-full", colorClass)}
-                        style={{ ...colorStyle, width: `${share}%` }}
-                      />
+                    <div className="mt-auto pt-4">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={cn("h-full rounded-full transition-all", colorClass)}
+                          style={{ ...colorStyle, width: `${share}%` }}
+                        />
+                      </div>
+                      <p className="mt-1.5 text-[11px] tabular-nums text-muted-foreground/80">
+                        {pct}% do quadro
+                        {both && total > 0 ? ` · ${taskCount} tar · ${eventCount} ev` : ""}
+                      </p>
                     </div>
-                    <p className="mt-1.5 text-[11px] tabular-nums text-muted-foreground/80">
-                      {share}% do quadro
-                      {both && total > 0 ? ` · ${taskCount} tar. · ${eventCount} ev.` : ""}
-                    </p>
                   </div>
                 </Link>
               );
