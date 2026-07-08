@@ -9,7 +9,8 @@ export type TrashType =
   | "carrier"
   | "product"
   | "contract"
-  | "service";
+  | "service"
+  | "claim";
 
 export interface TrashItem {
   type: TrashType;
@@ -29,6 +30,7 @@ const TABLE: Record<TrashType, string> = {
   product: "insurance_products",
   contract: "contracts",
   service: "service_records",
+  claim: "claims",
 };
 
 function daysLeft(deletedAt: string): number {
@@ -51,18 +53,20 @@ export const trashService = {
       ),
     );
 
-    const [tasks, events, contacts, carriers, products, contracts, services] = await Promise.all([
-      sb.from("tickets").select("id, title, number, deleted_at").not("deleted_at", "is", null),
-      sb
-        .from("calendar_events")
-        .select("id, title, number, deleted_at")
-        .not("deleted_at", "is", null),
-      sb.from("customers").select("id, name, deleted_at").not("deleted_at", "is", null),
-      sb.from("insurance_carriers").select("id, name, deleted_at").not("deleted_at", "is", null),
-      sb.from("insurance_products").select("id, name, deleted_at").not("deleted_at", "is", null),
-      sb.from("contracts").select("id, policy_number, deleted_at").not("deleted_at", "is", null),
-      sb.from("service_records").select("id, notes, deleted_at").not("deleted_at", "is", null),
-    ]);
+    const [tasks, events, contacts, carriers, products, contracts, services, claims] =
+      await Promise.all([
+        sb.from("tickets").select("id, title, number, deleted_at").not("deleted_at", "is", null),
+        sb
+          .from("calendar_events")
+          .select("id, title, number, deleted_at")
+          .not("deleted_at", "is", null),
+        sb.from("customers").select("id, name, deleted_at").not("deleted_at", "is", null),
+        sb.from("insurance_carriers").select("id, name, deleted_at").not("deleted_at", "is", null),
+        sb.from("insurance_products").select("id, name, deleted_at").not("deleted_at", "is", null),
+        sb.from("contracts").select("id, policy_number, deleted_at").not("deleted_at", "is", null),
+        sb.from("service_records").select("id, notes, deleted_at").not("deleted_at", "is", null),
+        sb.from("claims").select("id, number, title, deleted_at").not("deleted_at", "is", null),
+      ]);
 
     const items: TrashItem[] = [
       ...((tasks.data as { id: string; title: string; number: number; deleted_at: string }[]) ?? []).map(
@@ -128,6 +132,15 @@ export const trashService = {
           daysLeft: daysLeft(s.deleted_at),
         }),
       ),
+      ...((claims.data as { id: string; number: number; title: string; deleted_at: string }[]) ??
+        []).map((c) => ({
+        type: "claim" as const,
+        id: c.id,
+        title: c.title || "Sinistro",
+        code: `#${c.number}`,
+        deletedAt: c.deleted_at,
+        daysLeft: daysLeft(c.deleted_at),
+      })),
     ];
 
     return items.sort((a, b) => +new Date(b.deletedAt) - +new Date(a.deletedAt));

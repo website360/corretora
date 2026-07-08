@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 import { Download, FileText, Shield, ShieldCheck } from "lucide-react";
 import { getPortalCustomer } from "@/services/portal-session.server";
-import { getPortalData } from "@/services/portal-data.server";
+import { getPortalData, getPortalClaims } from "@/services/portal-data.server";
 import type { ContractStatus } from "@/types/domain";
 import { Badge } from "@/components/ui/badge";
 import { PortalBrand } from "@/modules/portal/portal-brand";
 import { PortalLogout } from "@/modules/portal/portal-logout";
+import { PortalClaims } from "@/modules/portal/portal-claims";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,15 @@ export default async function PortalDashboard() {
   if (customer.portal_must_change_password) redirect("/portal/senha");
 
   const { contracts, productById, carrierById, attByContract } = await getPortalData(customer.id);
+  const claims = await getPortalClaims(customer.id);
+  const claimContractOptions = contracts.map((c) => ({
+    id: c.id,
+    label: c.policy_number
+      ? `Apólice ${c.policy_number}`
+      : c.product_id
+        ? (productById.get(c.product_id) ?? "Contrato")
+        : "Contrato",
+  }));
   const brand = company.settings?.branding?.primaryColor ?? null;
   const firstName = customer.name.split(" ")[0] || customer.name;
 
@@ -127,6 +137,9 @@ export default async function PortalDashboard() {
             </div>
           )}
         </section>
+
+        {/* Meus sinistros */}
+        <PortalClaims claims={claims} contracts={claimContractOptions} />
 
         {/* Meus dados */}
         <section className="space-y-3">

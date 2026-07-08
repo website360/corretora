@@ -352,6 +352,32 @@ export interface QuoteOption {
   created_at: ISODateString;
 }
 
+/** Sinistro — insurance claim opened by/for a customer, optionally on a policy. */
+export type ClaimStatus = "requested" | "analysis" | "approved" | "denied" | "paid" | "closed";
+
+export interface Claim {
+  id: UUID;
+  company_id: UUID;
+  number: number;
+  customer_id: UUID;
+  contract_id: UUID | null;
+  product_id: UUID | null;
+  /** Responsável pelo sinistro. */
+  owner_id: UUID | null;
+  status: ClaimStatus;
+  title: string;
+  description: string | null;
+  /** Data da ocorrência. */
+  occurred_at: ISODateString | null;
+  /** Valor estimado / indenização (centavos). */
+  amount_cents: number | null;
+  /** Origem: 'portal' (solicitado pelo cliente) ou 'internal' (corretora). */
+  source: "portal" | "internal";
+  created_by?: UUID | null;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
 export interface ContractAttachment {
   id: UUID;
   company_id: UUID;

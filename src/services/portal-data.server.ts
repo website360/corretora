@@ -1,6 +1,18 @@
 import "server-only";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import type { Contract, ContractAttachment } from "@/types/domain";
+import type { Claim, Contract, ContractAttachment } from "@/types/domain";
+
+/** Sinistros de um cliente (para o portal), via admin. */
+export async function getPortalClaims(customerId: string): Promise<Claim[]> {
+  const admin = getSupabaseAdminClient();
+  const { data } = await admin
+    .from("claims")
+    .select("*")
+    .eq("customer_id", customerId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+  return (data as Claim[]) ?? [];
+}
 
 /** Dados do portal de um cliente (contratos + nomes + anexos), via admin. */
 export async function getPortalData(customerId: string) {

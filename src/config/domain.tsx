@@ -38,6 +38,7 @@ import type {
   EventModality,
   ContractStatus,
   QuoteStatus,
+  ClaimStatus,
   ServiceChannel,
   TagModule,
   TaskBoardKind,
@@ -201,6 +202,26 @@ export const QUOTE_STATUS_ORDER: QuoteStatus[] = [
 
 /** Active pipeline columns — excludes the concluded "Assinado" (goes to Concluídos). */
 export const QUOTE_ACTIVE_STATUSES: QuoteStatus[] = ["draft", "awaiting_signature", "lost"];
+
+/** Sinistro (claim) statuses — label + cor. */
+export const CLAIM_STATUS_META: Record<ClaimStatus, { label: string; tone: Tone }> = {
+  requested: { label: "Solicitado", tone: "warning" },
+  analysis: { label: "Em análise", tone: "primary" },
+  approved: { label: "Aprovado", tone: "success" },
+  denied: { label: "Negado", tone: "destructive" },
+  paid: { label: "Pago", tone: "success" },
+  closed: { label: "Encerrado", tone: "neutral" },
+};
+
+/** Ordem dos status de sinistro (para selects/filtros). */
+export const CLAIM_STATUS_ORDER: ClaimStatus[] = [
+  "requested",
+  "analysis",
+  "approved",
+  "denied",
+  "paid",
+  "closed",
+];
 
 /** Feature modules a plan can unlock (toggled per plan in the SaaS admin). */
 export const PLAN_MODULES: { key: string; label: string }[] = [

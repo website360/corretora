@@ -32,6 +32,28 @@ export const CHANGE_TYPE_META: Record<ChangeType, { label: string; tone: "succes
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.3.0",
+    date: "2026-07-08",
+    title: "Sinistros",
+    items: [
+      {
+        type: "new",
+        text:
+          "Nova área de Sinistros: registre e acompanhe os sinistros dos clientes, com status (Solicitado, Em análise, Aprovado, Negado, Pago, Encerrado), valor e vínculo opcional com a apólice.",
+      },
+      {
+        type: "new",
+        text:
+          "O cliente pode solicitar a abertura de um sinistro direto pelo Portal do Cliente — a solicitação chega para a corretora como “Solicitado”.",
+      },
+      {
+        type: "new",
+        text:
+          "Os sinistros aparecem no perfil do cliente (aba Sinistros) e na página do contrato (Sinistros desta apólice).",
+      },
+    ],
+  },
+  {
     version: "1.2.0",
     date: "2026-07-03",
     title: "Recuperação de leads perdidos",

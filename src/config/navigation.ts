@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   Ticket,
   Trash2,
@@ -47,6 +48,7 @@ export const NAVIGATION: NavSection[] = [
       { label: "Contatos", href: "/clientes", icon: UserSquare2, module: "customers" },
       { label: "Orçamentos", href: "/orcamentos", icon: Calculator, module: null },
       { label: "Contratos", href: "/contratos", icon: FileText, module: null },
+      { label: "Sinistros", href: "/sinistros", icon: ShieldAlert, module: null },
       { label: "Atendimento", href: "/atendimentos", icon: Headset, module: null },
       {
         label: "Tarefas e Agenda",

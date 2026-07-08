@@ -10,6 +10,8 @@ import {
   Package,
   Pencil,
   Percent,
+  Plus,
+  ShieldAlert,
   ShieldCheck,
   Trash2,
   User,
@@ -21,10 +23,13 @@ import { carriersService } from "@/services/carriers.service";
 import { productsService } from "@/services/products.service";
 import { usersService } from "@/services/users.service";
 import { serviceRecordsService } from "@/services/service-records.service";
+import { claimsService } from "@/services/claims.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { AtendimentoChat } from "@/modules/service/atendimento-chat";
-import { CONTRACT_STATUS_META, TONE_BADGE_CLASS } from "@/config/domain";
+import { ClaimFormDialog } from "@/modules/claims/claim-form-dialog";
+import { CLAIM_STATUS_META, CONTRACT_STATUS_META, TONE_BADGE_CLASS } from "@/config/domain";
 import { formatCurrency, formatShortDate } from "@/utils/format";
+import type { Claim, Contract } from "@/types/domain";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -233,6 +238,9 @@ export function ContractProfile({ id }: { id: string }) {
         />
       </div>
 
+      {/* Sinistros desta apólice */}
+      <ContractClaimsSection contract={contract} />
+
       <ContractFormDialog
         open={editOpen}
         onOpenChange={setEditOpen}
@@ -250,6 +258,92 @@ export function ContractProfile({ id }: { id: string }) {
         onConfirm={confirmDelete}
       />
     </div>
+  );
+}
+
+function ContractClaimsSection({ contract }: { contract: Contract }) {
+  const { data, loading, refetch } = useAsyncData(
+    () => claimsService.listByContract(contract.id),
+    [contract.id],
+  );
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<Claim | null>(null);
+  const claims = data ?? [];
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between gap-3 border-b px-5 py-3">
+        <h3 className="flex items-center gap-2 font-semibold">
+          <ShieldAlert className="size-4" /> Sinistros desta apólice
+        </h3>
+        <Button
+          size="sm"
+          onClick={() => {
+            setEditing(null);
+            setDialogOpen(true);
+          }}
+        >
+          <Plus /> Novo sinistro
+        </Button>
+      </div>
+      {loading ? (
+        <div className="space-y-2 p-5">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 rounded-lg" />
+          ))}
+        </div>
+      ) : claims.length === 0 ? (
+        <div className="p-5">
+          <EmptyState
+            icon={ShieldAlert}
+            title="Sem sinistros"
+            description="Nenhum sinistro registrado para esta apólice."
+          />
+        </div>
+      ) : (
+        <ul className="divide-y divide-border/60">
+          {claims.map((c) => {
+            const meta = CLAIM_STATUS_META[c.status];
+            return (
+              <li
+                key={c.id}
+                className="flex cursor-pointer items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40"
+                onClick={() => {
+                  setEditing(c);
+                  setDialogOpen(true);
+                }}
+              >
+                <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <ShieldAlert className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">
+                    #{c.number} · {c.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {c.occurred_at ? formatShortDate(c.occurred_at) : "Sem data"}
+                    {c.amount_cents ? ` · ${formatCurrency(c.amount_cents / 100)}` : ""}
+                  </p>
+                </div>
+                <Badge variant="outline" className={cn(TONE_BADGE_CLASS[meta.tone])}>
+                  {meta.label}
+                </Badge>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <ClaimFormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        claim={editing}
+        defaultCustomerId={contract.customer_id}
+        defaultContractId={contract.id}
+        lockCustomer
+        onSaved={refetch}
+      />
+    </Card>
   );
 }
 

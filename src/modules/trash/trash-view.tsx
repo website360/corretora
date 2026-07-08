@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   Package,
   RotateCcw,
+  ShieldAlert,
   ShieldCheck,
   Trash2,
   UserSquare2,
@@ -44,6 +45,7 @@ const TYPE_META: Record<
   product: { label: "Produto", icon: Package },
   contract: { label: "Contrato", icon: FileText },
   service: { label: "Atendimento", icon: Headset },
+  claim: { label: "Sinistro", icon: ShieldAlert },
 };
 
 export function TrashView() {

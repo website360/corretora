@@ -24,6 +24,7 @@ import {
 import { customersService } from "@/services/customers.service";
 import { tagsService } from "@/services/tags.service";
 import { contractsService } from "@/services/contracts.service";
+import { claimsService } from "@/services/claims.service";
 import { productsService } from "@/services/products.service";
 import { serviceRecordsService } from "@/services/service-records.service";
 import { ticketsService } from "@/services/tickets.service";
@@ -35,6 +36,7 @@ import { findUser } from "@/services/lookup";
 import { formatCurrency, formatDocument, formatPhone, formatShortDate, formatSmartDate } from "@/utils/format";
 import {
   CALENDAR_EVENT_META,
+  CLAIM_STATUS_META,
   CONTRACT_STATUS_META,
   QUOTE_STATUS_META,
   SERVICE_CHANNEL_META,
@@ -44,11 +46,12 @@ import {
   TONE_TEXT_CLASS,
 } from "@/config/domain";
 import { cn } from "@/lib/utils";
-import type { Contract, StageColor } from "@/types/domain";
+import type { Claim, Contract, StageColor } from "@/types/domain";
 import { ContractFormDialog } from "@/modules/catalog/contract-form-dialog";
+import { ClaimFormDialog } from "@/modules/claims/claim-form-dialog";
 import { describeTicketLog, ticketLogIcon } from "@/modules/tickets/ticket-log-format";
 import { AtendimentoChat } from "@/modules/service/atendimento-chat";
-import { Calculator, ClipboardList, Headset, Plus } from "lucide-react";
+import { Calculator, ClipboardList, Headset, Plus, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -61,7 +64,7 @@ import { CustomerFormDialog } from "@/modules/customers/customer-form-dialog";
 import { CustomerPortalCard } from "@/modules/customers/customer-portal-card";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 
-const VALID_TABS = ["geral", "contratos", "atendimentos", "historico"] as const;
+const VALID_TABS = ["geral", "contratos", "sinistros", "atendimentos", "historico"] as const;
 
 const INTERACTION_ICON = {
   note: StickyNote,
@@ -229,6 +232,11 @@ export function CustomerProfile({ id }: { id: string }) {
               <FileText className="size-4" /> Contratos
             </TabsTrigger>
           )}
+          {!isLead && (
+            <TabsTrigger value="sinistros">
+              <ShieldAlert className="size-4" /> Sinistros
+            </TabsTrigger>
+          )}
           <TabsTrigger value="atendimentos">
             <Headset className="size-4" /> Atendimentos
           </TabsTrigger>
@@ -326,6 +334,10 @@ export function CustomerProfile({ id }: { id: string }) {
 
         <TabsContent value="contratos">
           <ContractsTab customerId={customer.id} />
+        </TabsContent>
+
+        <TabsContent value="sinistros">
+          <ClaimsTab customerId={customer.id} />
         </TabsContent>
 
         <TabsContent value="atendimentos">
@@ -447,6 +459,91 @@ function ContractsTab({ customerId }: { customerId: string }) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         contract={editing}
+        defaultCustomerId={customerId}
+        lockCustomer
+        onSaved={refetch}
+      />
+    </SectionCard>
+  );
+}
+
+function ClaimsTab({ customerId }: { customerId: string }) {
+  const { data, loading, refetch } = useAsyncData(
+    () => claimsService.listByCustomer(customerId),
+    [customerId],
+  );
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<Claim | null>(null);
+
+  const claims = data ?? [];
+
+  return (
+    <SectionCard
+      title="Sinistros do cliente"
+      action={
+        <Button
+          size="sm"
+          onClick={() => {
+            setEditing(null);
+            setDialogOpen(true);
+          }}
+        >
+          <Plus /> Novo sinistro
+        </Button>
+      }
+    >
+      {loading ? (
+        <div className="space-y-2 p-5">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 rounded-lg" />
+          ))}
+        </div>
+      ) : claims.length === 0 ? (
+        <div className="p-5">
+          <EmptyState
+            icon={ShieldAlert}
+            title="Sem sinistros"
+            description="Este cliente ainda não tem sinistros registrados."
+          />
+        </div>
+      ) : (
+        <ul className="divide-y divide-border/60">
+          {claims.map((c) => {
+            const meta = CLAIM_STATUS_META[c.status];
+            return (
+              <li
+                key={c.id}
+                className="flex cursor-pointer items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40"
+                onClick={() => {
+                  setEditing(c);
+                  setDialogOpen(true);
+                }}
+              >
+                <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <ShieldAlert className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">
+                    #{c.number} · {c.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {c.occurred_at ? formatShortDate(c.occurred_at) : "Sem data"}
+                    {c.amount_cents ? ` · ${formatCurrency(c.amount_cents / 100)}` : ""}
+                  </p>
+                </div>
+                <Badge variant="outline" className={cn(TONE_BADGE_CLASS[meta.tone])}>
+                  {meta.label}
+                </Badge>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <ClaimFormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        claim={editing}
         defaultCustomerId={customerId}
         lockCustomer
         onSaved={refetch}
