@@ -12,23 +12,23 @@ import {
   startOfYear,
   subDays,
 } from "date-fns";
-import { CalendarClock, LayoutGrid, ListChecks } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  CalendarClock,
+  CheckCircle2,
+  LayoutGrid,
+} from "lucide-react";
 import { ticketsService } from "@/services/tickets.service";
 import { calendarService } from "@/services/calendar.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useDirectory, useDirectoryStore } from "@/stores/directory-store";
 import { useViewCompanyStore } from "@/stores/view-company-store";
-import {
-  TASK_BOARD_KINDS,
-  TASK_BOARD_KIND_META,
-  TONE_DOT_CLASS,
-  TONE_TEXT_CLASS,
-} from "@/config/domain";
+import { TASK_BOARD_KINDS, TASK_BOARD_KIND_META, TONE_DOT_CLASS, TONE_TEXT_CLASS } from "@/config/domain";
 import { StageDot } from "@/components/common/style-pickers";
 import { isHexColor } from "@/lib/tag-color";
 import { cn } from "@/lib/utils";
 import type { StageColor, TaskBoardKind, TaskColumn } from "@/types/domain";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/empty-state";
 import {
@@ -39,13 +39,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-/** Barra colorida fina da borda esquerda do card (por tom predefinido). */
-const TONE_BAR: Record<StageColor, string> = {
-  neutral: "bg-muted-foreground/50",
-  primary: "bg-primary",
-  success: "bg-success",
-  warning: "bg-warning",
-  destructive: "bg-destructive",
+/** Fundo suave (tinta) do ícone por tom. */
+const TONE_SOFT_BG: Record<StageColor, string> = {
+  neutral: "bg-muted",
+  primary: "bg-primary/10",
+  success: "bg-success/10",
+  warning: "bg-warning/10",
+  destructive: "bg-destructive/10",
 };
 
 type RangeKey = "today" | "7d" | "month" | "year" | "all";
@@ -74,59 +74,11 @@ function rangeFor(key: RangeKey): { from: Date; to: Date } | null {
   }
 }
 
-/** Card de indicador — tamanho/estilo únicos para "Por vencimento" e "Etapas". */
-function StatCard({
-  href,
-  barClass,
-  barStyle,
-  marker,
-  label,
-  value,
-  valueClass,
-  sub,
-  loading,
-}: {
-  href: string;
-  barClass?: string;
-  barStyle?: React.CSSProperties;
-  marker: React.ReactNode;
-  label: string;
-  value: number;
-  valueClass?: string;
-  sub?: string | null;
-  loading: boolean;
-}) {
-  return (
-    <Link href={href} className="group block h-full">
-      <Card className="relative flex h-full flex-col overflow-hidden p-5 transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
-        <div className={cn("absolute inset-y-0 left-0 w-1", barClass)} style={barStyle} />
-        <div className="flex items-center gap-2">
-          {marker}
-          <span className="truncate text-[13px] font-medium text-muted-foreground">{label}</span>
-        </div>
-        {loading ? (
-          <Skeleton className="mt-4 h-9 w-16" />
-        ) : (
-          <p
-            className={cn(
-              "mt-4 text-4xl font-bold leading-none tracking-tight tabular-nums",
-              valueClass,
-            )}
-          >
-            {value}
-          </p>
-        )}
-        <p className="mt-2 h-4 text-[11px] tabular-nums text-muted-foreground/70">{sub ?? ""}</p>
-      </Card>
-    </Link>
-  );
-}
-
 /**
- * Dashboard de Kanbans. Os quadros são separados por TIPO (Tarefas / Agenda /
- * Outro). O usuário escolhe o tipo, o quadro e o período; vê as etapas (colunas)
- * daquele quadro com a contagem de itens em cada uma, e um indicador por
- * vencimento. Ao clicar, abre as Tarefas & Agenda já filtradas (tarefas + eventos).
+ * Dashboard de Kanbans. Quadros separados por TIPO (Tarefas / Agenda / Outro).
+ * Escolhe-se o tipo, o quadro e o período. Mostra: um indicador por vencimento
+ * (respeita o quadro, ignora o período) e a distribuição por etapa do quadro
+ * (respeita o período). Cada card abre as Tarefas & Agenda com o filtro aplicado.
  */
 export function KanbanDashboard() {
   useDirectory();
@@ -141,7 +93,6 @@ export function KanbanDashboard() {
   const [boardId, setBoardId] = React.useState("");
   const [range, setRange] = React.useState<RangeKey>("today");
 
-  // Preferências guardadas por dispositivo (voltam selecionadas).
   React.useEffect(() => {
     const k = localStorage.getItem("dashboard_kanban_kind");
     if (k === "tasks" || k === "agenda" || k === "other") setKind(k);
@@ -151,7 +102,6 @@ export function KanbanDashboard() {
     if (r === "today" || r === "7d" || r === "month" || r === "year" || r === "all") setRange(r);
   }, []);
 
-  // Tipos que realmente têm quadros (na ordem canônica).
   const presentKinds = React.useMemo(
     () => TASK_BOARD_KINDS.filter((k) => boards.some((b) => b.kind === k)),
     [boards],
@@ -166,6 +116,7 @@ export function KanbanDashboard() {
   const activeBoardId = boardsOfKind.some((b) => b.id === boardId)
     ? boardId
     : (boardsOfKind.find((b) => b.is_default)?.id ?? boardsOfKind[0]?.id ?? "");
+  const activeBoard = boardsOfKind.find((b) => b.id === activeBoardId);
 
   const onKindChange = (k: TaskBoardKind) => {
     setKind(k);
@@ -180,7 +131,6 @@ export function KanbanDashboard() {
     localStorage.setItem("dashboard_kanban_range", v);
   };
 
-  // Tarefas → só tickets; Agenda → só eventos; Outro → ambos.
   const showTasks = activeKind !== "agenda";
   const showEvents = activeKind !== "tasks";
   const both = showTasks && showEvents;
@@ -204,44 +154,36 @@ export function KanbanDashboard() {
         .sort((a, b) => a.position - b.position),
     [allColumns, activeBoardId],
   );
-  const columnIds = React.useMemo(() => new Set(columns.map((c) => c.id)), [columns]);
 
-  // Mesma lógica do Quadro (tasks-board): itens órfãos (sem quadro) caem na 1ª
-  // coluna do quadro ativo; itens de outro quadro não aparecem.
+  // Estrito: item está numa coluna se board+coluna batem exatamente — igual ao
+  // filtro por etapa das Tarefas, então a contagem sempre casa com o deep-link.
   const inColumn = React.useCallback(
-    (item: { board_id?: string | null; column_id?: string | null }, col: TaskColumn, index: number) => {
-      if (item.board_id !== activeBoardId) return index === 0 && !item.board_id;
-      if (item.column_id === col.id) return true;
-      return index === 0 && (!item.column_id || !columnIds.has(item.column_id));
-    },
-    [activeBoardId, columnIds],
+    (item: { board_id?: string | null; column_id?: string | null }, col: TaskColumn) =>
+      item.board_id === activeBoardId && item.column_id === col.id,
+    [activeBoardId],
+  );
+  const onBoard = React.useCallback(
+    (item: { board_id?: string | null }) => item.board_id === activeBoardId,
+    [activeBoardId],
   );
 
   const perColumn = React.useMemo(
     () =>
-      columns.map((col, i) => {
+      columns.map((col) => {
         const taskCount = showTasks
-          ? (tickets ?? []).filter((t) => inColumn(t, col, i) && inRange(t.created_at)).length
+          ? (tickets ?? []).filter((t) => inColumn(t, col) && inRange(t.created_at)).length
           : 0;
         const eventCount = showEvents
-          ? (events ?? []).filter((e) => inColumn(e, col, i) && inRange(e.starts_at)).length
+          ? (events ?? []).filter((e) => inColumn(e, col) && inRange(e.starts_at)).length
           : 0;
         return { col, taskCount, eventCount, total: taskCount + eventCount };
       }),
     [columns, tickets, events, showTasks, showEvents, inColumn, inRange],
   );
+  const boardTotal = perColumn.reduce((s, c) => s + c.total, 0);
 
-  // Item pertence ao quadro ativo (em qualquer coluna dele).
-  const onBoard = React.useCallback(
-    (item: { board_id?: string | null; column_id?: string | null }) =>
-      columns.some((c, i) => inColumn(item, c, i)),
-    [columns, inColumn],
-  );
-
-  // Indicador por vencimento (tarefas: due_at; eventos: starts_at). Considera
-  // TODAS as tarefas do quadro (ignora o período). Exclui finalizados (tarefa
-  // com status "closed" / evento finished). Atrasada = vencidas nos últimos 30
-  // dias; Em dia inclui itens sem prazo (nada vencido).
+  // Indicador por vencimento — considera TODAS as tarefas do quadro (ignora o
+  // período), excluindo finalizados (tarefa closed / evento finished).
   const dueBuckets = React.useMemo(() => {
     const today0 = +startOfDay(new Date());
     const endToday = +endOfDay(new Date());
@@ -261,25 +203,27 @@ export function KanbanDashboard() {
       else if (t >= startTomorrow) upcoming++;
     };
     if (showTasks)
-      for (const t of tickets ?? [])
-        if (onBoard(t) && t.status !== "closed") classify(t.due_at);
+      for (const t of tickets ?? []) if (onBoard(t) && t.status !== "closed") classify(t.due_at);
     if (showEvents)
       for (const e of events ?? []) if (onBoard(e) && !e.finished) classify(e.starts_at);
     return { overdue, today, upcoming };
   }, [tickets, events, showTasks, showEvents, onBoard]);
 
-  const dueCards: { key: string; label: string; value: number; tone: StageColor }[] = [
-    { key: "overdue", label: "Atrasada (30 dias)", value: dueBuckets.overdue, tone: "destructive" },
-    { key: "today", label: "De hoje", value: dueBuckets.today, tone: "warning" },
-    { key: "upcoming", label: "Em dia", value: dueBuckets.upcoming, tone: "success" },
+  const dueCards: {
+    key: string;
+    label: string;
+    value: number;
+    tone: StageColor;
+    icon: typeof AlertTriangle;
+  }[] = [
+    { key: "overdue", label: "Atrasadas", value: dueBuckets.overdue, tone: "destructive", icon: AlertTriangle },
+    { key: "today", label: "Para hoje", value: dueBuckets.today, tone: "warning", icon: CalendarClock },
+    { key: "upcoming", label: "Em dia", value: dueBuckets.upcoming, tone: "success", icon: CheckCircle2 },
   ];
 
   const rangeQuery = rangeWindow
     ? `&from=${encodeURIComponent(rangeWindow.from.toISOString())}&to=${encodeURIComponent(rangeWindow.to.toISOString())}`
     : "";
-
-  // Deep-links abrem Tarefas & Agenda com o filtro aplicado, mantendo tarefas +
-  // eventos (entry=all).
   const cardHref = (columnId: string) =>
     `/tickets?board=${activeBoardId}&stage=${columnId}&entry=all${rangeQuery}`;
   const dueHref = (bucket: string) =>
@@ -287,48 +231,49 @@ export function KanbanDashboard() {
 
   if (boards.length === 0) {
     return (
-      <Card className="p-8">
+      <div className="rounded-2xl border bg-card p-10">
         <EmptyState
           icon={LayoutGrid}
           title="Nenhum quadro ainda"
           description="Crie um Kanban em Tarefas para ver os indicadores aqui."
         />
-      </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Abas por tipo de Kanban */}
-      {presentKinds.length > 1 && (
-        <div className="inline-flex flex-wrap gap-1 rounded-lg border p-0.5">
-          {presentKinds.map((k) => {
-            const meta = TASK_BOARD_KIND_META[k];
-            const Icon = meta.icon;
-            return (
-              <button
-                key={k}
-                onClick={() => onKindChange(k)}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  activeKind === k
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Icon className="size-4" />
-                {meta.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Seletor de quadro + período */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="w-full sm:w-72">
+      {/* Controles */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        {presentKinds.length > 1 ? (
+          <div className="inline-flex flex-wrap gap-1 rounded-full border bg-card p-1">
+            {presentKinds.map((k) => {
+              const meta = TASK_BOARD_KIND_META[k];
+              const Icon = meta.icon;
+              const active = activeKind === k;
+              return (
+                <button
+                  key={k}
+                  onClick={() => onKindChange(k)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Icon className="size-4" />
+                  {meta.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div />
+        )}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Select value={activeBoardId} onValueChange={onBoardChange}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full sm:w-64">
               <SelectValue placeholder="Selecione um Kanban" />
             </SelectTrigger>
             <SelectContent>
@@ -339,10 +284,8 @@ export function KanbanDashboard() {
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="w-full sm:w-48">
           <Select value={range} onValueChange={onRangeChange}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full sm:w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -356,59 +299,100 @@ export function KanbanDashboard() {
         </div>
       </div>
 
-      {/* Dois painéis lado a lado, cada um delimitado */}
-      <div className="grid gap-4 lg:grid-cols-5">
-        {/* Painel: Por vencimento */}
-        <section className="rounded-xl border bg-muted/20 p-4 lg:col-span-2">
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-            <CalendarClock className="size-4" />
-            Por vencimento
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {dueCards.map((c) => (
-              <StatCard
-                key={c.key}
-                href={dueHref(c.key)}
-                barClass={TONE_BAR[c.tone]}
-                marker={<span className={cn("size-2.5 rounded-full", TONE_DOT_CLASS[c.tone])} />}
-                label={c.label}
-                value={c.value}
-                valueClass={TONE_TEXT_CLASS[c.tone]}
-                loading={loading}
-              />
-            ))}
-          </div>
-        </section>
+      {/* Por vencimento — 3 cards fortes */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        {dueCards.map((c) => {
+          const Icon = c.icon;
+          return (
+            <Link key={c.key} href={dueHref(c.key)} className="group block">
+              <div className="relative overflow-hidden rounded-2xl border bg-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                <div
+                  className={cn(
+                    "pointer-events-none absolute -right-8 -top-8 size-28 rounded-full opacity-10 blur-2xl",
+                    TONE_DOT_CLASS[c.tone],
+                  )}
+                />
+                <div className="relative flex items-start justify-between">
+                  <div
+                    className={cn(
+                      "flex size-11 items-center justify-center rounded-xl",
+                      TONE_SOFT_BG[c.tone],
+                      TONE_TEXT_CLASS[c.tone],
+                    )}
+                  >
+                    <Icon className="size-5" />
+                  </div>
+                  <ArrowUpRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                </div>
+                {loading ? (
+                  <Skeleton className="relative mt-4 h-11 w-16" />
+                ) : (
+                  <p className={cn("relative mt-4 text-5xl font-bold tabular-nums tracking-tight", TONE_TEXT_CLASS[c.tone])}>
+                    {c.value}
+                  </p>
+                )}
+                <p className="relative mt-1 text-sm font-medium text-muted-foreground">{c.label}</p>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
 
-        {/* Painel: Etapas do quadro */}
-        <section className="rounded-xl border bg-muted/20 p-4 lg:col-span-3">
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-            <ListChecks className="size-4" />
-            Etapas do quadro
+      {/* Etapas do quadro */}
+      <div className="rounded-2xl border bg-card/40 p-4 sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 font-semibold">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <LayoutGrid className="size-4" />
+            </span>
+            {activeBoard?.name ?? "Etapas"}
           </div>
-          {columns.length === 0 ? (
-            <EmptyState title="Sem etapas" description="Este quadro ainda não tem colunas." />
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {perColumn.map(({ col, taskCount, eventCount, total }) => {
-                const hex = isHexColor(col.color);
-                return (
-                  <StatCard
-                    key={col.id}
-                    href={cardHref(col.id)}
-                    barClass={hex ? undefined : TONE_BAR[col.color as StageColor]}
-                    barStyle={hex ? { backgroundColor: col.color } : undefined}
-                    marker={<StageDot color={col.color} icon={col.icon} />}
-                    label={col.name}
-                    value={total}
-                    sub={both && total > 0 ? `${taskCount} tar. · ${eventCount} ev.` : null}
-                    loading={loading}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </section>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground tabular-nums">
+            {loading ? "—" : `${boardTotal} ${boardTotal === 1 ? "item" : "itens"}`}
+          </span>
+        </div>
+
+        {columns.length === 0 ? (
+          <EmptyState title="Sem etapas" description="Este quadro ainda não tem colunas." />
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {perColumn.map(({ col, taskCount, eventCount, total }) => {
+              const hex = isHexColor(col.color);
+              const share = boardTotal > 0 ? Math.round((total / boardTotal) * 100) : 0;
+              const colorClass = hex ? undefined : TONE_DOT_CLASS[col.color as StageColor];
+              const colorStyle = hex ? { backgroundColor: col.color } : undefined;
+              return (
+                <Link key={col.id} href={cardHref(col.id)} className="group block">
+                  <div className="relative overflow-hidden rounded-xl border bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                    <div
+                      className={cn("absolute inset-x-0 top-0 h-1.5", colorClass)}
+                      style={colorStyle}
+                    />
+                    <div className="mt-1 flex items-center gap-2">
+                      <StageDot color={col.color} icon={col.icon} />
+                      <span className="truncate text-sm font-medium">{col.name}</span>
+                    </div>
+                    {loading ? (
+                      <Skeleton className="mt-3 h-9 w-12" />
+                    ) : (
+                      <p className="mt-3 text-3xl font-bold leading-none tabular-nums">{total}</p>
+                    )}
+                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={cn("h-full rounded-full", colorClass)}
+                        style={{ ...colorStyle, width: `${share}%` }}
+                      />
+                    </div>
+                    <p className="mt-1.5 text-[11px] tabular-nums text-muted-foreground/80">
+                      {share}% do quadro
+                      {both && total > 0 ? ` · ${taskCount} tar. · ${eventCount} ev.` : ""}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
