@@ -48,15 +48,6 @@ const TONE_SOFT_BG: Record<StageColor, string> = {
   destructive: "bg-destructive/10",
 };
 
-/** Degradê de fundo do card por tom (início; termina transparente). */
-const TONE_TINT: Record<StageColor, string> = {
-  neutral: "from-muted/50",
-  primary: "from-primary/10",
-  success: "from-success/10",
-  warning: "from-warning/10",
-  destructive: "from-destructive/10",
-};
-
 type RangeKey = "today" | "7d" | "month" | "year" | "all";
 
 const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
@@ -309,38 +300,37 @@ export function KanbanDashboard() {
         </div>
       </div>
 
-      {/* Por vencimento — 3 cards em degradê na cor do status */}
+      {/* Por vencimento */}
       <div className="grid gap-4 sm:grid-cols-3">
         {dueCards.map((c) => {
           const Icon = c.icon;
           return (
             <Link key={c.key} href={dueHref(c.key)} className="group block">
-              <div
-                className={cn(
-                  "relative overflow-hidden rounded-2xl border bg-gradient-to-br to-transparent p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
-                  TONE_TINT[c.tone],
-                )}
-              >
-                <div className="flex items-start justify-between">
+              <div className="relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
+                <span className={cn("absolute inset-y-0 left-0 w-0.5", TONE_DOT_CLASS[c.tone])} />
+                <div className="flex items-center justify-between">
                   <div
                     className={cn(
-                      "flex size-11 items-center justify-center rounded-xl",
+                      "flex size-9 items-center justify-center rounded-lg",
                       TONE_SOFT_BG[c.tone],
                       TONE_TEXT_CLASS[c.tone],
                     )}
                   >
-                    <Icon className="size-5" />
+                    <Icon className="size-[18px]" />
                   </div>
-                  <ArrowUpRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                  <ArrowUpRight className="size-4 text-muted-foreground/40 transition-opacity group-hover:text-muted-foreground" />
                 </div>
                 {loading ? (
-                  <Skeleton className="mt-4 h-12 w-16" />
+                  <Skeleton className="mt-5 h-9 w-14" />
                 ) : (
-                  <p className={cn("mt-4 text-5xl font-bold tabular-nums tracking-tight", TONE_TEXT_CLASS[c.tone])}>
+                  <p className="mt-5 text-[2.25rem] font-semibold leading-none tracking-tight tabular-nums">
                     {c.value}
                   </p>
                 )}
-                <p className="mt-1 text-sm font-medium text-foreground/70">{c.label}</p>
+                <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <span className={cn("size-1.5 rounded-full", TONE_DOT_CLASS[c.tone])} />
+                  {c.label}
+                </p>
               </div>
             </Link>
           );
@@ -375,30 +365,32 @@ export function KanbanDashboard() {
               const colorStyle = hex ? { backgroundColor: col.color } : undefined;
               return (
                 <Link key={col.id} href={cardHref(col.id)} className="group block">
-                  <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border bg-card p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-md">
+                  <div className="relative flex h-full flex-col overflow-hidden rounded-xl border bg-card p-4 shadow-sm transition-all duration-200 hover:border-foreground/15 hover:shadow-md">
                     <div
-                      className={cn("absolute inset-x-0 top-0 h-1.5", colorClass)}
+                      className={cn("absolute inset-x-0 top-0 h-1", colorClass)}
                       style={colorStyle}
                     />
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-0.5 flex items-center gap-2">
                       <StageDot color={col.color} icon={col.icon} />
                       <span className="truncate text-sm font-medium">{col.name}</span>
                     </div>
                     {loading ? (
-                      <Skeleton className="mt-4 h-10 w-12" />
+                      <Skeleton className="mt-3 h-8 w-12" />
                     ) : (
-                      <p className="mt-4 text-4xl font-bold leading-none tabular-nums">{total}</p>
+                      <p className="mt-3 text-[1.75rem] font-semibold leading-none tabular-nums">
+                        {total}
+                      </p>
                     )}
                     <div className="mt-auto pt-4">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
                         <div
-                          className={cn("h-full rounded-full transition-all", colorClass)}
+                          className={cn("h-full rounded-full", colorClass)}
                           style={{ ...colorStyle, width: `${share}%` }}
                         />
                       </div>
-                      <p className="mt-1.5 text-[11px] tabular-nums text-muted-foreground/80">
+                      <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
                         {pct}% do quadro
-                        {both && total > 0 ? ` · ${taskCount} tar · ${eventCount} ev` : ""}
+                        {both && total > 0 ? ` · ${taskCount}/${eventCount}` : ""}
                       </p>
                     </div>
                   </div>
