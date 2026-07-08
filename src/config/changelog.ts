@@ -51,6 +51,11 @@ export const CHANGELOG: ChangelogEntry[] = [
         text:
           "Os sinistros aparecem no perfil do cliente (aba Sinistros) e na página do contrato (Sinistros desta apólice).",
       },
+      {
+        type: "new",
+        text:
+          "Cada sinistro tem uma página própria com Acompanhamentos: registre o andamento (contato com a seguradora, envio de documentos, vistoria etc.) e acompanhe o histórico com data e autor.",
+      },
     ],
   },
   {

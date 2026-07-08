@@ -2,9 +2,10 @@ import { env } from "@/config/env";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getCurrentCompanyId, getCurrentUserId, getViewCompanyId } from "@/services/lookup";
 import { sleep, uid } from "@/lib/utils";
-import type { Claim, ClaimStatus } from "@/types/domain";
+import type { Claim, ClaimStatus, ClaimUpdate } from "@/types/domain";
 
 const mockClaims: Claim[] = [];
+const mockUpdates: ClaimUpdate[] = [];
 
 export type NewClaim = Pick<Claim, "customer_id" | "title"> &
   Partial<
@@ -163,6 +164,52 @@ export const claimsService = {
 
   async setStatus(id: string, status: ClaimStatus): Promise<void> {
     return this.update(id, { status });
+  },
+
+  /* ─────────────────────────── acompanhamentos ─────────────────────────── */
+  async updates(claimId: string): Promise<ClaimUpdate[]> {
+    if (env.useMocks) {
+      await sleep(120);
+      return mockUpdates
+        .filter((u) => u.claim_id === claimId)
+        .sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+    }
+    const sb = getSupabaseBrowserClient();
+    const { data, error } = await sb
+      .from("claim_updates")
+      .select("*")
+      .eq("claim_id", claimId)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return (data as ClaimUpdate[]) ?? [];
+  },
+
+  async addUpdate(claimId: string, note: string): Promise<ClaimUpdate> {
+    const company_id = getCurrentCompanyId();
+    const me = getCurrentUserId();
+    if (env.useMocks) {
+      await sleep(180);
+      const record: ClaimUpdate = {
+        id: uid("clu"),
+        company_id,
+        claim_id: claimId,
+        author_id: me || null,
+        note,
+        created_at: new Date().toISOString(),
+      };
+      mockUpdates.push(record);
+      return record;
+    }
+    const sb = getSupabaseBrowserClient();
+    const { data, error } = await sb
+      .from("claim_updates")
+      .insert({ company_id, claim_id: claimId, author_id: me || null, note })
+      .select("*")
+      .single();
+    if (error) throw error;
+    // Toca o updated_at do sinistro para refletir a última movimentação.
+    await sb.from("claims").update({ updated_at: new Date().toISOString() }).eq("id", claimId);
+    return data as ClaimUpdate;
   },
 
   /** Soft delete — moves the claim to the trash (restorable for 5 days). */

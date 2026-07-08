@@ -9,6 +9,7 @@ import {
   Plus,
   Search,
   ShieldAlert,
+  SquareArrowOutUpRight,
   Trash2,
   User,
 } from "lucide-react";
@@ -238,6 +239,9 @@ export function ClaimsView() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => router.push(`/sinistros/${row.original.id}`)}>
+                <SquareArrowOutUpRight /> Abrir
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => openEdit(row.original)}>
                 <Pencil /> Editar
               </DropdownMenuItem>
@@ -291,7 +295,7 @@ export function ClaimsView() {
         columns={columns}
         data={filtered}
         loading={loading}
-        onRowClick={(c) => openEdit(c)}
+        onRowClick={(c) => router.push(`/sinistros/${c.id}`)}
         emptyIcon={ShieldAlert}
         emptyTitle="Nenhum sinistro"
         emptyDescription="Os sinistros solicitados e registrados aparecerão aqui."

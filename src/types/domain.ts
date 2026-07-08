@@ -378,6 +378,16 @@ export interface Claim {
   updated_at: ISODateString;
 }
 
+/** Acompanhamento (nota de andamento) de um sinistro. */
+export interface ClaimUpdate {
+  id: UUID;
+  company_id: UUID;
+  claim_id: UUID;
+  author_id: UUID | null;
+  note: string;
+  created_at: ISODateString;
+}
+
 export interface ContractAttachment {
   id: UUID;
   company_id: UUID;

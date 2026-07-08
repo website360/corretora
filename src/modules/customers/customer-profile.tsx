@@ -46,7 +46,7 @@ import {
   TONE_TEXT_CLASS,
 } from "@/config/domain";
 import { cn } from "@/lib/utils";
-import type { Claim, Contract, StageColor } from "@/types/domain";
+import type { Contract, StageColor } from "@/types/domain";
 import { ContractFormDialog } from "@/modules/catalog/contract-form-dialog";
 import { ClaimFormDialog } from "@/modules/claims/claim-form-dialog";
 import { describeTicketLog, ticketLogIcon } from "@/modules/tickets/ticket-log-format";
@@ -468,12 +468,12 @@ function ContractsTab({ customerId }: { customerId: string }) {
 }
 
 function ClaimsTab({ customerId }: { customerId: string }) {
+  const router = useRouter();
   const { data, loading, refetch } = useAsyncData(
     () => claimsService.listByCustomer(customerId),
     [customerId],
   );
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editing, setEditing] = React.useState<Claim | null>(null);
 
   const claims = data ?? [];
 
@@ -481,13 +481,7 @@ function ClaimsTab({ customerId }: { customerId: string }) {
     <SectionCard
       title="Sinistros do cliente"
       action={
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditing(null);
-            setDialogOpen(true);
-          }}
-        >
+        <Button size="sm" onClick={() => setDialogOpen(true)}>
           <Plus /> Novo sinistro
         </Button>
       }
@@ -514,10 +508,7 @@ function ClaimsTab({ customerId }: { customerId: string }) {
               <li
                 key={c.id}
                 className="flex cursor-pointer items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40"
-                onClick={() => {
-                  setEditing(c);
-                  setDialogOpen(true);
-                }}
+                onClick={() => router.push(`/sinistros/${c.id}`)}
               >
                 <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <ShieldAlert className="size-4" />
@@ -543,7 +534,7 @@ function ClaimsTab({ customerId }: { customerId: string }) {
       <ClaimFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        claim={editing}
+        claim={null}
         defaultCustomerId={customerId}
         lockCustomer
         onSaved={refetch}

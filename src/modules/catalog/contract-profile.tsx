@@ -29,7 +29,7 @@ import { AtendimentoChat } from "@/modules/service/atendimento-chat";
 import { ClaimFormDialog } from "@/modules/claims/claim-form-dialog";
 import { CLAIM_STATUS_META, CONTRACT_STATUS_META, TONE_BADGE_CLASS } from "@/config/domain";
 import { formatCurrency, formatShortDate } from "@/utils/format";
-import type { Claim, Contract } from "@/types/domain";
+import type { Contract } from "@/types/domain";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -262,12 +262,12 @@ export function ContractProfile({ id }: { id: string }) {
 }
 
 function ContractClaimsSection({ contract }: { contract: Contract }) {
+  const router = useRouter();
   const { data, loading, refetch } = useAsyncData(
     () => claimsService.listByContract(contract.id),
     [contract.id],
   );
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editing, setEditing] = React.useState<Claim | null>(null);
   const claims = data ?? [];
 
   return (
@@ -276,13 +276,7 @@ function ContractClaimsSection({ contract }: { contract: Contract }) {
         <h3 className="flex items-center gap-2 font-semibold">
           <ShieldAlert className="size-4" /> Sinistros desta apólice
         </h3>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditing(null);
-            setDialogOpen(true);
-          }}
-        >
+        <Button size="sm" onClick={() => setDialogOpen(true)}>
           <Plus /> Novo sinistro
         </Button>
       </div>
@@ -308,10 +302,7 @@ function ContractClaimsSection({ contract }: { contract: Contract }) {
               <li
                 key={c.id}
                 className="flex cursor-pointer items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40"
-                onClick={() => {
-                  setEditing(c);
-                  setDialogOpen(true);
-                }}
+                onClick={() => router.push(`/sinistros/${c.id}`)}
               >
                 <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <ShieldAlert className="size-4" />
@@ -337,7 +328,7 @@ function ContractClaimsSection({ contract }: { contract: Contract }) {
       <ClaimFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        claim={editing}
+        claim={null}
         defaultCustomerId={contract.customer_id}
         defaultContractId={contract.id}
         lockCustomer
