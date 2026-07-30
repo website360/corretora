@@ -72,6 +72,7 @@ import { tagBadgeStyle } from "@/lib/tag-color";
 import { StageDot } from "@/components/common/style-pickers";
 import { ListColumnsMenu } from "@/modules/tickets/list-columns-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
 
 export type AgendaRow =
   | { kind: "task"; id: string; when: number; task: Ticket }
@@ -510,13 +511,20 @@ export function UnifiedList({
         return (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span
-                className={cn(
-                  "inline-flex size-7 cursor-default items-center justify-center rounded-lg",
-                  complete ? "bg-success/10 text-success" : "bg-muted text-muted-foreground",
-                )}
-              >
-                <ListChecks className="size-4" />
+              <span className="flex w-20 cursor-default items-center gap-1.5">
+                <Progress
+                  value={(p.done / p.total) * 100}
+                  className="h-1.5 flex-1"
+                  indicatorClassName={complete ? "bg-success" : undefined}
+                />
+                <span
+                  className={cn(
+                    "shrink-0 font-mono text-[10px] tabular-nums",
+                    complete ? "text-success" : "text-muted-foreground",
+                  )}
+                >
+                  {p.done}/{p.total}
+                </span>
               </span>
             </TooltipTrigger>
             <TooltipContent>

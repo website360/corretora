@@ -4,10 +4,12 @@ import { cn } from "@/lib/utils";
 interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
   /** 0–100 */
   value?: number;
+  /** Overrides the fill colour (default: bg-primary). */
+  indicatorClassName?: string;
 }
 
 /** Lightweight, dependency-free progress bar. */
-export function Progress({ value = 0, className, ...props }: ProgressProps) {
+export function Progress({ value = 0, className, indicatorClassName, ...props }: ProgressProps) {
   const pct = Math.max(0, Math.min(100, value));
   return (
     <div
@@ -19,7 +21,10 @@ export function Progress({ value = 0, className, ...props }: ProgressProps) {
       {...props}
     >
       <div
-        className="h-full rounded-full bg-primary transition-[width] duration-200 ease-out"
+        className={cn(
+          "h-full rounded-full bg-primary transition-[width] duration-200 ease-out",
+          indicatorClassName,
+        )}
         style={{ width: `${pct}%` }}
       />
     </div>
