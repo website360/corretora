@@ -639,7 +639,11 @@ export type TicketEventType =
   | "due_removed"
   | "edited"
   | "comment"
-  | "comment_deleted";
+  | "comment_deleted"
+  | "checklist_added"
+  | "checklist_removed"
+  | "checklist_item_done"
+  | "checklist_item_undone";
 
 export interface TicketLog {
   id: UUID;
@@ -654,6 +658,43 @@ export interface TicketParticipant {
   ticket_id: UUID;
   user_id: UUID;
   added_at: ISODateString;
+}
+
+/* ──────────────────────── Checklists da tarefa ────────────────────── */
+
+/** Um checklist nomeado dentro de uma tarefa (ex.: "Documentos"). */
+export interface TaskChecklist {
+  id: UUID;
+  company_id: UUID;
+  ticket_id: UUID;
+  title: string;
+  position: number;
+  created_by: UUID | null;
+  created_at: ISODateString;
+}
+
+export interface TaskChecklistItem {
+  id: UUID;
+  company_id: UUID;
+  checklist_id: UUID;
+  ticket_id: UUID;
+  content: string;
+  done: boolean;
+  done_at: ISODateString | null;
+  done_by: UUID | null;
+  position: number;
+  created_at: ISODateString;
+}
+
+/** Checklist já com seus itens carregados (formato usado na UI). */
+export interface TaskChecklistWithItems extends TaskChecklist {
+  items: TaskChecklistItem[];
+}
+
+/** Itens concluídos / total — usado no cartão do kanban e no drawer. */
+export interface ChecklistProgress {
+  done: number;
+  total: number;
 }
 
 /* ──────────────────────────── Calendar ────────────────────────── */

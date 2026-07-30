@@ -11,6 +11,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { taskBoardsService } from "@/services/task-boards.service";
+import { checklistsService } from "@/services/checklists.service";
+import { useAsyncData } from "@/hooks/use-async-data";
 import { findUser } from "@/services/lookup";
 import { useSession } from "@/contexts/session-context";
 import { useDirectoryStore } from "@/stores/directory-store";
@@ -86,6 +88,16 @@ export function TasksBoard({
 
   React.useEffect(() => setItems(tickets), [tickets]);
   React.useEffect(() => setEvts(events), [events]);
+
+  // Progresso dos checklists de todos os cartões — uma query só para o board.
+  const ticketIdsKey = items
+    .map((t) => t.id)
+    .sort()
+    .join(",");
+  const { data: checklistProgress } = useAsyncData(
+    () => checklistsService.progressFor(ticketIdsKey ? ticketIdsKey.split(",") : []),
+    [ticketIdsKey],
+  );
 
   // Keep a valid active board — restore the last one used, else default/first.
   React.useEffect(() => {
@@ -375,6 +387,7 @@ export function TasksBoard({
                         key={t.id}
                         ticket={t}
                         draggable
+                        checklist={checklistProgress?.[t.id]}
                         onOpen={onOpenTask}
                         onDragStart={() => setDrag({ kind: "task", id: t.id })}
                         onDragEnd={() => {

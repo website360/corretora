@@ -1,12 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { CalendarClock, MessageSquare } from "lucide-react";
+import { CalendarClock, ListChecks, MessageSquare } from "lucide-react";
 import { findCarrier, findCustomer, findProduct, findUser } from "@/services/lookup";
 import { TICKET_SUBJECT_META, TICKET_PRIORITY_META, TONE_TEXT_CLASS } from "@/config/domain";
 import { formatShortDate } from "@/utils/format";
 import { cn } from "@/lib/utils";
-import type { Ticket } from "@/types/domain";
+import type { ChecklistProgress, Ticket } from "@/types/domain";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/common/user-avatar";
 
@@ -17,10 +17,19 @@ interface TaskCardProps {
   onDragEnd?: (e: React.DragEvent) => void;
   /** When provided, clicking opens this handler instead of navigating. */
   onOpen?: (ticket: Ticket) => void;
+  /** Itens de checklist concluídos/total; omitido quando a tarefa não tem nenhum. */
+  checklist?: ChecklistProgress;
 }
 
 /** Compact, draggable task card used on the Kanban board. */
-export function TaskCard({ ticket, draggable, onDragStart, onDragEnd, onOpen }: TaskCardProps) {
+export function TaskCard({
+  ticket,
+  draggable,
+  onDragStart,
+  onDragEnd,
+  onOpen,
+  checklist,
+}: TaskCardProps) {
   const router = useRouter();
   const customer = findCustomer(ticket.customer_id);
   const assignee = findUser(ticket.assignee_id);
@@ -89,6 +98,20 @@ export function TaskCard({ ticket, draggable, onDragStart, onDragEnd, onOpen }: 
           <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
             <MessageSquare className="size-3" />
             {ticket.unread_count}
+          </span>
+        )}
+        {checklist && checklist.total > 0 && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 text-[11px]",
+              checklist.done === checklist.total
+                ? "font-medium text-success"
+                : "text-muted-foreground",
+            )}
+            title="Itens de checklist concluídos"
+          >
+            <ListChecks className="size-3" />
+            {checklist.done}/{checklist.total}
           </span>
         )}
         <UserAvatar

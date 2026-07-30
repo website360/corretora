@@ -9,6 +9,7 @@ import {
   FileText,
   Flag,
   History,
+  ListChecks,
   MessageSquare,
   Paperclip,
   Pencil,
@@ -50,6 +51,8 @@ import type {
   TicketStatus,
 } from "@/types/domain";
 import { TicketFormDialog } from "@/modules/tickets/ticket-form-dialog";
+import { TaskChecklistPanel } from "@/modules/tickets/task-checklist";
+import { checklistsService } from "@/services/checklists.service";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -79,11 +82,16 @@ export function TicketConversation({ id }: { id: string }) {
   const taskColumns = useDirectoryStore((s) => s.taskColumns);
   const [messages, setMessages] = React.useState<TicketMessage[]>([]);
   const [editOpen, setEditOpen] = React.useState(false);
-  const [tab, setTab] = React.useState<"chat" | "activity">("chat");
+  const [tab, setTab] = React.useState<"chat" | "checklist" | "activity">("chat");
   const [deleteMsg, setDeleteMsg] = React.useState<TicketMessage | null>(null);
   const [deletingMsg, setDeletingMsg] = React.useState(false);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const { data: logs, refetch: refetchLogs } = useAsyncData(() => ticketsService.logs(id), [id]);
+  // Contador da aba Checklist — o painel avisa (onChanged) quando algo muda.
+  const { data: progress, refetch: refetchProgress } = useAsyncData(
+    () => checklistsService.progressFor([id]).then((m) => m[id] ?? { done: 0, total: 0 }),
+    [id],
+  );
 
   React.useEffect(() => {
     ticketsService.messages(id).then(setMessages);
@@ -163,11 +171,18 @@ export function TicketConversation({ id }: { id: string }) {
         <div className="flex items-center gap-1 border-b bg-card/40 px-4 py-2 lg:px-6">
           <div className="inline-flex items-center rounded-lg border bg-muted/40 p-0.5">
             <TabButton active={tab === "chat"} onClick={() => setTab("chat")} icon={MessageSquare} label="Conversa" />
+            <TabButton
+              active={tab === "checklist"}
+              onClick={() => setTab("checklist")}
+              icon={ListChecks}
+              label="Checklist"
+              badge={progress && progress.total > 0 ? `${progress.done}/${progress.total}` : null}
+            />
             <TabButton active={tab === "activity"} onClick={() => setTab("activity")} icon={History} label="Atividade" />
           </div>
         </div>
 
-        {tab === "chat" ? (
+        {tab === "chat" && (
           <>
             <div ref={scrollRef} className="flex-1 overflow-y-auto">
               <div className="mx-auto max-w-3xl space-y-5 p-4 lg:p-6">
@@ -188,7 +203,23 @@ export function TicketConversation({ id }: { id: string }) {
               </div>
             </div>
           </>
-        ) : (
+        )}
+
+        {tab === "checklist" && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-3xl p-4 lg:p-6">
+              <TaskChecklistPanel
+                ticketId={id}
+                onChanged={() => {
+                  refetchProgress();
+                  refetchLogs();
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {tab === "activity" && (
           <div className="flex-1 overflow-y-auto">
             <div className="mx-auto max-w-3xl p-4 lg:p-6">
               <ActivityFeed logs={logs ?? []} messages={messages} />
@@ -226,11 +257,14 @@ function TabButton({
   onClick,
   icon: Icon,
   label,
+  badge,
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
+  /** Contador opcional à direita do rótulo (ex.: "3/5"). */
+  badge?: React.ReactNode;
 }) {
   return (
     <button
@@ -242,6 +276,11 @@ function TabButton({
       )}
     >
       <Icon className="size-4" /> {label}
+      {badge && (
+        <span className="rounded bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+          {badge}
+        </span>
+      )}
     </button>
   );
 }

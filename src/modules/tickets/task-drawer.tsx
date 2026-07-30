@@ -5,6 +5,8 @@ import Link from "next/link";
 import { CheckCircle2, ExternalLink, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ticketsService } from "@/services/tickets.service";
+import { checklistsService } from "@/services/checklists.service";
+import { useAsyncData } from "@/hooks/use-async-data";
 import { finalizeTask } from "@/services/finalize.service";
 import { findCustomer, findTaskColumn, findUser } from "@/services/lookup";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
@@ -17,6 +19,7 @@ import type { Ticket } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/common/status-badge";
 import { UserAvatar } from "@/components/common/user-avatar";
 import {
@@ -89,6 +92,12 @@ export function TaskDrawer({
     }
   }
 
+  const { data: checklist } = useAsyncData(
+    async () =>
+      shown ? ((await checklistsService.progressFor([shown.id]))[shown.id] ?? null) : null,
+    [shown?.id],
+  );
+
   const stage = findTaskColumn(shown?.column_id);
   const customer = findCustomer(shown?.customer_id);
   const assignee = findUser(shown?.assignee_id);
@@ -140,6 +149,23 @@ export function TaskDrawer({
                     {shown.due_at ? formatShortDate(shown.due_at) : "Sem prazo"}
                   </span>
                 </Row>
+
+                {checklist && checklist.total > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Checklist
+                      </span>
+                      <span className="font-mono text-sm">
+                        {checklist.done}/{checklist.total}
+                      </span>
+                    </div>
+                    <Progress
+                      value={(checklist.done / checklist.total) * 100}
+                      className="h-1.5"
+                    />
+                  </div>
+                )}
 
                 <Separator />
 

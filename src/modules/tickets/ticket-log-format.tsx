@@ -4,6 +4,7 @@ import {
   CircleDot,
   Flag,
   History,
+  ListChecks,
   Pencil,
   Plus,
   Tag,
@@ -77,6 +78,18 @@ export function describeTicketLog(
       return "removeu um comentário";
     case "comment":
       return "comentou";
+    case "checklist_added":
+      return meta?.title
+        ? `criou o checklist "${String(meta.title)}"`
+        : "criou um checklist";
+    case "checklist_removed":
+      return meta?.title
+        ? `excluiu o checklist "${String(meta.title)}"`
+        : "excluiu um checklist";
+    case "checklist_item_done":
+      return meta?.item ? `concluiu "${String(meta.item)}"` : "concluiu um item do checklist";
+    case "checklist_item_undone":
+      return meta?.item ? `reabriu "${String(meta.item)}"` : "reabriu um item do checklist";
     default:
       return "atualizou a tarefa";
   }
@@ -108,6 +121,11 @@ export function ticketLogIcon(
       return Pencil;
     case "comment_deleted":
       return Trash2;
+    case "checklist_added":
+    case "checklist_removed":
+    case "checklist_item_done":
+    case "checklist_item_undone":
+      return ListChecks;
     default:
       return History;
   }
