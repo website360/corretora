@@ -16,6 +16,7 @@ import { findCarrier, findCustomer, findProduct, findTaskColumn } from "@/servic
 import { ticketsService } from "@/services/tickets.service";
 import { calendarService } from "@/services/calendar.service";
 import { taskBoardsService } from "@/services/task-boards.service";
+import { checklistsService } from "@/services/checklists.service";
 import { tagsService } from "@/services/tags.service";
 import { reopenEvent, reopenTask } from "@/services/finalize.service";
 import { useAsyncData } from "@/hooks/use-async-data";
@@ -70,6 +71,7 @@ import { UserAvatar } from "@/components/common/user-avatar";
 import { tagBadgeStyle } from "@/lib/tag-color";
 import { StageDot } from "@/components/common/style-pickers";
 import { ListColumnsMenu } from "@/modules/tickets/list-columns-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export type AgendaRow =
   | { kind: "task"; id: string; when: number; task: Ticket }
@@ -164,6 +166,16 @@ export function UnifiedList({
       event: e,
     })),
   ].sort((a, b) => comparator(sortValues(a), sortValues(b)));
+
+  // Progresso dos checklists de todas as tarefas da lista — uma query só.
+  const ticketIdsKey = tickets
+    .map((t) => t.id)
+    .sort()
+    .join(",");
+  const { data: checklistProgress } = useAsyncData(
+    () => checklistsService.progressFor(ticketIdsKey ? ticketIdsKey.split(",") : []),
+    [ticketIdsKey],
+  );
 
   // Directory data for the inline editors (also keeps cells reactive on load).
   const taskColumns = useDirectoryStore((s) => s.taskColumns);
@@ -483,6 +495,36 @@ export function UnifiedList({
               </span>
             )}
           </InlineTags>
+        );
+      },
+    },
+    checklist: {
+      id: "checklist",
+      header: "Checklist",
+      meta: { cellClassName: "w-px", headClassName: "whitespace-nowrap" },
+      cell: ({ row }) => {
+        const r = row.original;
+        const p = r.kind === "task" ? checklistProgress?.[r.task.id] : undefined;
+        if (!p || p.total === 0) return <span className="text-sm text-muted-foreground">—</span>;
+        const complete = p.done === p.total;
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className={cn(
+                  "inline-flex size-7 cursor-default items-center justify-center rounded-lg",
+                  complete ? "bg-success/10 text-success" : "bg-muted text-muted-foreground",
+                )}
+              >
+                <ListChecks className="size-4" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {complete
+                ? `Checklist concluído — ${p.done} de ${p.total} itens`
+                : `${p.done} de ${p.total} itens concluídos`}
+            </TooltipContent>
+          </Tooltip>
         );
       },
     },

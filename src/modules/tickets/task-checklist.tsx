@@ -512,14 +512,26 @@ function ChecklistRow({
           {formatSmartDate(item.done_at)}
         </span>
       )}
-      <button
-        type="button"
-        onClick={onRemove}
-        title="Remover item"
-        className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-      >
-        <Trash2 className="size-3.5" />
-      </button>
+      {!editing && (
+        <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            title="Renomear item"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Pencil className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            title="Remover item"
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </div>
+      )}
     </li>
   );
 }

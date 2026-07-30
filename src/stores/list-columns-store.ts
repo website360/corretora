@@ -12,6 +12,7 @@ export const LIST_COLUMNS = [
   { id: "when", label: "Data" },
   { id: "tags", label: "Etiquetas" },
   { id: "stage", label: "Etapa" },
+  { id: "checklist", label: "Checklist" },
   { id: "owner", label: "Responsável" },
 ] as const;
 
