@@ -386,7 +386,6 @@ function ContractsTab({ customerId }: { customerId: string }) {
     [products],
   );
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editing, setEditing] = React.useState<Contract | null>(null);
 
   const contracts = data ?? [];
 
@@ -394,13 +393,7 @@ function ContractsTab({ customerId }: { customerId: string }) {
     <SectionCard
       title="Contratos do cliente"
       action={
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditing(null);
-            setDialogOpen(true);
-          }}
-        >
+        <Button size="sm" onClick={() => setDialogOpen(true)}>
           <Plus /> Novo contrato
         </Button>
       }
@@ -424,31 +417,31 @@ function ContractsTab({ customerId }: { customerId: string }) {
           {contracts.map((c) => {
             const meta = CONTRACT_STATUS_META[c.status];
             return (
-              <li
-                key={c.id}
-                className="flex cursor-pointer items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40"
-                onClick={() => {
-                  setEditing(c);
-                  setDialogOpen(true);
-                }}
-              >
-                <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <FileText className="size-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">
-                    {c.product_id ? (productName.get(c.product_id) ?? "Produto") : "Contrato"}
-                    {c.policy_number ? ` · Apólice ${c.policy_number}` : ""}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {c.starts_at ? formatShortDate(c.starts_at) : "?"}
-                    {c.ends_at ? ` → ${formatShortDate(c.ends_at)}` : ""}
-                    {c.premium_cents ? ` · ${formatCurrency(c.premium_cents / 100)}` : ""}
-                  </p>
-                </div>
-                <Badge variant="outline" className={cn(TONE_BADGE_CLASS[meta.tone])}>
-                  {meta.label}
-                </Badge>
+              <li key={c.id}>
+                {/* Link de verdade (não router.push): permite abrir o contrato
+                    em nova aba com Ctrl+clique ou botão do meio. */}
+                <Link
+                  href={`/contratos/${c.id}`}
+                  className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40"
+                >
+                  <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <FileText className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">
+                      {c.product_id ? (productName.get(c.product_id) ?? "Produto") : "Contrato"}
+                      {c.policy_number ? ` · Apólice ${c.policy_number}` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {c.starts_at ? formatShortDate(c.starts_at) : "?"}
+                      {c.ends_at ? ` → ${formatShortDate(c.ends_at)}` : ""}
+                      {c.premium_cents ? ` · ${formatCurrency(c.premium_cents / 100)}` : ""}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className={cn(TONE_BADGE_CLASS[meta.tone])}>
+                    {meta.label}
+                  </Badge>
+                </Link>
               </li>
             );
           })}
@@ -458,7 +451,7 @@ function ContractsTab({ customerId }: { customerId: string }) {
       <ContractFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        contract={editing}
+        contract={null}
         defaultCustomerId={customerId}
         lockCustomer
         onSaved={refetch}
