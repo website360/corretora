@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
+  AlertTriangle,
   Bookmark,
   CalendarDays,
   CalendarPlus,
@@ -57,6 +58,7 @@ import { useAsyncData } from "@/hooks/use-async-data";
 import { useDirectory, useDirectoryStore } from "@/stores/directory-store";
 import { useUIStore } from "@/stores/ui-store";
 import { useSession } from "@/contexts/session-context";
+import { useOverdue } from "@/hooks/use-overdue";
 import {
   loadTaskFilters,
   saveTaskFilters,
@@ -143,6 +145,7 @@ export function TasksView() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useSession();
+  const { isTaskLate, isEventLate, taskTimeEnabled } = useOverdue();
   useDirectory();
   const taskBoards = useDirectoryStore((s) => s.taskBoards);
   const taskColumns = useDirectoryStore((s) => s.taskColumns);
@@ -178,6 +181,7 @@ export function TasksView() {
   const [boardFilter, setBoardFilter] = React.useState<string[]>([]);
   const [stageFilter, setStageFilter] = React.useState<string[]>([]);
   const [hideClosed, setHideClosed] = React.useState(false);
+  const [onlyOverdue, setOnlyOverdue] = React.useState(false);
   const [subjectFilter, setSubjectFilter] = React.useState<string[]>([]);
   const [entryTypes, setEntryTypes] = React.useState<EntryType[]>(["tasks", "events"]);
 
@@ -204,6 +208,7 @@ export function TasksView() {
     boardFilter,
     stageFilter,
     hideClosed,
+    onlyOverdue,
     subjectFilter,
     entryTypes,
     periodMode,
@@ -221,6 +226,7 @@ export function TasksView() {
     setBoardFilter(f.boardFilter ?? []);
     setStageFilter(f.stageFilter ?? []);
     setHideClosed(Boolean(f.hideClosed));
+    setOnlyOverdue(Boolean(f.onlyOverdue));
     setSubjectFilter(f.subjectFilter ?? []);
     setEntryTypes((f.entryTypes ?? ["tasks", "events"]) as EntryType[]);
     setPeriodMode(f.periodMode ?? "month");
@@ -239,7 +245,8 @@ export function TasksView() {
     stageFilter.length +
     (entryTypes.length === 2 ? 0 : 1) +
     (relations.length === 1 && relations[0] === "assignee" ? 0 : 1) +
-    (hideClosed ? 1 : 0);
+    (hideClosed ? 1 : 0) +
+    (onlyOverdue ? 1 : 0);
 
   // Opções de etapa (colunas de kanban). Limita às colunas dos kanbans
   // filtrados quando houver, e prefixa com o nome do kanban se houver vários.
@@ -318,6 +325,7 @@ export function TasksView() {
     boardFilter,
     stageFilter,
     hideClosed,
+    onlyOverdue,
     subjectFilter,
     entryTypes,
     periodMode,
@@ -343,6 +351,7 @@ export function TasksView() {
     setBoardFilter([]);
     setStageFilter([]);
     setHideClosed(false);
+    setOnlyOverdue(false);
     setSubjectFilter([]);
     setEntryTypes(["tasks", "events"]);
     setPeriodMode("month");
@@ -480,6 +489,9 @@ export function TasksView() {
       entryParam === "events" ? ["events"] : entryParam === "all" ? ["tasks", "events"] : ["tasks"],
     );
     setHideClosed(false);
+    // O recorte de atraso do deep-link já vem em statusParam/dueParam (com a
+    // janela de 30 dias); o botão do painel é um filtro à parte.
+    setOnlyOverdue(false);
     setBoardFilter(boardParam ? [boardParam] : []);
     setPeriodMode("range");
     setRangeFrom("");
@@ -546,8 +558,8 @@ export function TasksView() {
   const statusOk = (t: Ticket) => {
     if (!statusParam) return true;
     if (statusParam === "open") return isOpenStatus(t);
-    if (statusParam === "overdue")
-      return isOpenStatus(t) && !!t.due_at && new Date(t.due_at) < new Date();
+    // Mesmo critério do indicador do dashboard e da marcação vermelha na lista.
+    if (statusParam === "overdue") return isOpenStatus(t) && isTaskLate(t);
     return t.status === statusParam; // resolved | closed
   };
   // Janela de criação vinda do dashboard (?from=/?to=). Espelha o filtro do
@@ -569,12 +581,15 @@ export function TasksView() {
   };
   // Recorte por vencimento (indicador "por data" do dashboard). Atrasada conta
   // só os últimos 30 dias; "em dia" inclui os sem data. `d` = due_at | starts_at.
-  const dueOk = (d?: string | null) => {
+  // `late` segue a granularidade da empresa (só dia x dia + horário), igual ao
+  // card do dashboard — senão a lista não bate com a contagem que abriu ela.
+  const dueOk = (d: string | null | undefined, late: boolean) => {
     if (!dueParam) return true;
     const today0 = +startOfDay(new Date());
     if (d == null) return dueParam === "upcoming";
     const t = +new Date(d);
-    if (dueParam === "overdue") return t >= +startOfDay(subDays(new Date(), 30)) && t < today0;
+    if (dueParam === "overdue") return late && t >= +startOfDay(subDays(new Date(), 30));
+    if (late) return false; // atrasado nunca entra em "para hoje" / "em dia"
     if (dueParam === "today") return t >= today0 && t <= +endOfDay(new Date());
     if (dueParam === "upcoming") return t >= +startOfDay(addDays(new Date(), 1));
     return true;
@@ -609,7 +624,12 @@ export function TasksView() {
     [periodWindow],
   );
   // Tasks: keep undated ones always visible; date the rest to the window.
-  const taskInWindow = (t: Ticket) => !periodWindow || !t.due_at || inWindow(t.due_at);
+  // "Em atraso" define sua própria janela (tudo que venceu até agora), então
+  // ignora o período — senão "Mês" esconderia o atraso dos meses anteriores.
+  const taskInWindow = (t: Ticket) =>
+    onlyOverdue || !periodWindow || !t.due_at || inWindow(t.due_at);
+  /** Recorte "só em atraso" — vale para tarefas e eventos. */
+  const overdueOk = (late: boolean) => !onlyOverdue || late;
 
   const navigatePeriod = (dir: -1 | 1) =>
     setCursor((c) =>
@@ -639,7 +659,8 @@ export function TasksView() {
       statusOk(t) &&
       taskOpenOk(t) &&
       createdInDeepLinkRange(t) &&
-      dueOk(t.due_at) &&
+      dueOk(t.due_at, isTaskLate(t)) &&
+      overdueOk(isTaskLate(t)) &&
       // Finalizadas (status closed) não entram no recorte por vencimento.
       (!dueParam || t.status !== "closed") &&
       taskInWindow(t),
@@ -673,14 +694,16 @@ export function TasksView() {
       if (!stageOk(e.column_id)) return false;
       if (!eventOpenOk(e)) return false;
       if (!eventStartsInDeepLinkRange(e)) return false;
-      if (!dueOk(e.starts_at)) return false;
+      if (!dueOk(e.starts_at, isEventLate(e))) return false;
       // Finalizados (finished) não entram no recorte por vencimento.
       if (dueParam && e.finished) return false;
-      if (periodWindow && !inWindow(e.starts_at)) return false;
+      if (onlyOverdue && !isEventLate(e)) return false;
+      // "Em atraso" traz tudo que já venceu, fora da janela de período.
+      if (!onlyOverdue && periodWindow && !inWindow(e.starts_at)) return false;
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localEvents, search, relations, personIds, tagFilter, subjectFilter, boardFilter, stageFilter, hideClosed, periodWindow, inWindow, fromParam, toParam, dueParam]);
+  }, [localEvents, search, relations, personIds, tagFilter, subjectFilter, boardFilter, stageFilter, hideClosed, onlyOverdue, periodWindow, inWindow, fromParam, toParam, dueParam, isEventLate]);
 
   const events = showEvents ? filteredEvents : [];
 
@@ -845,6 +868,19 @@ export function TasksView() {
           >
             <EyeOff /> Ocultar concluídos
           </Button>
+          <Button
+            variant={onlyOverdue ? "destructive" : "outline"}
+            size="sm"
+            className={cn("h-9", !onlyOverdue && "text-destructive hover:text-destructive")}
+            title={
+              taskTimeEnabled
+                ? "Vencidos até agora (a empresa usa data e horário)"
+                : "Vencidos até ontem (a empresa usa só a data)"
+            }
+            onClick={() => setOnlyOverdue((v) => !v)}
+          >
+            <AlertTriangle /> Em atraso
+          </Button>
         </div>
       )}
 
@@ -899,6 +935,13 @@ export function TasksView() {
             </Button>
             <span className="ml-1 text-sm font-medium capitalize">{periodLabel}</span>
           </div>
+        )}
+
+        {onlyOverdue && (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
+            <AlertTriangle className="size-3.5" />
+            Só em atraso — o período não se aplica
+          </span>
         )}
       </div>
 

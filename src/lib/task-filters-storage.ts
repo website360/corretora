@@ -14,6 +14,8 @@ export interface SavedTaskFilters {
   boardFilter: string[];
   stageFilter: string[];
   hideClosed: boolean;
+  /** Só o que está em atraso (tarefas e eventos). Ignora a janela de período. */
+  onlyOverdue?: boolean;
   subjectFilter: string[];
   entryTypes: string[];
   periodMode: PeriodMode;
