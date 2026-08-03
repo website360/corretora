@@ -17,6 +17,7 @@ import { findUser } from "@/services/lookup";
 import { useSession } from "@/contexts/session-context";
 import { useDirectoryStore } from "@/stores/directory-store";
 import { useLastBoardStore } from "@/stores/last-board-store";
+import { useOverdue } from "@/hooks/use-overdue";
 import { EVENT_MODALITY_META, TONE_DOT_CLASS } from "@/config/domain";
 import { formatSmartDate } from "@/utils/format";
 import { cn } from "@/lib/utils";
@@ -486,22 +487,32 @@ function EventCard({
   onDragEnd?: () => void;
 }) {
   const owner = findUser(e.owner_id);
+  const { isEventLate } = useOverdue();
+  const late = isEventLate(e);
   return (
     <div
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={() => onOpen?.(e)}
-      className="group w-full cursor-pointer rounded-xl border border-primary/20 bg-accent/20 p-3 text-left shadow-xs transition-all hover:border-primary/40 hover:shadow-md active:cursor-grabbing"
+      className={cn(
+        "group w-full cursor-pointer rounded-xl border border-primary/20 bg-accent/20 p-3 text-left shadow-xs transition-all hover:border-primary/40 hover:shadow-md active:cursor-grabbing",
+        late && "border-destructive/40 bg-destructive/5 hover:border-destructive/60",
+      )}
     >
       <div className="mb-1.5 flex items-center gap-2">
-        <CalendarDays className="size-3.5 text-primary" />
+        <CalendarDays className={cn("size-3.5", late ? "text-destructive" : "text-primary")} />
         <Badge variant="secondary" className="text-[10px]">
           {EVENT_MODALITY_META[e.modality ?? "not_applicable"].label}
         </Badge>
       </div>
       <p className="line-clamp-2 text-sm font-medium leading-snug">{e.title}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{formatSmartDate(e.starts_at)}</p>
+      <p
+        className={cn("mt-1 text-xs", late ? "font-medium text-destructive" : "text-muted-foreground")}
+        title={late ? "Evento em atraso" : undefined}
+      >
+        {formatSmartDate(e.starts_at)}
+      </p>
       <div className="mt-2 flex items-center justify-between">
         {(e.tags ?? []).length > 0 ? (
           <Badge variant="outline" className="text-[10px] capitalize">

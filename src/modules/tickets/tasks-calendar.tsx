@@ -25,6 +25,7 @@ import {
 } from "@/config/domain";
 import { formatTime } from "@/utils/format";
 import { cn } from "@/lib/utils";
+import { useOverdue } from "@/hooks/use-overdue";
 import type { CalendarEvent, Ticket } from "@/types/domain";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,12 @@ const MAX_RANGE_DAYS = 62;
 interface DayBucket {
   events: CalendarEvent[];
   tasks: Ticket[];
+}
+
+/** Marcadores de atraso, calculados uma vez e repassados às subviews. */
+interface LateFlags {
+  task: (t: Ticket) => boolean;
+  event: (e: CalendarEvent) => boolean;
 }
 
 export function TasksCalendar({
@@ -62,6 +69,8 @@ export function TasksCalendar({
   onOpenEvent?: (event: CalendarEvent) => void;
 }) {
   const router = useRouter();
+  const { isTaskLate, isEventLate } = useOverdue();
+  const late: LateFlags = { task: isTaskLate, event: isEventLate };
   const openTask = (id: string) => {
     const t = tickets.find((x) => x.id === id);
     if (t && onOpenTask) onOpenTask(t);
@@ -81,7 +90,13 @@ export function TasksCalendar({
   if (mode === "day") {
     return (
       <div className="h-full overflow-auto">
-        <DayView date={cursor} bucket={bucketFor(cursor)} onOpenTask={openTask} onOpenEvent={onOpenEvent} />
+        <DayView
+          date={cursor}
+          bucket={bucketFor(cursor)}
+          late={late}
+          onOpenTask={openTask}
+          onOpenEvent={onOpenEvent}
+        />
       </div>
     );
   }
@@ -92,6 +107,7 @@ export function TasksCalendar({
         <MonthView
           cursor={cursor}
           bucketFor={bucketFor}
+          late={late}
           onOpenTask={openTask}
           onOpenEvent={onOpenEvent}
         />
@@ -134,7 +150,13 @@ export function TasksCalendar({
 
   return (
     <div className="h-full overflow-auto">
-      <DaysGrid days={days} bucketFor={bucketFor} onOpenTask={openTask} onOpenEvent={onOpenEvent} />
+      <DaysGrid
+        days={days}
+        bucketFor={bucketFor}
+        late={late}
+        onOpenTask={openTask}
+        onOpenEvent={onOpenEvent}
+      />
     </div>
   );
 }
@@ -217,11 +239,13 @@ function YearView({
 function MonthView({
   cursor,
   bucketFor,
+  late,
   onOpenTask,
   onOpenEvent,
 }: {
   cursor: Date;
   bucketFor: (d: Date) => DayBucket;
+  late: LateFlags;
   onOpenTask: (id: string) => void;
   onOpenEvent?: (event: CalendarEvent) => void;
 }) {
@@ -254,6 +278,7 @@ function MonthView({
               task: false,
               time: e.all_day ? null : formatTime(e.starts_at),
               event: e,
+              late: late.event(e),
             })),
             ...tasks.map((t) => ({
               id: t.id,
@@ -262,6 +287,7 @@ function MonthView({
               task: true,
               time: null as string | null,
               event: undefined as CalendarEvent | undefined,
+              late: late.task(t),
             })),
           ];
           return (
@@ -284,22 +310,39 @@ function MonthView({
                 {chips.slice(0, 3).map((chip) => (
                   <button
                     key={chip.id}
-                    title={`${chip.task ? "Tarefa" : "Evento"}: ${chip.title}`}
+                    title={`${chip.task ? "Tarefa" : "Evento"}: ${chip.title}${chip.late ? " — em atraso" : ""}`}
                     onClick={() =>
                       chip.task ? onOpenTask(chip.id) : chip.event && onOpenEvent?.(chip.event)
                     }
                     className={cn(
                       "flex w-full items-center gap-1 truncate rounded border-l-2 bg-card px-1 py-0.5 text-left text-[10px] shadow-xs hover:bg-accent",
-                      TONE_BORDER_CLASS[chip.tone],
+                      chip.late
+                        ? "border-l-destructive bg-destructive/10 font-medium text-destructive"
+                        : TONE_BORDER_CLASS[chip.tone],
                     )}
                   >
                     {chip.task ? (
-                      <CheckCircle2 className={cn("size-2.5 shrink-0", TONE_TEXT_CLASS[chip.tone])} />
+                      <CheckCircle2
+                        className={cn(
+                          "size-2.5 shrink-0",
+                          chip.late ? "text-destructive" : TONE_TEXT_CLASS[chip.tone],
+                        )}
+                      />
                     ) : (
-                      <CalendarDays className={cn("size-2.5 shrink-0", TONE_TEXT_CLASS[chip.tone])} />
+                      <CalendarDays
+                        className={cn(
+                          "size-2.5 shrink-0",
+                          chip.late ? "text-destructive" : TONE_TEXT_CLASS[chip.tone],
+                        )}
+                      />
                     )}
                     {chip.time && (
-                      <span className="shrink-0 font-medium tabular-nums text-muted-foreground">
+                      <span
+                        className={cn(
+                          "shrink-0 font-medium tabular-nums",
+                          chip.late ? "text-destructive" : "text-muted-foreground",
+                        )}
+                      >
                         {chip.time}
                       </span>
                     )}
@@ -323,11 +366,13 @@ function MonthView({
 function DaysGrid({
   days,
   bucketFor,
+  late,
   onOpenTask,
   onOpenEvent,
 }: {
   days: Date[];
   bucketFor: (d: Date) => DayBucket;
+  late: LateFlags;
   onOpenTask: (id: string) => void;
   onOpenEvent?: (event: CalendarEvent) => void;
 }) {
@@ -357,43 +402,68 @@ function DaysGrid({
               {events.length === 0 && tasks.length === 0 && (
                 <p className="px-1 py-2 text-center text-[11px] text-muted-foreground/60">—</p>
               )}
-              {events.map((e) => (
-                <button
-                  key={e.id}
-                  title={`Evento: ${e.title}`}
-                  onClick={() => onOpenEvent?.(e)}
-                  className={cn(
-                    "flex w-full items-center gap-1.5 truncate rounded-md border-l-2 bg-muted/50 px-1.5 py-1 text-left text-[11px] hover:bg-accent",
-                    TONE_BORDER_CLASS[CALENDAR_EVENT_META[e.type].tone],
-                  )}
-                >
-                  <CalendarDays
-                    className={cn("size-3 shrink-0", TONE_TEXT_CLASS[CALENDAR_EVENT_META[e.type].tone])}
-                  />
-                  {!e.all_day && (
-                    <span className="shrink-0 font-medium tabular-nums text-muted-foreground">
-                      {formatTime(e.starts_at)}
-                    </span>
-                  )}
-                  <span className="truncate">{e.title}</span>
-                </button>
-              ))}
-              {tasks.map((t) => (
-                <button
-                  key={t.id}
-                  title={`Tarefa: ${t.title}`}
-                  onClick={() => onOpenTask(t.id)}
-                  className={cn(
-                    "flex w-full items-center gap-1.5 truncate rounded-md border border-l-2 px-1.5 py-1 text-left text-[11px] hover:bg-accent",
-                    TONE_BORDER_CLASS[TICKET_PRIORITY_META[t.priority].tone],
-                  )}
-                >
-                  <CheckCircle2
-                    className={cn("size-3 shrink-0", TONE_TEXT_CLASS[TICKET_PRIORITY_META[t.priority].tone])}
-                  />
-                  <span className="truncate">{t.title}</span>
-                </button>
-              ))}
+              {events.map((e) => {
+                const isLate = late.event(e);
+                return (
+                  <button
+                    key={e.id}
+                    title={`Evento: ${e.title}${isLate ? " — em atraso" : ""}`}
+                    onClick={() => onOpenEvent?.(e)}
+                    className={cn(
+                      "flex w-full items-center gap-1.5 truncate rounded-md border-l-2 bg-muted/50 px-1.5 py-1 text-left text-[11px] hover:bg-accent",
+                      isLate
+                        ? "border-l-destructive bg-destructive/10 font-medium text-destructive"
+                        : TONE_BORDER_CLASS[CALENDAR_EVENT_META[e.type].tone],
+                    )}
+                  >
+                    <CalendarDays
+                      className={cn(
+                        "size-3 shrink-0",
+                        isLate
+                          ? "text-destructive"
+                          : TONE_TEXT_CLASS[CALENDAR_EVENT_META[e.type].tone],
+                      )}
+                    />
+                    {!e.all_day && (
+                      <span
+                        className={cn(
+                          "shrink-0 font-medium tabular-nums",
+                          isLate ? "text-destructive" : "text-muted-foreground",
+                        )}
+                      >
+                        {formatTime(e.starts_at)}
+                      </span>
+                    )}
+                    <span className="truncate">{e.title}</span>
+                  </button>
+                );
+              })}
+              {tasks.map((t) => {
+                const isLate = late.task(t);
+                return (
+                  <button
+                    key={t.id}
+                    title={`Tarefa: ${t.title}${isLate ? " — em atraso" : ""}`}
+                    onClick={() => onOpenTask(t.id)}
+                    className={cn(
+                      "flex w-full items-center gap-1.5 truncate rounded-md border border-l-2 px-1.5 py-1 text-left text-[11px] hover:bg-accent",
+                      isLate
+                        ? "border-destructive/40 border-l-destructive bg-destructive/10 font-medium text-destructive"
+                        : TONE_BORDER_CLASS[TICKET_PRIORITY_META[t.priority].tone],
+                    )}
+                  >
+                    <CheckCircle2
+                      className={cn(
+                        "size-3 shrink-0",
+                        isLate
+                          ? "text-destructive"
+                          : TONE_TEXT_CLASS[TICKET_PRIORITY_META[t.priority].tone],
+                      )}
+                    />
+                    <span className="truncate">{t.title}</span>
+                  </button>
+                );
+              })}
             </div>
           </Card>
         );
@@ -407,11 +477,13 @@ function DaysGrid({
 function DayView({
   date,
   bucket,
+  late,
   onOpenTask,
   onOpenEvent,
 }: {
   date: Date;
   bucket: DayBucket;
+  late: LateFlags;
   onOpenTask: (id: string) => void;
   onOpenEvent?: (event: CalendarEvent) => void;
 }) {
@@ -439,11 +511,15 @@ function DayView({
                   const meta = CALENDAR_EVENT_META[e.type];
                   const owner = findUser(e.owner_id);
                   const involved = (e.participant_ids ?? []).map((id) => findUser(id)).filter(Boolean);
+                  const isLate = late.event(e);
                   return (
                     <li
                       key={e.id}
                       onClick={() => onOpenEvent?.(e)}
-                      className="cursor-pointer rounded-xl border p-3 transition-colors hover:border-primary/30 hover:bg-accent/40"
+                      className={cn(
+                        "cursor-pointer rounded-xl border p-3 transition-colors hover:border-primary/30 hover:bg-accent/40",
+                        isLate && "border-destructive/40 bg-destructive/5",
+                      )}
                     >
                       <div className="mb-1 flex flex-wrap items-center gap-1.5">
                         <Badge variant="outline" className="gap-1">
@@ -452,7 +528,13 @@ function DayView({
                         <Badge variant="secondary">
                           {EVENT_MODALITY_META[e.modality ?? "not_applicable"].label}
                         </Badge>
-                        <span className="ml-auto text-xs text-muted-foreground">
+                        {isLate && <Badge variant="destructive">Em atraso</Badge>}
+                        <span
+                          className={cn(
+                            "ml-auto text-xs",
+                            isLate ? "font-medium text-destructive" : "text-muted-foreground",
+                          )}
+                        >
                           {e.all_day ? "Dia todo" : `${formatTime(e.starts_at)} – ${formatTime(e.ends_at)}`}
                         </span>
                       </div>
@@ -496,20 +578,40 @@ function DayView({
                   {tasks.map((t) => {
                     const meta = TICKET_PRIORITY_META[t.priority];
                     const assignee = findUser(t.assignee_id);
+                    const isLate = late.task(t);
                     return (
                       <li key={t.id}>
                         <button
                           onClick={() => onOpenTask(t.id)}
-                          className="flex w-full items-start gap-2 rounded-xl border p-3 text-left transition-colors hover:border-primary/30 hover:bg-accent/40"
+                          className={cn(
+                            "flex w-full items-start gap-2 rounded-xl border p-3 text-left transition-colors hover:border-primary/30 hover:bg-accent/40",
+                            isLate && "border-destructive/40 bg-destructive/5",
+                          )}
                         >
-                          <CheckCircle2 className={cn("mt-0.5 size-4 shrink-0", TONE_TEXT_CLASS[meta.tone])} />
+                          <CheckCircle2
+                            className={cn(
+                              "mt-0.5 size-4 shrink-0",
+                              isLate ? "text-destructive" : TONE_TEXT_CLASS[meta.tone],
+                            )}
+                          />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">
+                            <p
+                              className={cn(
+                                "truncate text-sm font-medium",
+                                isLate && "text-destructive",
+                              )}
+                            >
                               <span className="font-mono text-xs text-muted-foreground">#{t.number}</span> {t.title}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p
+                              className={cn(
+                                "text-xs",
+                                isLate ? "text-destructive" : "text-muted-foreground",
+                              )}
+                            >
                               Prioridade {meta.label}
                               {assignee ? ` · ${assignee.name}` : ""}
+                              {isLate ? " · Em atraso" : ""}
                             </p>
                           </div>
                         </button>

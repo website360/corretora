@@ -25,6 +25,7 @@ import { findUser } from "@/services/lookup";
 import { CALENDAR_EVENT_META, TICKET_PRIORITY_META, TONE_DOT_CLASS } from "@/config/domain";
 import { formatTime } from "@/utils/format";
 import { cn } from "@/lib/utils";
+import { useOverdue } from "@/hooks/use-overdue";
 import type { CalendarEvent, Ticket } from "@/types/domain";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ const TONE_TEXT: Record<string, string> = {
 
 export function CalendarView() {
   useDirectory();
+  const { isTaskLate, isEventLate } = useOverdue();
   const { data: events, refetch } = useAsyncData(() => calendarService.list());
   const { data: tickets } = useAsyncData(() => ticketsService.list());
   const [cursor, setCursor] = React.useState(() => new Date());
@@ -133,12 +135,14 @@ export function CalendarView() {
                   title: e.title,
                   tone: CALENDAR_EVENT_META[e.type].tone,
                   task: false,
+                  late: isEventLate(e),
                 })),
                 ...tsks.map((t) => ({
                   id: t.id,
                   title: t.title,
                   tone: TICKET_PRIORITY_META[t.priority].tone,
                   task: true,
+                  late: isTaskLate(t),
                 })),
               ];
               const isCurrentMonth = isSameMonth(day, cursor);
@@ -165,12 +169,26 @@ export function CalendarView() {
                     {chips.slice(0, 2).map((chip) => (
                       <div
                         key={chip.id}
-                        className="flex items-center gap-1 truncate rounded bg-card px-1 py-0.5 text-[10px] shadow-xs"
+                        title={chip.late ? `${chip.title} — em atraso` : undefined}
+                        className={cn(
+                          "flex items-center gap-1 truncate rounded bg-card px-1 py-0.5 text-[10px] shadow-xs",
+                          chip.late && "bg-destructive/10 font-medium text-destructive",
+                        )}
                       >
                         {chip.task ? (
-                          <CheckCircle2 className={cn("size-2.5 shrink-0", TONE_TEXT[chip.tone])} />
+                          <CheckCircle2
+                            className={cn(
+                              "size-2.5 shrink-0",
+                              chip.late ? "text-destructive" : TONE_TEXT[chip.tone],
+                            )}
+                          />
                         ) : (
-                          <span className={cn("size-1.5 shrink-0 rounded-full", TONE_DOT_CLASS[chip.tone])} />
+                          <span
+                            className={cn(
+                              "size-1.5 shrink-0 rounded-full",
+                              chip.late ? "bg-destructive" : TONE_DOT_CLASS[chip.tone],
+                            )}
+                          />
                         )}
                         <span className="truncate">{chip.title}</span>
                       </div>
@@ -212,13 +230,26 @@ export function CalendarView() {
                     {selectedEvents.map((e) => {
                       const meta = CALENDAR_EVENT_META[e.type];
                       const owner = findUser(e.owner_id);
+                      const late = isEventLate(e);
                       return (
-                        <li key={e.id} className="rounded-xl border p-3">
-                          <div className="mb-1 flex items-center gap-2">
+                        <li
+                          key={e.id}
+                          className={cn(
+                            "rounded-xl border p-3",
+                            late && "border-destructive/40 bg-destructive/5",
+                          )}
+                        >
+                          <div className="mb-1 flex flex-wrap items-center gap-2">
                             <Badge variant="outline" className="gap-1">
                               <meta.icon className="size-3" /> {meta.label}
                             </Badge>
-                            <span className="ml-auto text-xs text-muted-foreground">
+                            {late && <Badge variant="destructive">Em atraso</Badge>}
+                            <span
+                              className={cn(
+                                "ml-auto text-xs",
+                                late ? "font-medium text-destructive" : "text-muted-foreground",
+                              )}
+                            >
                               {e.all_day ? "Dia todo" : formatTime(e.starts_at)}
                             </span>
                           </div>
@@ -250,23 +281,43 @@ export function CalendarView() {
                       {selectedTasks.map((t) => {
                         const meta = TICKET_PRIORITY_META[t.priority];
                         const assignee = findUser(t.assignee_id);
+                        const late = isTaskLate(t);
                         return (
                           <li key={t.id}>
                             <Link
                               href={`/tickets/${t.id}`}
-                              className="flex items-start gap-2 rounded-xl border p-3 transition-colors hover:border-primary/30 hover:bg-accent/40"
+                              className={cn(
+                                "flex items-start gap-2 rounded-xl border p-3 transition-colors hover:border-primary/30 hover:bg-accent/40",
+                                late && "border-destructive/40 bg-destructive/5",
+                              )}
                             >
-                              <CheckCircle2 className={cn("mt-0.5 size-4 shrink-0", TONE_TEXT[meta.tone])} />
+                              <CheckCircle2
+                                className={cn(
+                                  "mt-0.5 size-4 shrink-0",
+                                  late ? "text-destructive" : TONE_TEXT[meta.tone],
+                                )}
+                              />
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium">
+                                <p
+                                  className={cn(
+                                    "truncate text-sm font-medium",
+                                    late && "text-destructive",
+                                  )}
+                                >
                                   <span className="font-mono text-xs text-muted-foreground">
                                     #{t.number}
                                   </span>{" "}
                                   {t.title}
                                 </p>
-                                <p className="text-xs text-muted-foreground">
+                                <p
+                                  className={cn(
+                                    "text-xs",
+                                    late ? "text-destructive" : "text-muted-foreground",
+                                  )}
+                                >
                                   Prioridade {meta.label}
                                   {assignee ? ` · ${assignee.name}` : ""}
+                                  {late ? " · Em atraso" : ""}
                                 </p>
                               </div>
                             </Link>

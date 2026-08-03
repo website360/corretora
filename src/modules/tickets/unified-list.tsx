@@ -3,6 +3,7 @@
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
+  AlertTriangle,
   CalendarDays,
   CheckCircle2,
   Eye,
@@ -43,6 +44,7 @@ import {
 } from "@/stores/list-columns-store";
 import { useDirectoryStore } from "@/stores/directory-store";
 import { useSession } from "@/contexts/session-context";
+import { useOverdue } from "@/hooks/use-overdue";
 import { makeComparator, resolveSettings, type SortableRow } from "@/config/sort";
 import { DataTable } from "@/components/common/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -102,6 +104,8 @@ export function UnifiedList({
 }) {
   const { user } = useSession();
   const { sortRules, taskTimeEnabled } = resolveSettings(user.company);
+  const { isTaskLate, isEventLate } = useOverdue();
+  const isLate = (r: AgendaRow) => (r.kind === "task" ? isTaskLate(r.task) : isEventLate(r.event));
 
   // Reagendamento de tarefa: pergunta o motivo e registra no log.
   const [reschedule, setReschedule] = React.useState<{
@@ -250,9 +254,16 @@ export function UnifiedList({
         const r = row.original;
         const title = r.kind === "task" ? r.task.title : r.event.title;
         const finalized = r.kind === "task" ? r.task.status === "closed" : Boolean(r.event.finished);
+        const late = isLate(r);
         return (
           <span className="flex items-center gap-2">
-            <span className={cn("truncate font-medium", finalized && "text-muted-foreground line-through")}>
+            <span
+              className={cn(
+                "truncate font-medium",
+                finalized && "text-muted-foreground line-through",
+                !finalized && late && "text-destructive",
+              )}
+            >
               {title}
             </span>
             {finalized && (
@@ -261,6 +272,11 @@ export function UnifiedList({
                 className="shrink-0 border-success/30 bg-success/10 text-success"
               >
                 Finalizada
+              </Badge>
+            )}
+            {!finalized && late && (
+              <Badge variant="destructive" className="shrink-0 gap-1">
+                <AlertTriangle className="size-3" /> Em atraso
               </Badge>
             )}
           </span>
@@ -275,8 +291,16 @@ export function UnifiedList({
         const date = r.kind === "task" ? r.task.due_at : r.event.starts_at;
         // Events always show time; tasks show time only when the feature is on.
         const showTime = r.kind === "event" || taskTimeEnabled;
+        const late = isLate(r);
         const display = date ? (
-          <span className="whitespace-nowrap text-muted-foreground">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 whitespace-nowrap",
+              late ? "font-medium text-destructive" : "text-muted-foreground",
+            )}
+            title={late ? "Em atraso" : undefined}
+          >
+            {late && <AlertTriangle className="size-3.5 shrink-0" />}
             {formatShortDate(date)}
             {showTime ? ` ${formatTime(date)}` : ""}
           </span>

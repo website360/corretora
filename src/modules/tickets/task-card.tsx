@@ -4,11 +4,12 @@ import { useRouter } from "next/navigation";
 import { CalendarClock, ListChecks, MessageSquare } from "lucide-react";
 import { findCarrier, findCustomer, findProduct, findUser } from "@/services/lookup";
 import { TICKET_SUBJECT_META, TICKET_PRIORITY_META, TONE_TEXT_CLASS } from "@/config/domain";
-import { formatShortDate } from "@/utils/format";
+import { formatShortDate, formatTime } from "@/utils/format";
 import { cn } from "@/lib/utils";
 import type { ChecklistProgress, Ticket } from "@/types/domain";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/common/user-avatar";
+import { useOverdue } from "@/hooks/use-overdue";
 
 interface TaskCardProps {
   ticket: Ticket;
@@ -31,6 +32,8 @@ export function TaskCard({
   checklist,
 }: TaskCardProps) {
   const router = useRouter();
+  const { isTaskLate, taskTimeEnabled } = useOverdue();
+  const late = isTaskLate(ticket);
   const customer = findCustomer(ticket.customer_id);
   const assignee = findUser(ticket.assignee_id);
   const priority = TICKET_PRIORITY_META[ticket.priority];
@@ -49,6 +52,7 @@ export function TaskCard({
       className={cn(
         "group cursor-pointer rounded-xl border bg-card p-3 shadow-xs transition-all hover:shadow-md hover:border-primary/30",
         draggable && "active:cursor-grabbing active:opacity-60",
+        late && "border-destructive/40 bg-destructive/5 hover:border-destructive/60",
       )}
     >
       <div className="mb-2 flex items-center gap-2">
@@ -89,9 +93,16 @@ export function TaskCard({
           {priority.label}
         </Badge>
         {ticket.due_at && (
-          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 text-[11px]",
+              late ? "font-medium text-destructive" : "text-muted-foreground",
+            )}
+            title={late ? "Prazo em atraso" : undefined}
+          >
             <CalendarClock className="size-3" />
             {formatShortDate(ticket.due_at)}
+            {taskTimeEnabled ? ` ${formatTime(ticket.due_at)}` : ""}
           </span>
         )}
         {ticket.unread_count > 0 && (

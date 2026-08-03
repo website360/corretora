@@ -24,6 +24,7 @@ import { calendarService } from "@/services/calendar.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { useDirectory, useDirectoryStore } from "@/stores/directory-store";
 import { useViewCompanyStore } from "@/stores/view-company-store";
+import { useOverdue } from "@/hooks/use-overdue";
 import { TASK_BOARD_KINDS, TASK_BOARD_KIND_META, TONE_DOT_CLASS, TONE_TEXT_CLASS } from "@/config/domain";
 import { StageDot } from "@/components/common/style-pickers";
 import { isHexColor } from "@/lib/tag-color";
@@ -85,6 +86,7 @@ export function KanbanDashboard() {
   const boards = useDirectoryStore((s) => s.taskBoards);
   const allColumns = useDirectoryStore((s) => s.taskColumns);
   const viewCompanyId = useViewCompanyStore((s) => s.companyId);
+  const { isTaskLate, isEventLate } = useOverdue();
 
   const { data: tickets } = useAsyncData(() => ticketsService.list(), [viewCompanyId]);
   const { data: events } = useAsyncData(() => calendarService.list(), [viewCompanyId]);
@@ -193,22 +195,29 @@ export function KanbanDashboard() {
     let overdue = 0;
     let today = 0;
     let upcoming = 0;
-    const classify = (d?: string | null) => {
+    // `late` segue a granularidade da empresa: só dia (vence na virada da
+    // meia-noite) ou dia + horário (vence no minuto seguinte ao prazo).
+    const classify = (d: string | null | undefined, late: boolean) => {
       if (d == null) {
         upcoming++;
         return;
       }
       const t = +new Date(d);
-      if (t >= start30 && t < today0) overdue++;
-      else if (t >= today0 && t <= endToday) today++;
+      if (late) {
+        if (t >= start30) overdue++; // atrasos antigos (>30d) ficam de fora
+        return;
+      }
+      if (t >= today0 && t <= endToday) today++;
       else if (t >= startTomorrow) upcoming++;
     };
     if (showTasks)
-      for (const t of tickets ?? []) if (onBoard(t) && t.status !== "closed") classify(t.due_at);
+      for (const t of tickets ?? [])
+        if (onBoard(t) && t.status !== "closed") classify(t.due_at, isTaskLate(t));
     if (showEvents)
-      for (const e of events ?? []) if (onBoard(e) && !e.finished) classify(e.starts_at);
+      for (const e of events ?? [])
+        if (onBoard(e) && !e.finished) classify(e.starts_at, isEventLate(e));
     return { overdue, today, upcoming };
-  }, [tickets, events, showTasks, showEvents, onBoard]);
+  }, [tickets, events, showTasks, showEvents, onBoard, isTaskLate, isEventLate]);
 
   const dueCards: {
     key: string;

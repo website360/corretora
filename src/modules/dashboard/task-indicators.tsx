@@ -25,6 +25,7 @@ import { taskBoardsService } from "@/services/task-boards.service";
 import { useViewCompanyStore } from "@/stores/view-company-store";
 import { TONE_DOT_CLASS, TONE_TEXT_CLASS, type Tone } from "@/config/domain";
 import { cn } from "@/lib/utils";
+import { useOverdue } from "@/hooks/use-overdue";
 import type { TaskBoard, Ticket } from "@/types/domain";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -159,6 +160,7 @@ function IndicatorCard({
  */
 export function TaskIndicators() {
   const viewCompanyId = useViewCompanyStore((s) => s.companyId);
+  const { isTaskLate } = useOverdue();
   const [tickets, setTickets] = React.useState<Ticket[]>([]);
   const [boards, setBoards] = React.useState<TaskBoard[]>([]);
   const [boardId, setBoardId] = React.useState<string>("all");
@@ -212,7 +214,6 @@ export function TaskIndicators() {
 
   const { metrics, total } = React.useMemo(() => {
     const { from, to } = rangeFor(range, customFrom, customTo);
-    const now = new Date();
     const inRange = tickets.filter((t) => {
       if (boardId !== "all" && t.board_id !== boardId) return false;
       const c = new Date(t.created_at);
@@ -224,9 +225,8 @@ export function TaskIndicators() {
     const open = inRange.filter(isOpen).length;
     const resolved = inRange.filter((t) => t.status === "resolved").length;
     const closed = inRange.filter((t) => t.status === "closed").length;
-    const overdue = inRange.filter(
-      (t) => isOpen(t) && t.due_at != null && new Date(t.due_at) < now,
-    ).length;
+    // Atraso segue a granularidade da empresa (só dia x dia + horário).
+    const overdue = inRange.filter((t) => isOpen(t) && isTaskLate(t)).length;
 
     const boardQ = boardId !== "all" ? `board=${boardId}` : "";
     // Leva a janela do período (por data de criação) para a lista bater com a
@@ -245,7 +245,7 @@ export function TaskIndicators() {
       { key: "closed", label: "Concluídas", value: closed, tone: "neutral", icon: CheckCheck, href: href("closed") },
     ];
     return { metrics: list, total: all };
-  }, [tickets, boardId, range, customFrom, customTo]);
+  }, [tickets, boardId, range, customFrom, customTo, isTaskLate]);
 
   return (
     <section className="space-y-3">
