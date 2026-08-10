@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendPaymentFailedEmail } from "@/lib/email";
@@ -11,12 +12,28 @@ import { env } from "@/config/env";
  * same "access token" you register there. Updates the company's subscription
  * status based on payment events.
  */
+/** Compara em tempo constante, evitando vazar o token por análise de tempo. */
+function timingSafeEqualStr(a: string | null, b: string): boolean {
+  if (!a) return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
 export async function POST(req: NextRequest) {
   const expected = await getPlatformSetting(
     "asaas_webhook_token",
     process.env.ASAAS_WEBHOOK_TOKEN ?? "",
   );
-  if (expected && req.headers.get("asaas-access-token") !== expected) {
+  // Falha FECHADO: sem token configurado o endpoint fica indisponível. Antes,
+  // um `expected` vazio pulava a verificação inteira e qualquer POST anônimo
+  // conseguia alterar o subscription_status de qualquer empresa.
+  if (!expected) {
+    console.error("[billing/webhook] asaas_webhook_token não configurado — requisição recusada.");
+    return NextResponse.json({ error: "Webhook não configurado." }, { status: 503 });
+  }
+  if (!timingSafeEqualStr(req.headers.get("asaas-access-token"), expected)) {
     return NextResponse.json({ error: "Token inválido." }, { status: 401 });
   }
 

@@ -15,9 +15,22 @@ export const companySettingsService = {
     return (company?.settings ?? {}) as CompanySettings;
   },
 
+  /**
+   * A gravação passa pelo servidor (`POST /api/settings`), não mais direto pelo
+   * Supabase. Motivo: o cliente recebe os segredos de integração mascarados, e
+   * só o servidor sabe restaurá-los — gravar daqui apagaria as credenciais das
+   * integrações que não estavam sendo editadas. As permissões não mudaram: a
+   * rota grava com o cliente do próprio usuário, sob as mesmas policies de RLS.
+   */
   async update(companyId: string, patch: Partial<CompanySettings>): Promise<void> {
-    const company = await companiesService.get(companyId);
-    const merged: CompanySettings = { ...(company?.settings ?? {}), ...patch };
-    await companiesService.update(companyId, { settings: merged });
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyId, patch }),
+    });
+    if (!res.ok) {
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(json.error || "Não foi possível salvar as configurações.");
+    }
   },
 };
