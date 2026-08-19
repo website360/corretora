@@ -10,12 +10,27 @@ import { PortalClaims } from "@/modules/portal/portal-claims";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_META: Record<ContractStatus, { label: string; variant: "success" | "warning" | "secondary" | "destructive" }> = {
+type StatusVariant = "default" | "success" | "warning" | "secondary" | "destructive";
+
+const STATUS_META: Record<ContractStatus, { label: string; variant: StatusVariant }> = {
   active: { label: "Ativa", variant: "success" },
-  renewal: { label: "Em renovação", variant: "warning" },
+  renewed: { label: "Renovada", variant: "default" },
+  endorsed: { label: "Endossada", variant: "warning" },
   canceled: { label: "Cancelada", variant: "secondary" },
-  expired: { label: "Expirada", variant: "destructive" },
+  expired: { label: "Vencida", variant: "destructive" },
 };
+
+/** Status legado — base ainda não migrada para 'renewed'. */
+const LEGACY_STATUS_META: Record<string, { label: string; variant: StatusVariant }> = {
+  renewal: { label: "Renovada", variant: "default" },
+};
+
+function statusMeta(status: string) {
+  return (
+    STATUS_META[status as ContractStatus] ??
+    LEGACY_STATUS_META[status] ?? { label: "Apólice", variant: "secondary" as StatusVariant }
+  );
+}
 
 function brl(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -84,7 +99,7 @@ export default async function PortalDashboard() {
           ) : (
             <div className="space-y-3">
               {contracts.map((c) => {
-                const meta = STATUS_META[c.status] ?? STATUS_META.active;
+                const meta = statusMeta(c.status);
                 const docs = attByContract.get(c.id) ?? [];
                 return (
                   <div key={c.id} className="rounded-2xl border bg-card p-5 shadow-xs">

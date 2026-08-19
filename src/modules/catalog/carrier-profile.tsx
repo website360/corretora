@@ -9,7 +9,7 @@ import { contractsService } from "@/services/contracts.service";
 import { customersService } from "@/services/customers.service";
 import { productsService } from "@/services/products.service";
 import { useAsyncData } from "@/hooks/use-async-data";
-import { CONTRACT_STATUS_META, TONE_BADGE_CLASS } from "@/config/domain";
+import { contractStatusMeta, TONE_BADGE_CLASS } from "@/config/domain";
 import { formatCurrency, formatShortDate } from "@/utils/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -134,7 +134,7 @@ export function CarrierProfile({ id }: { id: string }) {
         ) : (
           <ul className="divide-y divide-border/60">
             {carrierContracts.map((c) => {
-              const meta = CONTRACT_STATUS_META[c.status];
+              const meta = contractStatusMeta(c.status);
               return (
                 <li
                   key={c.id}

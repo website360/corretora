@@ -21,7 +21,7 @@ import { customersService } from "@/services/customers.service";
 import { productsService } from "@/services/products.service";
 import { carriersService } from "@/services/carriers.service";
 import { useAsyncData } from "@/hooks/use-async-data";
-import { CONTRACT_STATUS_META, TONE_BADGE_CLASS } from "@/config/domain";
+import { contractStatusMeta, TONE_BADGE_CLASS } from "@/config/domain";
 import { formatCompact, formatCurrency, formatShortDate } from "@/utils/format";
 import { toCsv, downloadFile } from "@/utils/csv";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,8 @@ function esc(s: string) {
   return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!);
 }
 
-const ACTIVE = new Set(["active", "renewal"]);
+// "renewal" é o valor legado de "renewed" — mantido para bases não migradas.
+const ACTIVE = new Set(["active", "renewed", "endorsed", "renewal"]);
 
 export function ContractsReport() {
   const router = useRouter();
@@ -126,7 +127,7 @@ export function ContractsReport() {
       c.ends_at ? formatShortDate(c.ends_at) : "",
       (c.premium_cents / 100).toFixed(2).replace(".", ","),
       c.commission_percent != null ? String(c.commission_percent).replace(".", ",") : "",
-      CONTRACT_STATUS_META[c.status].label,
+      contractStatusMeta(c.status).label,
     ]);
     downloadFile(toCsv(headers, rows), "relatorio-contratos.csv");
     toast.success(`${filtered.length} contrato(s) exportado(s).`);
@@ -143,7 +144,7 @@ export function ContractsReport() {
           <td>${esc(prod)}${carr ? `<br><small>${esc(carr)}</small>` : ""}</td>
           <td>${c.starts_at ? formatShortDate(c.starts_at) : "?"} → ${c.ends_at ? formatShortDate(c.ends_at) : "?"}</td>
           <td>${c.premium_cents ? formatCurrency(c.premium_cents / 100) : "—"}</td>
-          <td>${CONTRACT_STATUS_META[c.status].label}</td>
+          <td>${esc(contractStatusMeta(c.status).label)}</td>
         </tr>`;
       })
       .join("");
@@ -233,7 +234,7 @@ export function ContractsReport() {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
-        const meta = CONTRACT_STATUS_META[row.original.status];
+        const meta = contractStatusMeta(row.original.status);
         return (
           <Badge variant="outline" className={cn(TONE_BADGE_CLASS[meta.tone])}>
             {meta.label}

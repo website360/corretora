@@ -37,7 +37,7 @@ import { formatCurrency, formatDocument, formatPhone, formatShortDate, formatSma
 import {
   CALENDAR_EVENT_META,
   CLAIM_STATUS_META,
-  CONTRACT_STATUS_META,
+  contractStatusMeta,
   QUOTE_STATUS_META,
   SERVICE_CHANNEL_META,
   TICKET_CATEGORY_META,
@@ -415,7 +415,7 @@ function ContractsTab({ customerId }: { customerId: string }) {
       ) : (
         <ul className="divide-y divide-border/60">
           {contracts.map((c) => {
-            const meta = CONTRACT_STATUS_META[c.status];
+            const meta = contractStatusMeta(c.status);
             return (
               <li key={c.id}>
                 {/* Link de verdade (não router.push): permite abrir o contrato
@@ -735,7 +735,7 @@ function ActivityTimeline({ customerId }: { customerId: string }) {
       });
     }
     for (const c of contracts ?? []) {
-      const meta = CONTRACT_STATUS_META[c.status];
+      const meta = contractStatusMeta(c.status);
       const prod = c.product_id ? productName.get(c.product_id) : null;
       out.push({
         id: `ct-${c.id}`,
