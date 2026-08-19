@@ -947,3 +947,133 @@ create policy "service: tenant read" on public.service_records for select
   using (company_id = app.current_company_id() or app.is_super_admin());
 create policy "service: tenant manage" on public.service_records for all
   using (company_id = app.current_company_id()) with check (company_id = app.current_company_id());
+
+-- ─────────────── Super admin: escrita nas empresas que enxerga ────────────
+-- Espelha supabase/migrations/0080_super_admin_write_access.sql. As políticas
+-- de leitura acima já tinham "or app.is_super_admin()"; sem o mesmo escape na
+-- escrita, o super admin lia toda corretora e não gravava em nenhuma.
+-- Escopo pessoal (filter_presets, notificação própria, mensagem do autor,
+-- users: self update) fica de fora de propósito.
+
+alter policy "customers: tenant write" on public.customers
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "customers: tenant update" on public.customers
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "customers: tenant delete" on public.customers
+  using ((company_id = app.current_company_id() and app.current_role() in ('admin','super_admin'))
+         or app.is_super_admin());
+
+alter policy "interactions: tenant write" on public.customer_interactions
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+
+alter policy "contracts: tenant manage" on public.contracts
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "contract_attachments: tenant manage" on public.contract_attachments
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+
+alter policy "quotes: tenant manage" on public.quotes
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "quote_options: tenant manage" on public.quote_options
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+
+alter policy "claims: tenant manage" on public.claims
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "claim_updates: tenant manage" on public.claim_updates
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+
+alter policy "service: tenant manage" on public.service_records
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+
+alter policy "carriers: tenant insert" on public.insurance_carriers
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "carriers: tenant update" on public.insurance_carriers
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "carriers: tenant delete" on public.insurance_carriers
+  using (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "products: tenant insert" on public.insurance_products
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "products: tenant update" on public.insurance_products
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "products: tenant delete" on public.insurance_products
+  using (company_id = app.current_company_id() or app.is_super_admin());
+
+alter policy "tickets: tenant write" on public.tickets
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "tickets: tenant update" on public.tickets
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "tickets: tenant delete" on public.tickets
+  using ((company_id = app.current_company_id() and app.current_role() in ('admin','super_admin'))
+         or app.is_super_admin());
+alter policy "messages: tenant write" on public.ticket_messages
+  with check ((company_id = app.current_company_id() or app.is_super_admin())
+              and author_id = auth.uid());
+alter policy "logs: tenant write" on public.ticket_logs
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "participants: tenant write" on public.ticket_participants
+  using (exists (select 1 from public.tickets t
+                  where t.id = ticket_id and t.company_id = app.current_company_id())
+         or app.is_super_admin())
+  with check (exists (select 1 from public.tickets t
+                       where t.id = ticket_id and t.company_id = app.current_company_id())
+              or app.is_super_admin());
+alter policy "tags: tenant all" on public.ticket_tags
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+
+alter policy "stages: tenant manage" on public.task_stages
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "task_checklists: tenant manage" on public.task_checklists
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "task_checklist_items: tenant manage" on public.task_checklist_items
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+
+alter policy "events: tenant write" on public.calendar_events
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "events: tenant update" on public.calendar_events
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "events: tenant delete" on public.calendar_events
+  using (company_id = app.current_company_id() or app.is_super_admin());
+
+alter policy "tags: tenant insert" on public.tags
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "tags: tenant update" on public.tags
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "tags: tenant delete" on public.tags
+  using (company_id = app.current_company_id() or app.is_super_admin());
+
+alter policy "notifications: tenant insert" on public.notifications
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+
+alter policy "users: admins manage tenant members" on public.users
+  using ((company_id = app.current_company_id() and app.current_role() in ('admin','super_admin'))
+         or app.is_super_admin())
+  with check ((company_id = app.current_company_id() and app.current_role() in ('admin','super_admin'))
+              or app.is_super_admin());
+alter policy "groups: tenant manage" on public.user_groups
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());
+alter policy "company_modules: admin write" on public.company_modules
+  using ((company_id = app.current_company_id() and app.current_role() in ('admin','super_admin'))
+         or app.is_super_admin())
+  with check ((company_id = app.current_company_id() and app.current_role() in ('admin','super_admin'))
+              or app.is_super_admin());
+
+alter policy "cards: tenant manage" on public.payment_methods
+  using (company_id = app.current_company_id() or app.is_super_admin())
+  with check (company_id = app.current_company_id() or app.is_super_admin());

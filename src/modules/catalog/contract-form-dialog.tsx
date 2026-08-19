@@ -212,8 +212,16 @@ export function ContractFormDialog({
       toast.success(editing ? "Contrato atualizado" : "Contrato criado");
       onSaved?.();
       onOpenChange(false);
-    } catch {
-      toast.error("Não foi possível salvar o contrato.");
+    } catch (e) {
+      // PGRST116 = "0 linhas" no .single(): quase sempre é a RLS barrando a
+      // escrita, não um contrato inexistente. Sem isso a mensagem genérica
+      // esconde a causa real.
+      const err = e as { code?: string; message?: string };
+      toast.error(
+        err?.code === "PGRST116"
+          ? "Sem permissão para salvar este contrato nesta empresa."
+          : `Não foi possível salvar o contrato: ${err?.message ?? "erro desconhecido"}`,
+      );
     } finally {
       setSaving(false);
     }
