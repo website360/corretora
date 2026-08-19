@@ -178,10 +178,27 @@ export const SERVICE_CHANNEL_META: Record<
 /** Contract / policy status. */
 export const CONTRACT_STATUS_META: Record<ContractStatus, { label: string; tone: Tone }> = {
   active: { label: "Ativo", tone: "success" },
-  renewal: { label: "Em renovação", tone: "warning" },
+  renewed: { label: "Renovado", tone: "primary" },
+  endorsed: { label: "Endossado", tone: "warning" },
   canceled: { label: "Cancelado", tone: "neutral" },
   expired: { label: "Vencido", tone: "destructive" },
 };
+
+/** Status legados, mantidos só para leitura de bases ainda não migradas. */
+const LEGACY_CONTRACT_STATUS_META: Record<string, { label: string; tone: Tone }> = {
+  renewal: { label: "Renovado", tone: "primary" },
+};
+
+/**
+ * Meta do status de um contrato, tolerante a valor desconhecido — evita quebrar
+ * a tela quando o banco ainda serve um status legado ou um valor novo.
+ */
+export function contractStatusMeta(status: string): { label: string; tone: Tone } {
+  return (
+    CONTRACT_STATUS_META[status as ContractStatus] ??
+    LEGACY_CONTRACT_STATUS_META[status] ?? { label: "Sem status", tone: "neutral" }
+  );
+}
 
 /** Orçamento (quote) pipeline statuses. */
 export const QUOTE_STATUS_META: Record<QuoteStatus, { label: string; tone: Tone }> = {

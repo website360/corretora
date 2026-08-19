@@ -22,7 +22,7 @@ import { carriersService } from "@/services/carriers.service";
 import { usersService } from "@/services/users.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { InlineSelect } from "@/components/common/inline-select";
-import { CONTRACT_STATUS_META, TONE_BADGE_CLASS } from "@/config/domain";
+import { CONTRACT_STATUS_META, contractStatusMeta, TONE_BADGE_CLASS } from "@/config/domain";
 import { formatCurrency, formatShortDate } from "@/utils/format";
 import { cn } from "@/lib/utils";
 import type { Contract, ContractStatus } from "@/types/domain";
@@ -277,7 +277,7 @@ export function ContractsView() {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
-        const meta = CONTRACT_STATUS_META[row.original.status];
+        const meta = contractStatusMeta(row.original.status);
         return (
           <InlineSelect
             value={row.original.status}

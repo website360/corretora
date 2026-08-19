@@ -38,7 +38,8 @@ import {
 
 const STATUS: { value: ContractStatus; label: string }[] = [
   { value: "active", label: "Ativo" },
-  { value: "renewal", label: "Em renovação" },
+  { value: "renewed", label: "Renovado" },
+  { value: "endorsed", label: "Endossado" },
   { value: "canceled", label: "Cancelado" },
   { value: "expired", label: "Vencido" },
 ];
@@ -155,7 +156,7 @@ export function ContractFormDialog({
       commission_percent: commission ? parseFloat(commission.replace(",", ".")) : null,
       status,
       // Vínculo com o novo contrato só faz sentido em renovação; limpa caso contrário.
-      renewal_contract_id: status === "renewal" ? renewalContractId || null : null,
+      renewal_contract_id: status === "renewed" ? renewalContractId || null : null,
       notes: notes || null,
     };
     try {
@@ -288,7 +289,7 @@ export function ContractFormDialog({
             </div>
           </div>
 
-          {status === "renewal" && (
+          {status === "renewed" && (
             <div className="space-y-2">
               <Label>Novo contrato (renovação)</Label>
               <Combobox

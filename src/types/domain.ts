@@ -291,7 +291,7 @@ export interface ServiceRecord {
   created_at: ISODateString;
 }
 
-export type ContractStatus = "active" | "renewal" | "canceled" | "expired";
+export type ContractStatus = "active" | "renewed" | "endorsed" | "canceled" | "expired";
 
 export interface Contract {
   id: UUID;
@@ -308,7 +308,7 @@ export interface Contract {
   commission_percent: number | null;
   status: ContractStatus;
   notes: string | null;
-  /** Novo contrato que renova/substitui este (opcional; usado com status "renewal"). */
+  /** Novo contrato que renova/substitui este (opcional; usado com status "renewed"). */
   renewal_contract_id?: UUID | null;
   /** Originating quote (orçamento), when generated from one. */
   quote_id?: UUID | null;

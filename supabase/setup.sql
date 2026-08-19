@@ -884,9 +884,17 @@ create policy "products: tenant manage" on public.insurance_products for all
 -- ───────────────────────── Contratos / Apólices ───────────────────────────
 do $$ begin
   if not exists (select 1 from pg_type where typname = 'contract_status') then
-    create type contract_status as enum ('active', 'renewal', 'canceled', 'expired');
+    create type contract_status as enum ('active', 'renewed', 'endorsed', 'canceled', 'expired');
+  end if;
+  -- Bases criadas antes de 0079 usavam 'renewal' (Em renovação).
+  if exists (
+    select 1 from pg_enum e join pg_type t on t.oid = e.enumtypid
+    where t.typname = 'contract_status' and e.enumlabel = 'renewal'
+  ) then
+    alter type contract_status rename value 'renewal' to 'renewed';
   end if;
 end $$;
+alter type contract_status add value if not exists 'endorsed' after 'renewed';
 
 create table if not exists public.contracts (
   id uuid primary key default gen_random_uuid(),

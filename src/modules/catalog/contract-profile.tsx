@@ -27,7 +27,7 @@ import { claimsService } from "@/services/claims.service";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { AtendimentoChat } from "@/modules/service/atendimento-chat";
 import { ClaimFormDialog } from "@/modules/claims/claim-form-dialog";
-import { CLAIM_STATUS_META, CONTRACT_STATUS_META, TONE_BADGE_CLASS } from "@/config/domain";
+import { CLAIM_STATUS_META, contractStatusMeta, TONE_BADGE_CLASS } from "@/config/domain";
 import { formatCurrency, formatShortDate } from "@/utils/format";
 import type { Contract } from "@/types/domain";
 import { cn } from "@/lib/utils";
@@ -79,7 +79,7 @@ export function ContractProfile({ id }: { id: string }) {
   const carrier = (carriers ?? []).find((c) => c.id === contract.carrier_id);
   const product = (products ?? []).find((p) => p.id === contract.product_id);
   const owner = (users ?? []).find((u) => u.id === contract.owner_id);
-  const meta = CONTRACT_STATUS_META[contract.status];
+  const meta = contractStatusMeta(contract.status);
 
   async function confirmDelete() {
     setDeleting(true);
