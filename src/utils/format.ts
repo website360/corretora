@@ -14,25 +14,37 @@ export function formatCompact(value: number) {
   return new Intl.NumberFormat("pt-BR", { notation: "compact" }).format(value);
 }
 
+/** Um "-" no início marca o campo como negativo (estorno, endosso de redução). */
+function isNegativeMoney(value: string): boolean {
+  return value.trimStart().startsWith("-");
+}
+
 /**
  * Máscara de moeda para inputs: trata os dígitos digitados como CENTAVOS e
  * devolve "1.234,56". Robusta para valores grandes — os separadores de milhar
  * são gerados, nunca interpretados (evita o bug de parseFloat("1.234.56")).
+ *
+ * Aceita valor negativo: o "-" digitado na frente é preservado, inclusive
+ * sozinho, para o campo não "comer" o sinal enquanto o número ainda não veio.
  */
 export function formatMoneyInput(value: string): string {
+  const negative = isNegativeMoney(value);
   const digits = value.replace(/\D/g, "");
-  if (!digits) return "";
+  if (!digits) return negative ? "-" : "";
   const cents = parseInt(digits, 10);
-  return (cents / 100).toLocaleString("pt-BR", {
+  const formatted = (cents / 100).toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+  return negative ? `-${formatted}` : formatted;
 }
 
-/** Converte o texto de um campo de moeda em centavos inteiros. */
+/** Converte o texto de um campo de moeda em centavos inteiros (pode ser negativo). */
 export function moneyToCents(value: string): number {
   const digits = value.replace(/\D/g, "");
-  return digits ? parseInt(digits, 10) : 0;
+  if (!digits) return 0;
+  const cents = parseInt(digits, 10);
+  return isNegativeMoney(value) ? -cents : cents;
 }
 
 export function formatPercent(value: number, fractionDigits = 1) {
