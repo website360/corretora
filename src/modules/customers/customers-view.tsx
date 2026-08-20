@@ -55,7 +55,7 @@ import { ColumnsMenu } from "@/components/common/columns-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { TagBadge } from "@/components/common/tag-badge";
+import { TagList } from "@/components/common/tag-list";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { SavedFiltersBar } from "@/components/common/saved-filters-bar";
 import type { PresetFilters } from "@/services/filter-presets.service";
@@ -242,22 +242,11 @@ export function CustomersView() {
             refetch();
           }}
         >
-          <div className="flex items-center gap-1 overflow-hidden">
-            {row.original.tags.length === 0 ? (
-              <span className="text-sm text-muted-foreground">—</span>
-            ) : (
-              <>
-                {row.original.tags.slice(0, 2).map((t) => (
-                  <TagBadge key={t} name={t} color={tagColor(t)} />
-                ))}
-                {row.original.tags.length > 2 && (
-                  <Badge variant="outline" className="shrink-0">
-                    +{row.original.tags.length - 2}
-                  </Badge>
-                )}
-              </>
-            )}
-          </div>
+          <TagList
+            tags={row.original.tags}
+            colorOf={tagColor}
+            empty={<span className="text-sm text-muted-foreground">—</span>}
+          />
         </InlineTags>
       ),
     },
