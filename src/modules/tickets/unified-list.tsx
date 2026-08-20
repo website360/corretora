@@ -48,7 +48,7 @@ import { useOverdue } from "@/hooks/use-overdue";
 import { makeComparator, resolveSettings, type SortableRow } from "@/config/sort";
 import { DataTable } from "@/components/common/data-table";
 import { Badge } from "@/components/ui/badge";
-import { TagList } from "@/components/common/tag-list";
+import { TagBadge } from "@/components/common/tag-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -508,7 +508,16 @@ export function UnifiedList({
             {tags.length === 0 ? (
               <span className="text-sm text-muted-foreground">—</span>
             ) : (
-              <TagList tags={tags} colorOf={tagColor} />
+              <span className="flex items-center gap-1 overflow-hidden">
+                {tags.slice(0, 2).map((t) => (
+                  <TagBadge key={t} name={t} color={tagColor(t)} />
+                ))}
+                {tags.length > 2 && (
+                  <Badge variant="outline" className="shrink-0">
+                    +{tags.length - 2}
+                  </Badge>
+                )}
+              </span>
             )}
           </InlineTags>
         );

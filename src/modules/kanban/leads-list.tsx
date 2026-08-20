@@ -18,8 +18,9 @@ import { customersService } from "@/services/customers.service";
 import { findUser } from "@/services/lookup";
 import { formatPhone } from "@/utils/format";
 import { DataTable } from "@/components/common/data-table";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TagList } from "@/components/common/tag-list";
+import { TagBadge } from "@/components/common/tag-badge";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import {
@@ -146,11 +147,12 @@ export function LeadsList({
         id: "tags",
         header: "Etiquetas",
         cell: ({ row }) => (
-          <TagList
-            tags={row.original.tags}
-            colorOf={tagColor}
-            empty={<span className="text-muted-foreground">—</span>}
-          />
+          <div className="flex items-center gap-1 overflow-hidden">
+            {row.original.tags.slice(0, 3).map((t) => (
+              <TagBadge key={t} name={t} color={tagColor(t)} />
+            ))}
+            {row.original.tags.length === 0 && <span className="text-muted-foreground">—</span>}
+          </div>
         ),
       },
       {

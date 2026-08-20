@@ -18,8 +18,6 @@ import { cn } from "@/lib/utils";
 import type { Ticket } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TagBadge } from "@/components/common/tag-badge";
-import { useTagColor } from "@/hooks/use-tag-color";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -51,7 +49,6 @@ export function TaskDrawer({
   onOpenChange: (open: boolean) => void;
   onChanged?: () => void;
 }) {
-  const tagColor = useTagColor();
   // Keep the last shown ticket so the close animation still has content.
   const [shown, setShown] = React.useState<Ticket | null>(ticket);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
@@ -215,7 +212,9 @@ export function TaskDrawer({
                   {shown.tags.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
                       {shown.tags.map((t) => (
-                        <TagBadge key={t} name={t} color={tagColor(t)} />
+                        <Badge key={t} variant="secondary" className="capitalize">
+                          {t}
+                        </Badge>
                       ))}
                     </div>
                   ) : (
