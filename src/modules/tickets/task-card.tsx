@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { ChecklistProgress, Ticket } from "@/types/domain";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/common/user-avatar";
+import { TagList } from "@/components/common/tag-list";
 import { useOverdue } from "@/hooks/use-overdue";
 
 interface TaskCardProps {
@@ -20,6 +21,8 @@ interface TaskCardProps {
   onOpen?: (ticket: Ticket) => void;
   /** Itens de checklist concluídos/total; omitido quando a tarefa não tem nenhum. */
   checklist?: ChecklistProgress;
+  /** Cor das etiquetas — resolvida no board (useTagColor), não por card. */
+  colorOf?: (name: string) => string;
 }
 
 /** Compact, draggable task card used on the Kanban board. */
@@ -30,6 +33,7 @@ export function TaskCard({
   onDragEnd,
   onOpen,
   checklist,
+  colorOf,
 }: TaskCardProps) {
   const router = useRouter();
   const { isTaskLate, taskTimeEnabled } = useOverdue();
@@ -68,15 +72,7 @@ export function TaskCard({
         <p className="mt-1 truncate text-xs text-muted-foreground">{linkNames.join(" · ")}</p>
       )}
 
-      {ticket.tags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {ticket.tags.slice(0, 3).map((t) => (
-            <Badge key={t} variant="secondary" className="text-[10px] capitalize">
-              {t}
-            </Badge>
-          ))}
-        </div>
-      )}
+      {ticket.tags.length > 0 && <TagList tags={ticket.tags} colorOf={colorOf} className="mt-2" />}
 
       <div className="mt-3 flex items-center gap-2">
         <Badge
