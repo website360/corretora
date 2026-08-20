@@ -14,7 +14,6 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { ArrowUpDown, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { clampAutoFit, shouldAutoFit } from "@/lib/column-fit";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -267,7 +266,7 @@ export function DataTable<TData, TValue>({
 
       document.body.removeChild(probe);
       // +2px de folga; limites sãos para não estourar o layout.
-      const next = clampAutoFit(max + 2);
+      const next = Math.min(Math.max(Math.ceil(max) + 2, 56), 640);
       setColumnSizing((s) => ({ ...s, [columnId]: next }));
     },
     [],
@@ -280,9 +279,7 @@ export function DataTable<TData, TValue>({
     if (didAutoSize.current || loading || data.length === 0) return;
     if (!autoSizeColumns?.length) return;
     const persisted = loadColumnSizing(storageKey);
-    // Largura salva abaixo do mínimo utilizável não é escolha do usuário — é
-    // resto de medição ruim, que antes congelava a coluna estreita para sempre.
-    const pending = autoSizeColumns.filter((id) => shouldAutoFit(persisted[id]));
+    const pending = autoSizeColumns.filter((id) => persisted[id] == null);
     didAutoSize.current = true;
     if (pending.length === 0) return;
     const raf = requestAnimationFrame(() => pending.forEach((id) => autoFitColumn(id)));
