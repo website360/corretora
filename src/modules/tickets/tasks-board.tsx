@@ -42,6 +42,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { TaskCard } from "@/modules/tickets/task-card";
+import { TagList } from "@/components/common/tag-list";
+import { useTagColor } from "@/hooks/use-tag-color";
 import { TaskBoardDialog } from "@/modules/tickets/task-board-dialog";
 import { TaskColumnDialog } from "@/modules/tickets/task-column-dialog";
 
@@ -72,6 +74,7 @@ export function TasksBoard({
   const { can } = useSession();
   const boards = useDirectoryStore((s) => s.taskBoards);
   const allColumns = useDirectoryStore((s) => s.taskColumns);
+  const tagColor = useTagColor();
 
   const [activeBoardId, setActiveBoardId] = React.useState("");
   const [items, setItems] = React.useState<Ticket[]>(tickets);
@@ -375,6 +378,7 @@ export function TasksBoard({
                       <EventCard
                         key={e.id}
                         event={e}
+                        colorOf={tagColor}
                         onOpen={onOpenEvent}
                         onDragStart={() => setDrag({ kind: "event", id: e.id })}
                         onDragEnd={() => {
@@ -388,6 +392,7 @@ export function TasksBoard({
                         key={t.id}
                         ticket={t}
                         draggable
+                        colorOf={tagColor}
                         checklist={checklistProgress?.[t.id]}
                         onOpen={onOpenTask}
                         onDragStart={() => setDrag({ kind: "task", id: t.id })}
@@ -480,11 +485,14 @@ function EventCard({
   onOpen,
   onDragStart,
   onDragEnd,
+  colorOf,
 }: {
   event: CalendarEvent;
   onOpen?: (event: CalendarEvent) => void;
   onDragStart?: () => void;
   onDragEnd?: () => void;
+  /** Cor das etiquetas — resolvida no board, não por card. */
+  colorOf?: (name: string) => string;
 }) {
   const owner = findUser(e.owner_id);
   const { isEventLate } = useOverdue();
@@ -513,15 +521,9 @@ function EventCard({
       >
         {formatSmartDate(e.starts_at)}
       </p>
-      <div className="mt-2 flex items-center justify-between">
-        {(e.tags ?? []).length > 0 ? (
-          <Badge variant="outline" className="text-[10px] capitalize">
-            {e.tags![0]}
-          </Badge>
-        ) : (
-          <span />
-        )}
-        <UserAvatar name={owner?.name} src={owner?.avatar_url} className="size-6" />
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <TagList tags={e.tags ?? []} colorOf={colorOf} empty={<span />} />
+        <UserAvatar name={owner?.name} src={owner?.avatar_url} className="size-6 shrink-0" />
       </div>
     </div>
   );

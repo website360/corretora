@@ -12,6 +12,8 @@ import type { CalendarEvent } from "@/types/domain";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
+import { TagBadge } from "@/components/common/tag-badge";
+import { useTagColor } from "@/hooks/use-tag-color";
 import { Separator } from "@/components/ui/separator";
 import { UserAvatar } from "@/components/common/user-avatar";
 import {
@@ -43,6 +45,7 @@ export function EventDrawer({
   onOpenChange: (open: boolean) => void;
   onChanged?: () => void;
 }) {
+  const tagColor = useTagColor();
   const [shown, setShown] = React.useState<CalendarEvent | null>(event);
   const [editOpen, setEditOpen] = React.useState(false);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
@@ -115,9 +118,7 @@ export function EventDrawer({
                   </Badge>
                   {shown.finished && <Badge variant="success">Finalizado</Badge>}
                   {(shown.tags ?? []).map((t) => (
-                    <Badge key={t} variant="outline" className="capitalize">
-                      {t}
-                    </Badge>
+                    <TagBadge key={t} name={t} color={tagColor(t)} />
                   ))}
                 </div>
                 <SheetTitle>{shown.title}</SheetTitle>

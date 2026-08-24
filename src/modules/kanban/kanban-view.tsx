@@ -28,8 +28,7 @@ import { cn } from "@/lib/utils";
 import type { Customer, KanbanColumn, StageColor } from "@/types/domain";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { TagBadge } from "@/components/common/tag-badge";
+import { TagList } from "@/components/common/tag-list";
 import { EmptyState } from "@/components/common/empty-state";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { StageDot } from "@/components/common/style-pickers";
@@ -578,11 +577,7 @@ function LeadCard({
         <p className="mt-0.5 text-xs text-muted-foreground">{formatPhone(lead.phone)}</p>
       )}
       <div className="mt-2 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-wrap gap-1">
-          {lead.tags.slice(0, 2).map((t) => (
-            <TagBadge key={t} name={t} color={tagColor(t)} />
-          ))}
-        </div>
+        <TagList tags={lead.tags} colorOf={tagColor} />
         {owner && <UserAvatar name={owner.name} src={owner.avatar_url} className="size-6 shrink-0" />}
       </div>
     </div>

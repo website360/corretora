@@ -29,6 +29,8 @@ import { useOverdue } from "@/hooks/use-overdue";
 import type { CalendarEvent, Ticket } from "@/types/domain";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { TagBadge } from "@/components/common/tag-badge";
+import { useTagColor } from "@/hooks/use-tag-color";
 import { EmptyState } from "@/components/common/empty-state";
 import { UserAvatar } from "@/components/common/user-avatar";
 
@@ -488,6 +490,7 @@ function DayView({
   onOpenEvent?: (event: CalendarEvent) => void;
 }) {
   const { events, tasks } = bucket;
+  const tagColor = useTagColor();
 
   return (
     <Card className="flex h-full flex-col overflow-hidden">
@@ -548,9 +551,7 @@ function DayView({
                       {(e.tags ?? []).length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {(e.tags ?? []).map((tag) => (
-                            <Badge key={tag} variant="outline" className="capitalize">
-                              {tag}
-                            </Badge>
+                            <TagBadge key={tag} name={tag} color={tagColor(tag)} />
                           ))}
                         </div>
                       )}
