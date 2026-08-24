@@ -10,6 +10,7 @@ import {
   useReactTable,
   type ColumnDef,
   type ColumnSizingState,
+  type OnChangeFn,
   type RowSelectionState,
   type SortingState,
 } from "@tanstack/react-table";
@@ -126,6 +127,24 @@ function loadColumnSizing(storageKey?: string): ColumnSizingState {
   }
 }
 
+/**
+ * Ids das colunas que o usuário arrastou à mão.
+ *
+ * Guardado separado das larguras porque a medição do auto-ajuste também escreve
+ * em `dt-cols:`; sem essa lista não dá para saber se um número ali é escolha do
+ * usuário ou sobra de uma medição antiga.
+ */
+function loadManualSized(storageKey?: string): string[] {
+  if (!storageKey || typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(`dt-cols-manual:${storageKey}`);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export function DataTable<TData, TValue>({
   columns,
   data,
@@ -148,15 +167,44 @@ export function DataTable<TData, TValue>({
     loadColumnSizing(storageKey),
   );
 
+  const [manualSized, setManualSized] = React.useState<string[]>(() =>
+    loadManualSized(storageKey),
+  );
+
   // Persist manually-dragged column widths so they survive reloads.
   React.useEffect(() => {
     if (!storageKey || typeof window === "undefined") return;
     try {
       window.localStorage.setItem(`dt-cols:${storageKey}`, JSON.stringify(columnSizing));
+      window.localStorage.setItem(`dt-cols-manual:${storageKey}`, JSON.stringify(manualSized));
     } catch {
       /* ignore quota/availability errors */
     }
-  }, [storageKey, columnSizing]);
+  }, [storageKey, columnSizing, manualSized]);
+
+  /**
+   * Coluna sob a alça de redimensionar neste instante. Serve para marcar como
+   * "arrastada" só quando a largura muda de fato: um clique parado na alça não
+   * pode congelar a coluna, e o auto-ajuste (que usa setColumnSizing direto)
+   * não passa por aqui.
+   */
+  const dragging = React.useRef<string | null>(null);
+  const handleColumnSizingChange = React.useCallback<OnChangeFn<ColumnSizingState>>((updater) => {
+    setColumnSizing(updater);
+    const id = dragging.current;
+    if (id) setManualSized((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  }, []);
+
+  const startDrag = React.useCallback((columnId: string) => {
+    dragging.current = columnId;
+    const done = () => {
+      dragging.current = null;
+      window.removeEventListener("mouseup", done);
+      window.removeEventListener("touchend", done);
+    };
+    window.addEventListener("mouseup", done);
+    window.addEventListener("touchend", done);
+  }, []);
 
   const selectionColumn = React.useMemo<ColumnDef<TData, TValue>>(
     () => ({
@@ -208,7 +256,7 @@ export function DataTable<TData, TValue>({
     state: { sorting, rowSelection, columnSizing },
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
-    onColumnSizingChange: setColumnSizing,
+    onColumnSizingChange: handleColumnSizingChange,
     enableRowSelection: enableSelection,
     enableColumnResizing: true,
     columnResizeMode: "onChange",
@@ -221,6 +269,12 @@ export function DataTable<TData, TValue>({
   });
 
   const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
+  // Quais colunas estão à vista agora: uma coluna acesa no menu de colunas
+  // depois da carga também precisa passar pelo auto-ajuste.
+  const visibleColumnIds = table
+    .getVisibleLeafColumns()
+    .map((c) => c.id)
+    .join("|");
   const clearSelection = React.useCallback(() => setRowSelection({}), []);
 
   const gridRef = React.useRef<HTMLDivElement>(null);
@@ -229,15 +283,18 @@ export function DataTable<TData, TValue>({
    * Auto-ajusta a largura de uma coluna ao seu conteúdo (duplo-clique no
    * divisor, como no Excel). Mede o conteúdo REAL de cada célula clonando-a
    * fora da tela sem truncamento, pega o maior e fixa essa largura.
+   *
+   * Devolve `false` quando não havia o que medir (coluna escondida, tabela
+   * ainda não montada) — aí o ajuste inicial não pode se dar por feito.
    */
   const autoFitColumn = React.useCallback(
-    (columnId: string) => {
+    (columnId: string): boolean => {
       const root = gridRef.current;
-      if (!root) return;
+      if (!root) return false;
       const cells = root.querySelectorAll<HTMLElement>(
         `[data-col-id="${CSS.escape(columnId)}"]`,
       );
-      if (cells.length === 0) return;
+      if (cells.length === 0) return false;
 
       const probe = document.createElement("div");
       probe.style.cssText =
@@ -269,25 +326,43 @@ export function DataTable<TData, TValue>({
       // +2px de folga; limites sãos para não estourar o layout.
       const next = clampAutoFit(max + 2);
       setColumnSizing((s) => ({ ...s, [columnId]: next }));
+      return true;
     },
     [],
   );
 
-  // Auto-fit inicial das colunas marcadas (ex.: etiquetas), só nas que o
-  // usuário ainda não redimensionou manualmente (sem largura persistida).
+  // Auto-fit inicial das colunas marcadas (ex.: etiquetas). Roda a cada carga,
+  // e não uma vez na vida: a largura salva por uma medição antiga não é escolha
+  // do usuário, então a coluna precisa acompanhar o conteúdo de hoje. Só para
+  // de rodar na coluna que o usuário arrastou à mão.
   const didAutoSize = React.useRef(false);
   React.useEffect(() => {
     if (didAutoSize.current || loading || data.length === 0) return;
     if (!autoSizeColumns?.length) return;
     const persisted = loadColumnSizing(storageKey);
-    // Largura salva abaixo do mínimo utilizável não é escolha do usuário — é
-    // resto de medição ruim, que antes congelava a coluna estreita para sempre.
-    const pending = autoSizeColumns.filter((id) => shouldAutoFit(persisted[id]));
-    didAutoSize.current = true;
-    if (pending.length === 0) return;
-    const raf = requestAnimationFrame(() => pending.forEach((id) => autoFitColumn(id)));
+    const pending = autoSizeColumns.filter((id) =>
+      shouldAutoFit(manualSized.includes(id), persisted[id]),
+    );
+    if (pending.length === 0) {
+      didAutoSize.current = true;
+      return;
+    }
+    const raf = requestAnimationFrame(() => {
+      // Uma coluna escondida no menu de colunas não tem célula para medir; nesse
+      // caso o ajuste fica pendente e roda quando ela voltar a aparecer.
+      const measured = pending.map((id) => autoFitColumn(id));
+      didAutoSize.current = measured.some(Boolean);
+    });
     return () => cancelAnimationFrame(raf);
-  }, [autoSizeColumns, loading, data.length, storageKey, autoFitColumn]);
+  }, [
+    autoSizeColumns,
+    loading,
+    data.length,
+    storageKey,
+    manualSized,
+    visibleColumnIds,
+    autoFitColumn,
+  ]);
 
   if (loading) {
     return (
@@ -363,12 +438,23 @@ export function DataTable<TData, TValue>({
                       )}
                       {canResize && (
                         <span
-                          onMouseDown={header.getResizeHandler()}
-                          onTouchStart={header.getResizeHandler()}
+                          onMouseDown={(e) => {
+                            startDrag(header.column.id);
+                            header.getResizeHandler()(e);
+                          }}
+                          onTouchStart={(e) => {
+                            startDrag(header.column.id);
+                            header.getResizeHandler()(e);
+                          }}
                           onClick={(e) => e.stopPropagation()}
                           onDoubleClick={(e) => {
                             e.stopPropagation();
                             e.preventDefault();
+                            // Pedir ajuste ao conteúdo desfaz o arrasto anterior:
+                            // a coluna volta a acompanhar o conteúdo sozinha.
+                            setManualSized((prev) =>
+                              prev.filter((id) => id !== header.column.id),
+                            );
                             autoFitColumn(header.column.id);
                           }}
                           title="Arraste para redimensionar · duplo-clique para ajustar ao conteúdo"
