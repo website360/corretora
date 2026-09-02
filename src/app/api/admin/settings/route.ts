@@ -94,7 +94,7 @@ export async function PATCH(req: NextRequest) {
 
   let admin;
   try {
-    admin = getSupabaseAdminClient();
+    admin = getSupabaseAdminClient(guard.userId);
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }

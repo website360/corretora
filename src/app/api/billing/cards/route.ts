@@ -24,13 +24,13 @@ async function authCompany(req: NextRequest) {
   if (!profile || !["admin", "super_admin"].includes((profile as { role: string }).role)) {
     return { error: NextResponse.json({ error: "Apenas administradores." }, { status: 403 }) };
   }
-  return { companyId: (profile as { company_id: string }).company_id };
+  return { companyId: (profile as { company_id: string }).company_id, userId: user.id };
 }
 
 export async function GET(req: NextRequest) {
   const auth = await authCompany(req);
   if (auth.error) return auth.error;
-  const admin = getSupabaseAdminClient();
+  const admin = getSupabaseAdminClient(auth.userId);
   const { data } = await admin
     .from("payment_methods")
     .select("id, last4, brand, holder_name, is_default, created_at")
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Dados incompletos." }, { status: 400 });
   }
 
-  const admin = getSupabaseAdminClient();
+  const admin = getSupabaseAdminClient(auth.userId);
   const { data: company } = await admin
     .from("companies")
     .select("id, plan_id, trial_ends_at, asaas_customer_id, asaas_subscription_id")

@@ -26,14 +26,14 @@ async function authCompany() {
   if (!profile || !["admin", "super_admin"].includes((profile as { role: string }).role)) {
     return { error: NextResponse.json({ error: "Apenas administradores." }, { status: 403 }) };
   }
-  return { companyId: (profile as { company_id: string }).company_id };
+  return { companyId: (profile as { company_id: string }).company_id, userId: user.id };
 }
 
 export async function POST(_req: NextRequest) {
   const auth = await authCompany();
   if (auth.error) return auth.error;
   const companyId = auth.companyId!;
-  const admin = getSupabaseAdminClient();
+  const admin = getSupabaseAdminClient(auth.userId);
 
   const { data: company } = await admin
     .from("companies")

@@ -54,7 +54,7 @@ async function brokerContext(req: NextRequest, customerId: string) {
 
   let admin;
   try {
-    admin = getSupabaseAdminClient();
+    admin = getSupabaseAdminClient(user.id);
   } catch (e) {
     return { error: NextResponse.json({ error: (e as Error).message }, { status: 500 }) };
   }
