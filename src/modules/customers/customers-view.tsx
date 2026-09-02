@@ -272,9 +272,27 @@ export function CustomersView() {
           value={row.original.status}
           options={STATUS_OPTIONS}
           title="Trocar status"
+          // A célula fica numa linha que abre o contato ao ser clicada: sem a
+          // pergunta, um clique fora de mira inativava o cliente em silêncio.
+          // Reativar continua num clique — é assim que se corrige o engano.
+          confirm={(next) =>
+            next === "inactive"
+              ? {
+                  title: "Inativar contato",
+                  description: `"${row.original.name}" sai das listas e dos relatórios de contatos ativos. As apólices e o histórico continuam guardados, e dá para reativar quando quiser.`,
+                  confirmLabel: "Inativar",
+                  variant: "destructive",
+                }
+              : null
+          }
           onChange={async (v) => {
             await customersService.update(row.original.id, { status: v as EntityStatus });
             refetch();
+            toast.success(
+              v === "inactive"
+                ? `"${row.original.name}" foi inativado.`
+                : `"${row.original.name}" voltou a ficar ativo.`,
+            );
           }}
         >
           {row.original.status === "active" ? (

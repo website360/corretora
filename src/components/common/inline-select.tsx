@@ -4,6 +4,7 @@ import * as React from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,14 @@ export interface InlineOption {
   leading?: React.ReactNode;
 }
 
+/** Confirmação exigida antes de aplicar uma escolha. */
+export interface InlineConfirm {
+  title: string;
+  description?: React.ReactNode;
+  confirmLabel?: string;
+  variant?: "default" | "destructive";
+}
+
 /**
  * A list-cell value that turns into a dropdown on click, persisting the change
  * inline. Stops row-click propagation so editing never opens the row.
@@ -30,6 +39,7 @@ export function InlineSelect({
   title,
   align = "start",
   className,
+  confirm,
 }: {
   value: string | null | undefined;
   options: InlineOption[];
@@ -39,19 +49,37 @@ export function InlineSelect({
   title?: string;
   align?: "start" | "end";
   className?: string;
+  /**
+   * Pergunta antes de aplicar. Recebe a opção escolhida e o valor atual;
+   * devolver `null` aplica direto. Existe porque a célula fica numa linha
+   * clicável: sem a pergunta, um clique fora de mira altera o dado sem
+   * ninguém perceber.
+   */
+  confirm?: (next: string, current: string | null | undefined) => InlineConfirm | null;
 }) {
   const [saving, setSaving] = React.useState(false);
+  const [pending, setPending] = React.useState<{ value: string; ask: InlineConfirm } | null>(null);
 
-  async function pick(next: string) {
-    if (next === value) return;
+  async function apply(next: string) {
     setSaving(true);
     try {
       await onChange(next);
+      setPending(null);
     } catch {
       toast.error("Não foi possível salvar a alteração.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function pick(next: string) {
+    if (next === value) return;
+    const ask = confirm?.(next, value) ?? null;
+    if (ask) {
+      setPending({ value: next, ask });
+      return;
+    }
+    void apply(next);
   }
 
   return (
@@ -81,6 +109,19 @@ export function InlineSelect({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {pending && (
+        <ConfirmDialog
+          open
+          onOpenChange={(o) => !o && setPending(null)}
+          title={pending.ask.title}
+          description={pending.ask.description}
+          confirmLabel={pending.ask.confirmLabel ?? "Confirmar"}
+          variant={pending.ask.variant ?? "default"}
+          loading={saving}
+          onConfirm={() => void apply(pending.value)}
+        />
+      )}
     </span>
   );
 }
