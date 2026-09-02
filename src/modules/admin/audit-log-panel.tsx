@@ -11,8 +11,21 @@ import {
   type AuditChange,
   type AuditLog,
 } from "@/services/audit.service";
-import { formatShortDate, formatTime } from "@/utils/format";
-import type { User } from "@/types/domain";
+import { formatCurrency, formatShortDate, formatTime } from "@/utils/format";
+import { ROLE_LABELS, type User } from "@/types/domain";
+import {
+  CALENDAR_EVENT_META,
+  CLAIM_STATUS_META,
+  CONTRACT_STATUS_META,
+  EVENT_MODALITY_META,
+  QUOTE_STATUS_META,
+  SERVICE_CHANNEL_META,
+  TASK_BOARD_KIND_META,
+  TICKET_CATEGORY_META,
+  TICKET_PRIORITY_META,
+  TICKET_STATUS_META,
+  TICKET_SUBJECT_META,
+} from "@/config/domain";
 import { DataTable } from "@/components/common/data-table";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -73,55 +86,219 @@ const TABLE_LABELS: Record<string, string> = {
   users: "Usuários",
 };
 
-/** Colunas mais frequentes; o resto cai no formatador genérico. */
+/**
+ * Toda coluna do schema em português — a lista veio de
+ * `information_schema.columns`, então não sobra nome técnico na tela.
+ */
 const FIELD_LABELS: Record<string, string> = {
-  name: "Nome",
-  trade_name: "Nome fantasia",
-  legal_name: "Razão social",
-  title: "Título",
-  subject: "Assunto",
-  description: "Descrição",
-  notes: "Observações",
-  status: "Situação",
-  priority: "Prioridade",
-  role: "Perfil",
-  email: "E-mail",
-  phone: "Telefone",
-  document: "Documento",
-  cnpj: "CNPJ",
-  cpf: "CPF",
+  active: "Ativo",
+  actor_id: "Autor",
+  added_at: "Adicionado em",
   address: "Endereço",
-  city: "Cidade",
-  state: "Estado",
-  zip: "CEP",
-  premium: "Prêmio",
-  price_cents: "Valor",
-  value_cents: "Valor",
-  amount: "Valor",
-  company_id: "Empresa",
-  customer_id: "Cliente",
-  owner_id: "Responsável",
+  all_day: "Dia inteiro",
+  amount_cents: "Valor",
+  asaas_customer_id: "Cliente no Asaas",
+  asaas_subscription_id: "Assinatura no Asaas",
+  asaas_token: "Token do Asaas",
   assignee_id: "Responsável",
+  attachments: "Anexos",
+  auth_user_id: "Login vinculado",
   author_id: "Autor",
+  auto_send: "Envio automático",
+  avatar_url: "Foto",
+  birth_date: "Nascimento",
+  board_id: "Quadro",
+  body: "Conteúdo",
+  brand: "Bandeira",
+  calendar_token: "Token da agenda",
+  card_brand: "Bandeira do cartão",
+  card_last4: "Final do cartão",
   carrier_id: "Companhia",
-  product_id: "Produto",
-  contract_id: "Contrato",
-  plan_id: "Plano",
-  stage_id: "Estágio",
+  category: "Categoria",
+  channel: "Canal",
+  checklist_id: "Checklist",
+  claim_id: "Sinistro",
+  clicksign_key: "Chave do ClickSign",
+  cnpj: "CNPJ",
+  code: "Código",
+  color: "Cor",
   column_id: "Coluna",
-  deleted_at: "Excluído em",
+  commission_percent: "Comissão (%)",
+  company_id: "Empresa",
+  content: "Conteúdo",
+  contract_id: "Contrato",
   created_at: "Criado em",
-  starts_at: "Início",
-  ends_at: "Fim",
+  created_by: "Criado por",
+  customer_id: "Cliente",
+  default_carrier_id: "Companhia padrão",
+  default_product_id: "Produto padrão",
+  default_tag_id: "Etiqueta padrão",
+  deleted_at: "Excluído em",
+  description: "Descrição",
+  document: "Documento",
+  done: "Concluído",
+  done_at: "Concluído em",
+  done_by: "Concluído por",
   due_at: "Vencimento",
-  subscription_status: "Assinatura",
+  email: "E-mail",
+  enabled: "Habilitado",
+  ends_at: "Fim",
+  event: "Evento",
+  filters: "Filtros",
+  finished: "Finalizado",
+  highlight: "Destaque",
+  holder_name: "Titular",
+  href: "Link",
+  icon: "Ícone",
+  id: "Identificador",
+  is_custom: "Personalizado",
+  is_default: "Padrão",
+  is_owner: "É o dono",
+  is_selected: "Selecionado",
+  is_system: "Do sistema",
+  is_terminal: "Etapa final",
+  job_title: "Cargo",
+  key: "Chave",
+  kind: "Tipo",
+  last4: "Final do cartão",
+  last_seen_at: "Visto por último",
+  legal_name: "Razão social",
+  links: "Links",
+  location: "Local",
+  logo_url: "Logo",
+  max_contacts: "Limite de contatos",
+  max_users: "Limite de usuários",
+  member_ids: "Membros",
+  mentions: "Menções",
+  meta: "Detalhes",
+  mime_type: "Tipo do arquivo",
+  min_plan: "Plano mínimo",
+  modality: "Modalidade",
+  module_key: "Módulo",
+  modules: "Módulos",
+  name: "Nome",
+  next_contact_at: "Próximo contato",
+  note: "Observação",
+  notes: "Observações",
+  number: "Número",
+  occurred_at: "Ocorrido em",
+  onboarding_completed: "Onboarding concluído",
+  owner_id: "Responsável",
+  participant_ids: "Participantes",
+  person_type: "Tipo de pessoa",
+  phone: "Telefone",
+  plan: "Plano",
+  plan_id: "Plano",
+  policy_number: "Número da apólice",
+  portal_enabled: "Portal habilitado",
+  portal_must_change_password: "Precisa trocar a senha do portal",
+  position: "Posição",
+  premium_cents: "Prêmio",
+  price_cents: "Valor",
+  priority: "Prioridade",
+  product_id: "Produto",
+  quote_id: "Orçamento",
+  read: "Lida",
+  read_by: "Lida por",
   registros_removidos: "Registros removidos",
+  renewal_contract_id: "Contrato da renovação",
+  role: "Perfil",
+  scope: "Escopo",
+  settings: "Configurações",
+  shared: "Compartilhado",
+  signed_at: "Assinado em",
+  signed_url: "Link assinado",
+  size: "Tamanho",
+  slot: "Posição",
+  source: "Origem",
+  stage_id: "Estágio",
+  starts_at: "Início",
+  status: "Situação",
+  storage_path: "Caminho do arquivo",
+  subject: "Assunto",
+  subject_type: "Tipo de assunto",
+  subscription_status: "Situação da assinatura",
+  tags: "Etiquetas",
+  task_filter_last: "Último filtro de tarefas",
+  task_filter_presets: "Filtros salvos de tarefas",
+  ticket_id: "Tarefa",
+  title: "Título",
+  trade_name: "Nome fantasia",
+  trial_ends_at: "Fim do período de teste",
+  type: "Tipo",
+  unread_count: "Não lidas",
+  updated_at: "Atualizado em",
+  updated_by: "Atualizado por",
+  uploaded_by: "Enviado por",
+  user_id: "Usuário",
+  value: "Valor",
+  website: "Site",
 };
 
 function fieldLabel(field: string) {
   if (FIELD_LABELS[field]) return FIELD_LABELS[field];
   const words = field.replace(/_/g, " ");
   return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/* ─────────────── valores de enum, nos rótulos que o app já usa ─────────────── */
+
+const labelsOf = (meta: Record<string, { label: string }>): Record<string, string> =>
+  Object.fromEntries(Object.entries(meta).map(([k, v]) => [k, v.label]));
+
+const ENTITY_STATUS = { active: "Ativo", inactive: "Inativo" };
+const SUBSCRIPTION_STATUS = {
+  trialing: "Em teste",
+  active: "Ativa",
+  past_due: "Inadimplente",
+  canceled: "Cancelada",
+};
+const NOTIFICATION_TYPE = {
+  ticket_assigned: "Tarefa atribuída",
+  ticket_message: "Nova mensagem",
+  mention: "Menção",
+  task_due: "Tarefa vencendo",
+  event_reminder: "Lembrete de evento",
+  system: "Sistema",
+};
+
+/**
+ * O mesmo nome de coluna carrega enums diferentes conforme a tabela — `status`
+ * em contracts não é o `status` em tickets. Por isso a tradução olha as duas
+ * coisas, e reaproveita os rótulos de @/config/domain para a tela do Log falar
+ * igual ao resto do sistema.
+ */
+function enumLabel(table: string, field: string, value: string): string | null {
+  const pick = (m: Record<string, string>) => m[value] ?? null;
+
+  if (field === "status") {
+    if (table === "contracts") return pick(labelsOf(CONTRACT_STATUS_META));
+    if (table === "quotes") return pick(labelsOf(QUOTE_STATUS_META));
+    if (table === "claims") return pick(labelsOf(CLAIM_STATUS_META));
+    if (table === "tickets") return pick(labelsOf(TICKET_STATUS_META));
+    return pick(ENTITY_STATUS);
+  }
+  if (field === "subscription_status") return pick(SUBSCRIPTION_STATUS);
+  if (field === "role") return pick(ROLE_LABELS as Record<string, string>);
+  if (field === "priority") return pick(labelsOf(TICKET_PRIORITY_META));
+  if (field === "category") return pick(labelsOf(TICKET_CATEGORY_META));
+  if (field === "subject_type") return pick(labelsOf(TICKET_SUBJECT_META));
+  if (field === "modality") return pick(labelsOf(EVENT_MODALITY_META));
+  if (field === "channel") return pick(labelsOf(SERVICE_CHANNEL_META));
+  if (field === "person_type") return pick({ individual: "Pessoa física", company: "Pessoa jurídica" });
+  if (field === "plan" || field === "min_plan") {
+    return pick({ starter: "Starter", professional: "Professional", enterprise: "Enterprise" });
+  }
+  if (field === "kind") {
+    if (table === "customers") return pick({ lead: "Lead", client: "Cliente" });
+    if (table === "ticket_messages") return pick({ message: "Mensagem", internal_note: "Nota interna" });
+    return pick(labelsOf(TASK_BOARD_KIND_META));
+  }
+  if (field === "type") {
+    if (table === "notifications") return pick(NOTIFICATION_TYPE);
+    if (table === "calendar_events") return pick(labelsOf(CALENDAR_EVENT_META));
+  }
+  return null;
 }
 
 function tableLabel(table: string) {
@@ -137,13 +314,20 @@ const ACTION_META: Record<AuditAction, { label: string; variant: "success" | "wa
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Colunas em centavos: 145000 no banco é R$ 1.450,00 na tela. */
+const CENTS_FIELDS = new Set(["price_cents", "premium_cents", "amount_cents"]);
+
 /** Valor cru do banco → texto legível. */
-function renderValue(value: unknown): string {
+function renderValue(table: string, field: string, value: unknown): string {
   if (value === null || value === undefined) return "—";
   if (typeof value === "boolean") return value ? "Sim" : "Não";
-  if (typeof value === "number") return String(value);
+  if (typeof value === "number") {
+    return CENTS_FIELDS.has(field) ? formatCurrency(value / 100) : String(value);
+  }
   if (typeof value === "string") {
     if (!value) return "—";
+    const asEnum = enumLabel(table, field, value);
+    if (asEnum) return asEnum;
     if (ISO_DATETIME.test(value)) return `${formatShortDate(value)} às ${formatTime(value)}`;
     if (ISO_DATE.test(value)) return formatShortDate(value);
     return value;
@@ -501,10 +685,12 @@ function AuditDetailDialog({
               </p>
               <div className="mt-1 grid gap-1 text-sm sm:grid-cols-[1fr_auto_1fr] sm:items-center">
                 <span className="break-words text-muted-foreground line-through decoration-muted-foreground/40">
-                  {truncate(renderValue(change.from))}
+                  {truncate(renderValue(log.table_name, field, change.from))}
                 </span>
                 <span className="hidden text-muted-foreground sm:inline">→</span>
-                <span className="break-words font-medium">{truncate(renderValue(change.to))}</span>
+                <span className="break-words font-medium">
+                  {truncate(renderValue(log.table_name, field, change.to))}
+                </span>
               </div>
             </div>
           ))}
