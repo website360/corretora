@@ -17,7 +17,7 @@ async function authCompany() {
   if (!profile || !["admin", "super_admin"].includes((profile as { role: string }).role)) {
     return { error: NextResponse.json({ error: "Apenas administradores." }, { status: 403 }) };
   }
-  return { companyId: (profile as { company_id: string }).company_id };
+  return { companyId: (profile as { company_id: string }).company_id, userId: user.id };
 }
 
 /** PATCH — set this card as the default (used for charging). */
@@ -25,7 +25,7 @@ export async function PATCH(_req: NextRequest, { params }: { params: Promise<{ i
   const auth = await authCompany();
   if (auth.error) return auth.error;
   const { id } = await params;
-  const admin = getSupabaseAdminClient();
+  const admin = getSupabaseAdminClient(auth.userId);
 
   const { data: card } = await admin
     .from("payment_methods")
@@ -63,7 +63,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const auth = await authCompany();
   if (auth.error) return auth.error;
   const { id } = await params;
-  const admin = getSupabaseAdminClient();
+  const admin = getSupabaseAdminClient(auth.userId);
 
   const { data: card } = await admin
     .from("payment_methods")

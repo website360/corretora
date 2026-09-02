@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isSmtpConfigured, sendViaSmtp } from "@/lib/email/smtp";
+import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import type { SmtpIntegration } from "@/types/domain";
 
 /**
@@ -14,6 +15,11 @@ export async function POST() {
     data: { user },
   } = await sb.auth.getUser();
   if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
+  // Dispara e-mail real: limita por usuário para não virar ferramenta de abuso.
+  const rl = rateLimit(`smtp-test:${user.id}`, 5, 600_000);
+  if (!rl.ok) return tooManyRequests(rl.retryAfter);
+
   const { data: profile } = await sb
     .from("users")
     .select("company_id, role, email, name")

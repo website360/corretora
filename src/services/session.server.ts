@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { maskIntegrations } from "@/lib/settings/secrets";
 import type { Company, SessionUser, User } from "@/types/domain";
 
 /**
@@ -22,7 +23,17 @@ export async function getServerSessionUser(): Promise<SessionUser> {
   if (!profile) redirect("/login");
 
   const { company, ...rest } = profile as unknown as User & { company: Company };
-  return { ...(rest as User), company } as SessionUser;
+
+  // Este objeto é serializado para o HTML e entregue ao navegador. Segredos de
+  // integração saem mascarados — o servidor os restaura ao gravar.
+  const safeCompany: Company = company?.settings?.integrations
+    ? {
+        ...company,
+        settings: { ...company.settings, integrations: maskIntegrations(company.settings.integrations) },
+      }
+    : company;
+
+  return { ...(rest as User), company: safeCompany } as SessionUser;
 }
 
 /**

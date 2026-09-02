@@ -27,6 +27,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { DataTable } from "@/components/common/data-table";
 import { DefaultCatalogPanel } from "@/modules/admin/default-catalog-panel";
 import { SystemSettingsPanel } from "@/modules/admin/system-settings-panel";
+import { AuditLogPanel } from "@/modules/admin/audit-log-panel";
 import { EmptyState } from "@/components/common/empty-state";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Card } from "@/components/ui/card";
@@ -51,7 +52,8 @@ type Tab =
   | "plans"
   | "payments"
   | "catalog"
-  | "system";
+  | "system"
+  | "log";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Visão geral" },
@@ -61,6 +63,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "payments", label: "Pagamentos" },
   { id: "catalog", label: "Catálogo padrão" },
   { id: "system", label: "Sistema" },
+  { id: "log", label: "Log" },
 ];
 
 const SUB_META: Record<SubscriptionStatus, { label: string; variant: "success" | "warning" | "destructive" | "secondary" }> = {
@@ -75,7 +78,7 @@ function SubBadge({ status }: { status: SubscriptionStatus }) {
   return <Badge variant={m.variant}>{m.label}</Badge>;
 }
 
-const COMPANY_FILTER_TABS: Tab[] = ["companies", "users", "payments"];
+const COMPANY_FILTER_TABS: Tab[] = ["companies", "users", "payments", "log"];
 
 export function SaasAdminView() {
   const { can } = useSession();
@@ -299,6 +302,14 @@ export function SaasAdminView() {
         {tab === "catalog" && <DefaultCatalogPanel />}
 
         {tab === "system" && <SystemSettingsPanel />}
+
+        {tab === "log" && (
+          <AuditLogPanel
+            companyFilter={companyFilter}
+            users={users ?? []}
+            companyName={companyName}
+          />
+        )}
       </div>
 
       <ConfirmDialog

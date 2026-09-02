@@ -1,15 +1,25 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { dispatchEvent } from "@/lib/email/dispatch.server";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 const BASE_CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, X-API-Key",
 };
 
-/** Cabeçalhos CORS refletindo a origem da requisição (ou `*` se ausente). */
+/**
+ * Cabeçalhos CORS. Reflete a origem exata quando ela existe (nunca `*`, que
+ * impediria o navegador de restringir o consumo da resposta) e usa `*` só para
+ * chamadas sem Origin — o plugin server-side, que não passa pelo CORS.
+ * `Vary: Origin` evita que um proxy sirva a resposta de um site para outro.
+ */
 function corsFor(origin: string | null) {
-  return { ...BASE_CORS, "Access-Control-Allow-Origin": origin || "*" };
+  return {
+    ...BASE_CORS,
+    "Access-Control-Allow-Origin": origin || "*",
+    Vary: "Origin",
+  };
 }
 
 function hostFromOrigin(origin: string): string | null {
@@ -53,6 +63,16 @@ export async function OPTIONS(request: Request) {
 export async function POST(request: Request) {
   const origin = request.headers.get("origin");
   const cors = corsFor(origin);
+
+  // Ingestão pública: limita por IP antes de qualquer consulta ao banco, para
+  // que um flood não vire custo de banco nem inundação do kanban.
+  const rl = rateLimit(`leads:${clientIp(request)}`, 20, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Muitas requisições. Tente novamente em instantes." },
+      { status: 429, headers: { ...cors, "Retry-After": String(rl.retryAfter) } },
+    );
+  }
 
   const apiKey = request.headers.get("x-api-key")?.trim();
   if (!apiKey) {

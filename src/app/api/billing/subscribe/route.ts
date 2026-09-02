@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
   let admin;
   try {
-    admin = getSupabaseAdminClient();
+    admin = getSupabaseAdminClient(user.id);
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }

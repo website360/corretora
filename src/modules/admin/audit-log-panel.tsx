@@ -1,0 +1,520 @@
+"use client";
+
+import * as React from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Eraser, ScrollText } from "lucide-react";
+import { toast } from "sonner";
+import {
+  AUDIT_PAGE_SIZE,
+  auditService,
+  type AuditAction,
+  type AuditChange,
+  type AuditLog,
+} from "@/services/audit.service";
+import { formatShortDate, formatTime } from "@/utils/format";
+import type { User } from "@/types/domain";
+import { DataTable } from "@/components/common/data-table";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+/* ─────────────────────────── nomes legíveis ─────────────────────────── */
+
+/** Tabela do banco → nome que o usuário reconhece. */
+const TABLE_LABELS: Record<string, string> = {
+  audit_logs: "Log de auditoria",
+  calendar_events: "Agenda",
+  claim_updates: "Andamentos de sinistro",
+  claims: "Sinistros",
+  companies: "Empresas",
+  company_modules: "Módulos da empresa",
+  contract_attachments: "Anexos de contrato",
+  contracts: "Contratos",
+  customer_interactions: "Interações com cliente",
+  customers: "Clientes",
+  default_carriers: "Companhias padrão",
+  default_products: "Produtos padrão",
+  default_tags: "Etiquetas padrão",
+  email_templates: "Modelos de e-mail",
+  insurance_carriers: "Companhias",
+  insurance_products: "Produtos",
+  kanban_boards: "Quadros do funil",
+  kanban_columns: "Colunas do funil",
+  modules: "Módulos",
+  notifications: "Notificações",
+  payment_methods: "Formas de pagamento",
+  plans: "Planos",
+  platform_settings: "Configurações da plataforma",
+  quote_options: "Opções de orçamento",
+  quotes: "Orçamentos",
+  service_records: "Atendimentos",
+  tags: "Etiquetas",
+  task_boards: "Quadros de tarefas",
+  task_checklist_items: "Itens de checklist",
+  task_checklists: "Checklists",
+  task_columns: "Colunas de tarefas",
+  task_filter_presets: "Filtros salvos",
+  task_stages: "Estágios",
+  ticket_logs: "Histórico de tarefas",
+  ticket_messages: "Mensagens",
+  ticket_participants: "Participantes",
+  ticket_tags: "Etiquetas de tarefa",
+  tickets: "Tarefas",
+  user_groups: "Grupos de usuários",
+  users: "Usuários",
+};
+
+/** Colunas mais frequentes; o resto cai no formatador genérico. */
+const FIELD_LABELS: Record<string, string> = {
+  name: "Nome",
+  trade_name: "Nome fantasia",
+  legal_name: "Razão social",
+  title: "Título",
+  subject: "Assunto",
+  description: "Descrição",
+  notes: "Observações",
+  status: "Situação",
+  priority: "Prioridade",
+  role: "Perfil",
+  email: "E-mail",
+  phone: "Telefone",
+  document: "Documento",
+  cnpj: "CNPJ",
+  cpf: "CPF",
+  address: "Endereço",
+  city: "Cidade",
+  state: "Estado",
+  zip: "CEP",
+  premium: "Prêmio",
+  price_cents: "Valor",
+  value_cents: "Valor",
+  amount: "Valor",
+  company_id: "Empresa",
+  customer_id: "Cliente",
+  owner_id: "Responsável",
+  assignee_id: "Responsável",
+  author_id: "Autor",
+  carrier_id: "Companhia",
+  product_id: "Produto",
+  contract_id: "Contrato",
+  plan_id: "Plano",
+  stage_id: "Estágio",
+  column_id: "Coluna",
+  deleted_at: "Excluído em",
+  created_at: "Criado em",
+  starts_at: "Início",
+  ends_at: "Fim",
+  due_at: "Vencimento",
+  subscription_status: "Assinatura",
+  registros_removidos: "Registros removidos",
+};
+
+function fieldLabel(field: string) {
+  if (FIELD_LABELS[field]) return FIELD_LABELS[field];
+  const words = field.replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+function tableLabel(table: string) {
+  return TABLE_LABELS[table] ?? table;
+}
+
+const ACTION_META: Record<AuditAction, { label: string; variant: "success" | "warning" | "destructive" }> = {
+  INSERT: { label: "Criado", variant: "success" },
+  UPDATE: { label: "Alterado", variant: "warning" },
+  DELETE: { label: "Excluído", variant: "destructive" },
+};
+
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Valor cru do banco → texto legível. */
+function renderValue(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "boolean") return value ? "Sim" : "Não";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") {
+    if (!value) return "—";
+    if (ISO_DATETIME.test(value)) return `${formatShortDate(value)} às ${formatTime(value)}`;
+    if (ISO_DATE.test(value)) return formatShortDate(value);
+    return value;
+  }
+  return JSON.stringify(value);
+}
+
+function truncate(text: string, max = 220) {
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+/* ─────────────────────────────── painel ─────────────────────────────── */
+
+interface AuditLogPanelProps {
+  /** Filtro de empresa da página (uuid ou "all"). */
+  companyFilter: string;
+  users: User[];
+  companyName: Map<string, string>;
+}
+
+export function AuditLogPanel({ companyFilter, users, companyName }: AuditLogPanelProps) {
+  const [from, setFrom] = React.useState("");
+  const [to, setTo] = React.useState("");
+  const [actorId, setActorId] = React.useState("all");
+  const [action, setAction] = React.useState<AuditAction | "all">("all");
+  const [table, setTable] = React.useState("all");
+  const [search, setSearch] = React.useState("");
+  const [term, setTerm] = React.useState("");
+
+  const [rows, setRows] = React.useState<AuditLog[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const [exhausted, setExhausted] = React.useState(false);
+
+  const [detail, setDetail] = React.useState<AuditLog | null>(null);
+  const [purging, setPurging] = React.useState(false);
+  const [purgeOpen, setPurgeOpen] = React.useState(false);
+  const [total, setTotal] = React.useState<number | null>(null);
+
+  // A busca livre espera o usuário parar de digitar.
+  React.useEffect(() => {
+    const id = window.setTimeout(() => setTerm(search), 350);
+    return () => window.clearTimeout(id);
+  }, [search]);
+
+  const filters = React.useMemo(
+    () => ({ companyId: companyFilter, from, to, actorId, action, table, search: term }),
+    [companyFilter, from, to, actorId, action, table, term],
+  );
+
+  React.useEffect(() => {
+    let active = true;
+    setLoading(true);
+    auditService
+      .list(filters)
+      .then((data) => {
+        if (!active) return;
+        setRows(data);
+        setExhausted(data.length < AUDIT_PAGE_SIZE);
+      })
+      .catch((e: Error) => active && toast.error(e.message))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [filters]);
+
+  async function loadMore() {
+    const last = rows[rows.length - 1];
+    if (!last) return;
+    setLoadingMore(true);
+    try {
+      const next = await auditService.list({ ...filters, before: last.id });
+      setRows((current) => [...current, ...next]);
+      if (next.length < AUDIT_PAGE_SIZE) setExhausted(true);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  async function openPurge() {
+    setPurgeOpen(true);
+    setTotal(null);
+    try {
+      setTotal(await auditService.total());
+    } catch {
+      setTotal(null);
+    }
+  }
+
+  async function confirmPurge() {
+    setPurging(true);
+    try {
+      const removed = await auditService.purge();
+      toast.success(`Log limpo — ${removed.toLocaleString("pt-BR")} registro(s) removido(s).`);
+      setPurgeOpen(false);
+      const fresh = await auditService.list(filters);
+      setRows(fresh);
+      setExhausted(fresh.length < AUDIT_PAGE_SIZE);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setPurging(false);
+    }
+  }
+
+  const userOptions = React.useMemo(
+    () => [
+      { value: "all", label: "Todos os usuários" },
+      ...[...users]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((u) => ({ value: u.id, label: u.name, description: u.email })),
+    ],
+    [users],
+  );
+
+  const tableOptions = React.useMemo(
+    () => [
+      { value: "all", label: "Todos os módulos" },
+      ...Object.entries(TABLE_LABELS)
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ],
+    [],
+  );
+
+  const columns = React.useMemo<ColumnDef<AuditLog>[]>(
+    () => [
+      {
+        id: "when",
+        header: "Quando",
+        cell: ({ row }) => (
+          <div className="whitespace-nowrap text-sm">
+            {formatShortDate(row.original.created_at)}
+            <span className="ml-1 text-muted-foreground">{formatTime(row.original.created_at)}</span>
+          </div>
+        ),
+      },
+      {
+        id: "actor",
+        header: "Quem",
+        cell: ({ row }) =>
+          row.original.actor_name ? (
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{row.original.actor_name}</p>
+              <p className="truncate text-xs text-muted-foreground">{row.original.actor_email}</p>
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground">Sistema</span>
+          ),
+      },
+      {
+        id: "company",
+        header: "Empresa",
+        cell: ({ row }) => (
+          <span className="truncate text-sm">
+            {row.original.company_id ? (companyName.get(row.original.company_id) ?? "—") : "—"}
+          </span>
+        ),
+      },
+      {
+        id: "action",
+        header: "Ação",
+        cell: ({ row }) => {
+          const meta = ACTION_META[row.original.action];
+          return <Badge variant={meta.variant}>{meta.label}</Badge>;
+        },
+      },
+      {
+        id: "where",
+        header: "Onde",
+        cell: ({ row }) => (
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{tableLabel(row.original.table_name)}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {row.original.record_label ?? row.original.record_id ?? "—"}
+            </p>
+          </div>
+        ),
+      },
+      {
+        id: "summary",
+        header: "O que mudou",
+        cell: ({ row }) => {
+          const fields = Object.keys(row.original.changes ?? {});
+          if (!fields.length) return <span className="text-sm text-muted-foreground">—</span>;
+          const shown = fields.slice(0, 3).map(fieldLabel).join(", ");
+          return (
+            <span className="truncate text-sm text-muted-foreground">
+              {shown}
+              {fields.length > 3 && ` +${fields.length - 3}`}
+            </span>
+          );
+        },
+      },
+    ],
+    [companyName],
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">De</span>
+          <Input
+            type="date"
+            className="w-[150px]"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Até</span>
+          <Input
+            type="date"
+            className="w-[150px]"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </div>
+        <div className="w-[190px]">
+          <Combobox
+            options={userOptions}
+            value={actorId}
+            onChange={(v) => setActorId(v || "all")}
+            placeholder="Todos os usuários"
+            searchPlaceholder="Filtrar usuário..."
+          />
+        </div>
+        <div className="w-[190px]">
+          <Combobox
+            options={tableOptions}
+            value={table}
+            onChange={(v) => setTable(v || "all")}
+            placeholder="Todos os módulos"
+            searchPlaceholder="Filtrar módulo..."
+          />
+        </div>
+        <div className="w-[160px]">
+          <Combobox
+            options={[
+              { value: "all", label: "Todas as ações" },
+              { value: "INSERT", label: "Criado" },
+              { value: "UPDATE", label: "Alterado" },
+              { value: "DELETE", label: "Excluído" },
+            ]}
+            value={action}
+            onChange={(v) => setAction((v || "all") as AuditAction | "all")}
+            placeholder="Todas as ações"
+            searchPlaceholder="Filtrar ação..."
+          />
+        </div>
+        <Input
+          className="w-[220px]"
+          placeholder="Buscar por pessoa ou registro"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <div className="ml-auto">
+          <Button variant="outline" onClick={openPurge}>
+            <Eraser className="size-4" /> Limpar log
+          </Button>
+        </div>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={rows}
+        loading={loading}
+        onRowClick={setDetail}
+        emptyIcon={ScrollText}
+        emptyTitle="Nenhum registro"
+        emptyDescription="Nenhuma alteração no período e filtros selecionados."
+        storageKey="admin-audit"
+      />
+
+      {!exhausted && rows.length > 0 && (
+        <div className="flex justify-center">
+          <Button variant="outline" onClick={loadMore} loading={loadingMore}>
+            Carregar mais
+          </Button>
+        </div>
+      )}
+
+      <AuditDetailDialog
+        log={detail}
+        companyName={companyName}
+        onClose={() => setDetail(null)}
+      />
+
+      <ConfirmDialog
+        open={purgeOpen}
+        onOpenChange={(o) => !o && setPurgeOpen(false)}
+        title="Limpar log"
+        description={
+          total === null
+            ? "Isto apaga TODOS os registros do log, de todas as empresas. Não há como desfazer."
+            : `Isto apaga os ${total.toLocaleString("pt-BR")} registros do log, de todas as empresas. Não há como desfazer — e o log recomeça registrando que foi você quem limpou.`
+        }
+        confirmLabel="Limpar tudo"
+        variant="destructive"
+        loading={purging}
+        onConfirm={confirmPurge}
+      />
+    </div>
+  );
+}
+
+/* ──────────────────────────── detalhe ──────────────────────────── */
+
+function AuditDetailDialog({
+  log,
+  companyName,
+  onClose,
+}: {
+  log: AuditLog | null;
+  companyName: Map<string, string>;
+  onClose: () => void;
+}) {
+  if (!log) return null;
+  const meta = ACTION_META[log.action];
+  const entries = Object.entries(log.changes ?? {}) as [string, AuditChange][];
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Badge variant={meta.variant}>{meta.label}</Badge>
+            {tableLabel(log.table_name)}
+            {log.record_label && (
+              <span className="truncate font-normal text-muted-foreground">
+                · {log.record_label}
+              </span>
+            )}
+          </DialogTitle>
+          <DialogDescription>
+            {log.actor_name ?? "Sistema"} ·{" "}
+            {`${formatShortDate(log.created_at)} às ${formatTime(log.created_at)}`}
+            {log.company_id && ` · ${companyName.get(log.company_id) ?? "empresa removida"}`}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+          {entries.length === 0 && (
+            <p className="text-sm text-muted-foreground">Sem detalhes registrados.</p>
+          )}
+          {entries.map(([field, change]) => (
+            <div key={field} className="rounded-md border px-3 py-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                {fieldLabel(field)}
+                {change.masked && " (valor protegido)"}
+              </p>
+              <div className="mt-1 grid gap-1 text-sm sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+                <span className="break-words text-muted-foreground line-through decoration-muted-foreground/40">
+                  {truncate(renderValue(change.from))}
+                </span>
+                <span className="hidden text-muted-foreground sm:inline">→</span>
+                <span className="break-words font-medium">{truncate(renderValue(change.to))}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Registro: {log.table_name}
+          {log.record_id && ` · ${log.record_id}`}
+        </p>
+      </DialogContent>
+    </Dialog>
+  );
+}
